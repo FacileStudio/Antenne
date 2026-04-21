@@ -48,30 +48,149 @@ function deriveSiteName(siteUrl: string): string {
   return path && path !== "/" ? `${hostname}${path}` : hostname;
 }
 
+function parseYamlScalar(rawValue: string): string | number {
+  const value = rawValue.trim();
+  if (
+    (value.startsWith("\"") && value.endsWith("\""))
+    || (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return value.slice(1, -1);
+  }
+
+  const numberValue = Number(value);
+  if (!Number.isNaN(numberValue) && value !== "") {
+    return numberValue;
+  }
+
+  return value;
+}
+
+function splitYamlKeyValue(line: string) {
+  const separatorIndex = line.indexOf(":");
+  if (separatorIndex === -1) {
+    throw new Error(`Invalid YAML line: ${line}`);
+  }
+
+  return {
+    key: line.slice(0, separatorIndex).trim(),
+    value: line.slice(separatorIndex + 1).trim(),
+  };
+}
+
+function parseSimpleYamlConfig(text: string): RawConfig {
+  const rawConfig: RawConfig = {};
+  const sites: RawSiteConfig[] = [];
+  const siteOptionKeys = new Set(["name", "url", "every", "interval"]);
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\t/g, "  "));
+
+  let inSites = false;
+  let currentSite: RawSiteOptions | null = null;
+
+  const pushCurrentSite = () => {
+    if (currentSite) {
+      sites.push(currentSite);
+      currentSite = null;
+    }
+  };
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const indent = rawLine.length - rawLine.trimStart().length;
+
+    if (indent === 0) {
+      pushCurrentSite();
+
+      if (trimmed === "sites:") {
+        inSites = true;
+        continue;
+      }
+
+      inSites = false;
+      const { key, value } = splitYamlKeyValue(trimmed);
+      rawConfig[key as keyof RawConfig] = parseYamlScalar(value) as never;
+      continue;
+    }
+
+    if (!inSites) {
+      throw new Error(`Unexpected indentation outside \`sites\`: ${trimmed}`);
+    }
+
+    if (indent < 2) {
+      throw new Error(`Invalid site indentation: ${trimmed}`);
+    }
+
+    if (trimmed.startsWith("- ")) {
+      pushCurrentSite();
+      const item = trimmed.slice(2).trim();
+
+      if (!item) {
+        currentSite = {};
+        continue;
+      }
+
+      const separatorIndex = item.indexOf(":");
+      const maybeKey = separatorIndex === -1 ? "" : item.slice(0, separatorIndex).trim();
+      if (siteOptionKeys.has(maybeKey)) {
+        const { key, value } = splitYamlKeyValue(item);
+        currentSite = {
+          [key]: parseYamlScalar(value),
+        };
+        continue;
+      }
+
+      sites.push(parseYamlScalar(item).toString());
+      continue;
+    }
+
+    if (!currentSite) {
+      throw new Error(`Invalid site entry: ${trimmed}`);
+    }
+
+    const { key, value } = splitYamlKeyValue(trimmed);
+    currentSite[key as keyof RawSiteOptions] = parseYamlScalar(value) as never;
+  }
+
+  pushCurrentSite();
+
+  if (sites.length > 0) {
+    rawConfig.sites = sites;
+  }
+
+  return rawConfig;
+}
+
 function parseRawConfig(text: string, path: string): RawConfig {
   const normalizedText = text.replace(/^\uFEFF/, "").trim();
   const parsers = path.endsWith(".json")
     ? [
       () => JSON.parse(normalizedText),
       () => Bun.YAML.parse(normalizedText),
+      () => parseSimpleYamlConfig(normalizedText),
     ]
     : [
       () => Bun.YAML.parse(normalizedText),
+      () => parseSimpleYamlConfig(normalizedText),
       () => JSON.parse(normalizedText),
     ];
 
-  let lastError: unknown = null;
+  const errors: string[] = [];
 
   for (const parse of parsers) {
     try {
       return parse() as RawConfig;
     } catch (error) {
-      lastError = error;
+      errors.push(error instanceof Error ? error.message : "unknown parse error");
     }
   }
 
-  const reason = lastError instanceof Error ? lastError.message : "unknown parse error";
-  throw new Error(`Failed to parse config file at ${path}: ${reason}`);
+  throw new Error(`Failed to parse config file at ${path}: ${errors.join(" | ")}`);
 }
 
 function normalizeConfig(rawConfig: RawConfig): Config {
