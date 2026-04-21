@@ -8,8 +8,6 @@ Configure ces variables dans Dockploy:
 - `MATRIX_ACCESS_TOKEN=<ton token Matrix>`
 - `MATRIX_ROOM_ID=!pNpRDBUtbEKxTxmpEf:matrix.org`
 - `CONFIG_PATH=/data/config.json`
-- `NOOK_STORAGE_PATH=/data/nook-storage.json`
-- `NOOK_CRYPTO_PATH=/data/crypto`
 
 ## Volume
 
@@ -18,8 +16,6 @@ Monte un volume persistant sur `/data`.
 Ce volume contient:
 
 - `/data/config.json`
-- `/data/nook-storage.json`
-- `/data/crypto/`
 
 ## Contenu de `/data/config.json`
 
@@ -49,7 +45,7 @@ Ce volume contient:
 ## Build
 
 Dockerfile déjà prêt. Dockploy peut build le repo directement.
-L'image utilise `oven/bun:1.3.11` en base glibc, pas Alpine, parce que `matrix-bot-sdk` dépend d'un module natif Matrix crypto qui casse facilement sur `musl`.
+L'image utilise `oven/bun:1.3.11` et Nook parle directement à l'API Matrix par HTTP. Pas de SDK crypto natif à télécharger, donc build moins casse-gueule.
 
 ## Run check
 
@@ -70,5 +66,5 @@ Puis:
 
 - Les réponses HTTP `< 400` sont considérées comme `up`, donc les redirects ne déclenchent pas de faux down.
 - Le bot n'a pas besoin de sync Matrix complet pour envoyer des alertes.
-- Nook vérifie d'abord si le salon cible a un état `m.room.encryption`; si non, il saute complètement l'initialisation E2EE.
+- Nook est maintenant prévu pour un salon Matrix non chiffré. Il envoie directement `m.room.message` via l'API Matrix.
 - Si Nook tourne sur la même machine que les sites monitorés, il ne verra pas une panne totale de la machine elle-même.

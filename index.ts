@@ -1,9 +1,3 @@
-import {
-  MatrixClient,
-  RustSdkCryptoStorageProvider,
-  SimpleFsStorageProvider,
-} from "matrix-bot-sdk";
-
 interface SiteConfig {
   name: string;
   url: string;
@@ -28,8 +22,6 @@ interface SiteState {
 }
 
 const configPath = process.env.CONFIG_PATH ?? "/data/config.json";
-const storagePath = process.env.NOOK_STORAGE_PATH ?? "/data/nook-storage.json";
-const cryptoPath = process.env.NOOK_CRYPTO_PATH ?? "/data/crypto";
 
 let configFile = Bun.file(configPath);
 if (!(await configFile.exists())) {
@@ -59,6 +51,7 @@ const matrixConfig = {
   accessToken,
   roomId,
 };
+let matrixTxnId = 0;
 
 const states = new Map<string, SiteState>();
 
@@ -71,79 +64,55 @@ for (const site of config.sites) {
   });
 }
 
-const storage = new SimpleFsStorageProvider(storagePath);
-const sqliteStoreType = 0;
-let client = new MatrixClient(
-  matrixConfig.homeserver,
-  matrixConfig.accessToken,
-  storage,
-);
-let matrixReady = false;
-
-async function roomUsesEncryption() {
-  const path = `/_matrix/client/v3/rooms/${
-    encodeURIComponent(matrixConfig.roomId)
-  }/state/${encodeURIComponent("m.room.encryption")}/`;
-  const url = new URL(path, matrixConfig.homeserver.endsWith("/")
-    ? matrixConfig.homeserver
-    : `${matrixConfig.homeserver}/`);
+async function matrixRequest(method: string, path: string, body?: unknown) {
+  const url = new URL(
+    path,
+    matrixConfig.homeserver.endsWith("/")
+      ? matrixConfig.homeserver
+      : `${matrixConfig.homeserver}/`,
+  );
   const res = await fetch(url, {
+    method,
     headers: {
       Authorization: `Bearer ${matrixConfig.accessToken}`,
+      "Content-Type": "application/json",
       "User-Agent": "Nook/1.0 uptime-bot",
     },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
-
-  if (res.status === 404) {
-    return false;
-  }
 
   if (!res.ok) {
     const body = await res.text();
     throw new Error(
-      `Failed to inspect Matrix room encryption: HTTP ${res.status}${body ? ` ${body}` : ""}`,
+      `Matrix API request failed: ${method} ${path} -> HTTP ${res.status}${body ? ` ${body}` : ""}`,
     );
   }
 
-  return true;
-}
-
-async function prepareMatrixClient() {
-  if (matrixReady) {
-    return;
+  if (res.status === 204) {
+    return null;
   }
 
-  const encryptedRoom = await roomUsesEncryption();
-
-  if (encryptedRoom) {
-    const cryptoStore = new RustSdkCryptoStorageProvider(
-      cryptoPath,
-      sqliteStoreType,
-    );
-    client = new MatrixClient(
-      matrixConfig.homeserver,
-      matrixConfig.accessToken,
-      storage,
-      cryptoStore,
-    );
-    await client.crypto?.prepare([matrixConfig.roomId]);
-    console.log("[startup] Matrix room is encrypted; E2EE prepared");
-  } else {
-    console.log("[startup] Matrix room is unencrypted; skipping E2EE setup");
+  const text = await res.text();
+  if (!text) {
+    return null;
   }
 
-  matrixReady = true;
+  return JSON.parse(text);
 }
 
 async function sendAlert(message: string) {
   try {
-    await prepareMatrixClient();
-    await client.sendMessage(matrixConfig.roomId, {
-      msgtype: "m.text",
-      body: message.replace(/<[^>]*>/g, ""),
-      format: "org.matrix.custom.html",
-      formatted_body: message,
-    });
+    matrixTxnId += 1;
+    await matrixRequest(
+      "PUT",
+      `/_matrix/client/v3/rooms/${encodeURIComponent(matrixConfig.roomId)}/send/m.room.message/${encodeURIComponent(`${Date.now()}-${matrixTxnId}`)}`,
+      {
+        msgtype: "m.text",
+        body: message.replace(/<[^>]*>/g, ""),
+        format: "org.matrix.custom.html",
+        formatted_body: message,
+      },
+    );
   } catch (err) {
     console.error(`Failed to send Matrix alert: ${err}`);
   }
@@ -223,14 +192,10 @@ function startMonitoring(site: SiteConfig) {
 async function main() {
   console.log("[startup] Nook booting");
   console.log(`[startup] config path: ${configPath}`);
-  console.log(`[startup] storage path: ${storagePath}`);
-  console.log(`[startup] crypto path: ${cryptoPath}`);
   console.log(`[startup] homeserver: ${matrixConfig.homeserver}`);
   console.log(`[startup] room id: ${matrixConfig.roomId}`);
   console.log(`[startup] monitoring ${config.sites.length} site(s)`);
-
-  await prepareMatrixClient();
-  console.log("[startup] Matrix client ready");
+  console.log("[startup] Matrix sender ready");
 
   const siteList = config.sites
     .map((s) => `• <b>${s.name}</b> (<code>${s.url}</code>) every ${s.interval}s`)
