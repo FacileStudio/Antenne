@@ -53,10 +53,15 @@ Dockerfile déjà prêt. Dockploy peut build le repo directement.
 Au démarrage, Nook doit logguer:
 
 ```text
-Nook started — monitoring 3 site(s)
+[startup] Nook booting
+[startup] Matrix startup message sent
 ```
 
-Puis une ligne par site.
+Puis:
+
+- une ligne `[monitor]` par site
+- une ligne `[health]` à chaque check
+- un message `Nook started` dans le salon Matrix
 
 ## Notes utiles
 

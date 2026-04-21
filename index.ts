@@ -92,6 +92,10 @@ async function checkSite(site: SiteConfig) {
       headers: { "User-Agent": "Nook/1.0 uptime-bot" },
     });
 
+    console.log(
+      `[health] ${site.name} ${site.url} -> HTTP ${res.status}`,
+    );
+
     if (res.status < 400) {
       if (!state.up) {
         const downtime = timeSince(state.lastChange);
@@ -107,6 +111,7 @@ async function checkSite(site: SiteConfig) {
     }
   } catch (err) {
     const reason = err instanceof Error ? err.message : "unknown error";
+    console.error(`[health] ${site.name} ${site.url} -> ${reason}`);
     await handleFailure(site, state, reason);
   } finally {
     clearTimeout(timer);
@@ -137,16 +142,28 @@ function timeSince(date: Date): string {
 }
 
 function startMonitoring(site: SiteConfig) {
+  console.log(
+    `[monitor] starting ${site.name} (${site.url}) every ${site.interval}s`,
+  );
   checkSite(site);
   setInterval(() => checkSite(site), site.interval * 1000);
 }
 
 async function main() {
-  console.log(`Nook started — monitoring ${config.sites.length} site(s)`);
+  console.log("[startup] Nook booting");
+  console.log(`[startup] config path: ${configPath}`);
+  console.log(`[startup] storage path: ${storagePath}`);
+  console.log(`[startup] homeserver: ${matrixConfig.homeserver}`);
+  console.log(`[startup] room id: ${matrixConfig.roomId}`);
+  console.log(`[startup] monitoring ${config.sites.length} site(s)`);
+
+  await sendAlert(
+    `🟢 <b>Nook started</b><br/>Monitoring ${config.sites.length} site(s)`,
+  );
+  console.log("[startup] Matrix startup message sent");
 
   for (const site of config.sites) {
     startMonitoring(site);
-    console.log(`  → ${site.name} (${site.url}) every ${site.interval}s`);
   }
 }
 
