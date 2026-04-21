@@ -73,18 +73,71 @@ for (const site of config.sites) {
 
 const storage = new SimpleFsStorageProvider(storagePath);
 const sqliteStoreType = 0;
-const cryptoStore = new RustSdkCryptoStorageProvider(
-  cryptoPath,
-  sqliteStoreType,
-);
-const client = new MatrixClient(
+let client = new MatrixClient(
   matrixConfig.homeserver,
   matrixConfig.accessToken,
   storage,
-  cryptoStore,
 );
+let matrixReady = false;
+
+async function roomUsesEncryption() {
+  const path = `/_matrix/client/v3/rooms/${
+    encodeURIComponent(matrixConfig.roomId)
+  }/state/${encodeURIComponent("m.room.encryption")}/`;
+  const url = new URL(path, matrixConfig.homeserver.endsWith("/")
+    ? matrixConfig.homeserver
+    : `${matrixConfig.homeserver}/`);
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${matrixConfig.accessToken}`,
+      "User-Agent": "Nook/1.0 uptime-bot",
+    },
+  });
+
+  if (res.status === 404) {
+    return false;
+  }
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Failed to inspect Matrix room encryption: HTTP ${res.status}${body ? ` ${body}` : ""}`,
+    );
+  }
+
+  return true;
+}
+
+async function prepareMatrixClient() {
+  if (matrixReady) {
+    return;
+  }
+
+  const encryptedRoom = await roomUsesEncryption();
+
+  if (encryptedRoom) {
+    const cryptoStore = new RustSdkCryptoStorageProvider(
+      cryptoPath,
+      sqliteStoreType,
+    );
+    client = new MatrixClient(
+      matrixConfig.homeserver,
+      matrixConfig.accessToken,
+      storage,
+      cryptoStore,
+    );
+    await client.crypto?.prepare([matrixConfig.roomId]);
+    console.log("[startup] Matrix room is encrypted; E2EE prepared");
+  } else {
+    console.log("[startup] Matrix room is unencrypted; skipping E2EE setup");
+  }
+
+  matrixReady = true;
+}
+
 async function sendAlert(message: string) {
   try {
+    await prepareMatrixClient();
     await client.sendMessage(matrixConfig.roomId, {
       msgtype: "m.text",
       body: message.replace(/<[^>]*>/g, ""),
@@ -176,8 +229,8 @@ async function main() {
   console.log(`[startup] room id: ${matrixConfig.roomId}`);
   console.log(`[startup] monitoring ${config.sites.length} site(s)`);
 
-  await client.start();
-  console.log("[startup] Matrix client started (E2EE enabled)");
+  await prepareMatrixClient();
+  console.log("[startup] Matrix client ready");
 
   const siteList = config.sites
     .map((s) => `• <b>${s.name}</b> (<code>${s.url}</code>) every ${s.interval}s`)

@@ -70,4 +70,5 @@ Puis:
 
 - Les réponses HTTP `< 400` sont considérées comme `up`, donc les redirects ne déclenchent pas de faux down.
 - Le bot n'a pas besoin de sync Matrix complet pour envoyer des alertes.
+- Nook vérifie d'abord si le salon cible a un état `m.room.encryption`; si non, il saute complètement l'initialisation E2EE.
 - Si Nook tourne sur la même machine que les sites monitorés, il ne verra pas une panne totale de la machine elle-même.
