@@ -9,6 +9,7 @@ Configure ces variables dans Dockploy:
 - `MATRIX_ROOM_ID=!pNpRDBUtbEKxTxmpEf:matrix.org`
 - `CONFIG_PATH=/data/config.json`
 - `NOOK_STORAGE_PATH=/data/nook-storage.json`
+- `NOOK_CRYPTO_PATH=/data/crypto`
 
 ## Volume
 
@@ -18,6 +19,7 @@ Ce volume contient:
 
 - `/data/config.json`
 - `/data/nook-storage.json`
+- `/data/crypto/`
 
 ## Contenu de `/data/config.json`
 

@@ -1,4 +1,8 @@
-import { MatrixClient, SimpleFsStorageProvider } from "matrix-bot-sdk";
+import {
+  MatrixClient,
+  RustSdkCryptoStorageProvider,
+  SimpleFsStorageProvider,
+} from "matrix-bot-sdk";
 
 interface SiteConfig {
   name: string;
@@ -25,6 +29,7 @@ interface SiteState {
 
 const configPath = process.env.CONFIG_PATH ?? "/data/config.json";
 const storagePath = process.env.NOOK_STORAGE_PATH ?? "/data/nook-storage.json";
+const cryptoPath = process.env.NOOK_CRYPTO_PATH ?? "/data/crypto";
 
 let configFile = Bun.file(configPath);
 if (!(await configFile.exists())) {
@@ -67,7 +72,11 @@ for (const site of config.sites) {
 }
 
 const storage = new SimpleFsStorageProvider(storagePath);
-const cryptoStore = new RustSdkCryptoStorageProvider(cryptoPath);
+const sqliteStoreType = 0;
+const cryptoStore = new RustSdkCryptoStorageProvider(
+  cryptoPath,
+  sqliteStoreType,
+);
 const client = new MatrixClient(
   matrixConfig.homeserver,
   matrixConfig.accessToken,
