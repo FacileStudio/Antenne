@@ -23,12 +23,19 @@ interface SiteState {
   inFlight: boolean;
 }
 
-const configPath = process.env.CONFIG_PATH ?? "config.json";
-const storagePath = process.env.NOOK_STORAGE_PATH ?? "nook-storage.json";
-const configFile = Bun.file(configPath);
+const configPath = process.env.CONFIG_PATH ?? "/data/config.json";
+const storagePath = process.env.NOOK_STORAGE_PATH ?? "/data/nook-storage.json";
+
+let configFile = Bun.file(configPath);
+if (!(await configFile.exists())) {
+  console.warn(`[startup] Config file not found at ${configPath}. Falling back to config.example.json`);
+  configFile = Bun.file("config.example.json");
+}
 
 if (!(await configFile.exists())) {
-  throw new Error(`Missing config file: ${configPath}`);
+  throw new Error(
+    `Configuration file missing. Please provide a config.json at ${configPath} (usually via a volume) or ensure config.example.json exists in the app directory.`
+  );
 }
 
 const config: Config = await configFile.json();
@@ -157,8 +164,12 @@ async function main() {
   console.log(`[startup] room id: ${matrixConfig.roomId}`);
   console.log(`[startup] monitoring ${config.sites.length} site(s)`);
 
+  const siteList = config.sites
+    .map((s) => `• <b>${s.name}</b> (<code>${s.url}</code>) every ${s.interval}s`)
+    .join("<br/>");
+
   await sendAlert(
-    `🟢 <b>Nook started</b><br/>Monitoring ${config.sites.length} site(s)`,
+    `🟢 <b>Nook started</b><br/>Starting monitors for ${config.sites.length} site(s):<br/>${siteList}`,
   );
   console.log("[startup] Matrix startup message sent");
 
