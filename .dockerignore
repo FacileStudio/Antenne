@@ -1,0 +1,4 @@
+node_modules
+config.json
+nook-storage.json
+.DS_Store

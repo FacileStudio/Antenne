@@ -1,0 +1,15 @@
+{
+  "sites": [
+    {
+      "name": "Mon Site",
+      "url": "https://example.com",
+      "interval": 60
+    },
+    {
+      "name": "API",
+      "url": "https://api.example.com/health",
+      "interval": 30
+    }
+  ],
+  "timeout": 10
+}
