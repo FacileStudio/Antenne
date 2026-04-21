@@ -47,6 +47,7 @@ Ce volume contient:
 ## Build
 
 Dockerfile déjà prêt. Dockploy peut build le repo directement.
+L'image utilise `oven/bun:1.3.11` en base glibc, pas Alpine, parce que `matrix-bot-sdk` dépend d'un module natif Matrix crypto qui casse facilement sur `musl`.
 
 ## Run check
 
