@@ -48,6 +48,32 @@ function deriveSiteName(siteUrl: string): string {
   return path && path !== "/" ? `${hostname}${path}` : hostname;
 }
 
+function parseRawConfig(text: string, path: string): RawConfig {
+  const normalizedText = text.replace(/^\uFEFF/, "").trim();
+  const parsers = path.endsWith(".json")
+    ? [
+      () => JSON.parse(normalizedText),
+      () => Bun.YAML.parse(normalizedText),
+    ]
+    : [
+      () => Bun.YAML.parse(normalizedText),
+      () => JSON.parse(normalizedText),
+    ];
+
+  let lastError: unknown = null;
+
+  for (const parse of parsers) {
+    try {
+      return parse() as RawConfig;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const reason = lastError instanceof Error ? lastError.message : "unknown parse error";
+  throw new Error(`Failed to parse config file at ${path}: ${reason}`);
+}
+
 function normalizeConfig(rawConfig: RawConfig): Config {
   if (!rawConfig || typeof rawConfig !== "object") {
     throw new Error("Configuration file must contain a YAML or JSON object.");
@@ -99,18 +125,14 @@ async function loadConfig() {
   const fallbackConfigPaths = configPath === defaultConfigPath
     ? [
       "/data/config.yml",
-      "/data/config.json",
       "config.yml",
       "config.yaml",
-      "config.json",
       "config.example.yml",
       "config.example.yaml",
-      "config.example.json",
     ]
     : [
       "config.example.yml",
       "config.example.yaml",
-      "config.example.json",
     ];
 
   const candidatePaths = [...new Set([configPath, ...fallbackConfigPaths])];
@@ -127,7 +149,7 @@ async function loadConfig() {
 
     const text = await file.text();
     return {
-      config: normalizeConfig(Bun.YAML.parse(text) as RawConfig),
+      config: normalizeConfig(parseRawConfig(text, candidatePath)),
       resolvedPath: candidatePath,
     };
   }
