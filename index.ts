@@ -4,16 +4,6 @@ interface SiteConfig {
   interval: number;
 }
 
-interface Config {
-  matrix?: {
-    homeserver?: string;
-    accessToken?: string;
-    roomId?: string;
-  };
-  sites: SiteConfig[];
-  timeout: number;
-}
-
 interface SiteState {
   up: boolean;
   lastChange: Date;
@@ -21,28 +11,140 @@ interface SiteState {
   inFlight: boolean;
 }
 
-const configPath = process.env.CONFIG_PATH ?? "/data/config.json";
-
-let configFile = Bun.file(configPath);
-if (!(await configFile.exists())) {
-  console.warn(`[startup] Config file not found at ${configPath}. Falling back to config.example.json`);
-  configFile = Bun.file("config.example.json");
+interface RawSiteOptions {
+  name?: string;
+  url?: string;
+  every?: number;
+  interval?: number;
 }
 
-if (!(await configFile.exists())) {
+type RawSiteConfig = string | RawSiteOptions;
+
+interface RawConfig {
+  timeout?: number;
+  every?: number;
+  interval?: number;
+  sites?: RawSiteConfig[];
+}
+
+interface Config {
+  sites: SiteConfig[];
+  timeout: number;
+}
+
+const defaultConfigPath = "/data/config.yml";
+const configPath = process.env.CONFIG_PATH ?? defaultConfigPath;
+const defaultIntervalSeconds = 60;
+const defaultTimeoutSeconds = 10;
+
+function isPositiveNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function deriveSiteName(siteUrl: string): string {
+  const parsedUrl = new URL(siteUrl);
+  const hostname = parsedUrl.hostname.replace(/^www\./, "");
+  const path = `${parsedUrl.pathname}${parsedUrl.search}`.replace(/\/$/, "");
+  return path && path !== "/" ? `${hostname}${path}` : hostname;
+}
+
+function normalizeConfig(rawConfig: RawConfig): Config {
+  if (!rawConfig || typeof rawConfig !== "object") {
+    throw new Error("Configuration file must contain a YAML or JSON object.");
+  }
+
+  if (!Array.isArray(rawConfig.sites) || rawConfig.sites.length === 0) {
+    throw new Error("Configuration must define at least one site under `sites`.");
+  }
+
+  const timeout = rawConfig.timeout ?? defaultTimeoutSeconds;
+  if (!isPositiveNumber(timeout)) {
+    throw new Error("Configuration `timeout` must be a positive number.");
+  }
+
+  const defaultInterval = rawConfig.every ?? rawConfig.interval ?? defaultIntervalSeconds;
+  if (!isPositiveNumber(defaultInterval)) {
+    throw new Error("Configuration `every` must be a positive number.");
+  }
+
+  const sites = rawConfig.sites.map((site, index) => {
+    const siteConfig = typeof site === "string" ? { url: site } : site;
+    const url = siteConfig.url?.trim();
+    const interval = siteConfig.every ?? siteConfig.interval ?? defaultInterval;
+
+    if (!url) {
+      throw new Error(`Site #${index + 1} is missing a valid \`url\`.`);
+    }
+
+    if (!isPositiveNumber(interval)) {
+      throw new Error(`Site \`${url}\` must define a positive \`every\` value.`);
+    }
+
+    const name = siteConfig.name?.trim() || deriveSiteName(url);
+
+    return {
+      name,
+      url,
+      interval,
+    };
+  });
+
+  return {
+    timeout,
+    sites,
+  };
+}
+
+async function loadConfig() {
+  const fallbackConfigPaths = configPath === defaultConfigPath
+    ? [
+      "/data/config.yml",
+      "/data/config.json",
+      "config.yml",
+      "config.yaml",
+      "config.json",
+      "config.example.yml",
+      "config.example.yaml",
+      "config.example.json",
+    ]
+    : [
+      "config.example.yml",
+      "config.example.yaml",
+      "config.example.json",
+    ];
+
+  const candidatePaths = [...new Set([configPath, ...fallbackConfigPaths])];
+
+  for (const candidatePath of candidatePaths) {
+    const file = Bun.file(candidatePath);
+    if (!(await file.exists())) {
+      continue;
+    }
+
+    if (candidatePath !== configPath) {
+      console.warn(`[startup] Config file not found at ${configPath}. Falling back to ${candidatePath}`);
+    }
+
+    const text = await file.text();
+    return {
+      config: normalizeConfig(Bun.YAML.parse(text) as RawConfig),
+      resolvedPath: candidatePath,
+    };
+  }
+
   throw new Error(
-    `Configuration file missing. Please provide a config.json at ${configPath} (usually via a volume) or ensure config.example.json exists in the app directory.`
+    `Configuration file missing. Please provide a config.yml at ${configPath} or include config.example.yml in the app directory.`
   );
 }
 
-const config: Config = await configFile.json();
-const homeserver = process.env.MATRIX_HOMESERVER ?? config.matrix?.homeserver;
-const accessToken = process.env.MATRIX_ACCESS_TOKEN ?? config.matrix?.accessToken;
-const roomId = process.env.MATRIX_ROOM_ID ?? config.matrix?.roomId;
+const { config, resolvedPath: resolvedConfigPath } = await loadConfig();
+const homeserver = process.env.MATRIX_HOMESERVER;
+const accessToken = process.env.MATRIX_ACCESS_TOKEN;
+const roomId = process.env.MATRIX_ROOM_ID;
 
 if (!homeserver || !accessToken || !roomId) {
   throw new Error(
-    "Missing Matrix configuration. Set MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, and MATRIX_ROOM_ID or provide them in config.json.",
+    "Missing Matrix configuration. Set MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, and MATRIX_ROOM_ID in the environment.",
   );
 }
 
@@ -191,7 +293,7 @@ function startMonitoring(site: SiteConfig) {
 
 async function main() {
   console.log("[startup] Nook booting");
-  console.log(`[startup] config path: ${configPath}`);
+  console.log(`[startup] config path: ${resolvedConfigPath}`);
   console.log(`[startup] homeserver: ${matrixConfig.homeserver}`);
   console.log(`[startup] room id: ${matrixConfig.roomId}`);
   console.log(`[startup] monitoring ${config.sites.length} site(s)`);

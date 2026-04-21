@@ -1,0 +1,6 @@
+timeout: 10
+every: 60
+
+sites:
+  - https://example.com
+  - https://api.example.com/health
