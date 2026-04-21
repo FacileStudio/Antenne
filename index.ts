@@ -67,10 +67,12 @@ for (const site of config.sites) {
 }
 
 const storage = new SimpleFsStorageProvider(storagePath);
+const cryptoStore = new RustSdkCryptoStorageProvider(cryptoPath);
 const client = new MatrixClient(
   matrixConfig.homeserver,
   matrixConfig.accessToken,
   storage,
+  cryptoStore,
 );
 async function sendAlert(message: string) {
   try {
@@ -160,9 +162,13 @@ async function main() {
   console.log("[startup] Nook booting");
   console.log(`[startup] config path: ${configPath}`);
   console.log(`[startup] storage path: ${storagePath}`);
+  console.log(`[startup] crypto path: ${cryptoPath}`);
   console.log(`[startup] homeserver: ${matrixConfig.homeserver}`);
   console.log(`[startup] room id: ${matrixConfig.roomId}`);
   console.log(`[startup] monitoring ${config.sites.length} site(s)`);
+
+  await client.start();
+  console.log("[startup] Matrix client started (E2EE enabled)");
 
   const siteList = config.sites
     .map((s) => `• <b>${s.name}</b> (<code>${s.url}</code>) every ${s.interval}s`)

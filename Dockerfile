@@ -11,5 +11,8 @@ COPY index.ts tsconfig.json config.example.json ./
 
 ENV CONFIG_PATH=/data/config.json
 ENV NOOK_STORAGE_PATH=/data/nook-storage.json
+ENV NOOK_CRYPTO_PATH=/data/crypto
+
+RUN mkdir -p /data
 
 CMD ["bun", "run", "index.ts"]
