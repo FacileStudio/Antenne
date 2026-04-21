@@ -167,18 +167,15 @@ function parseSimpleYamlConfig(text: string): RawConfig {
 }
 
 function parseRawConfig(text: string, path: string): RawConfig {
+  if (path.endsWith(".json")) {
+    throw new Error(`JSON config is no longer supported at ${path}. Use config.yml instead.`);
+  }
+
   const normalizedText = text.replace(/^\uFEFF/, "").trim();
-  const parsers = path.endsWith(".json")
-    ? [
-      () => JSON.parse(normalizedText),
-      () => Bun.YAML.parse(normalizedText),
-      () => parseSimpleYamlConfig(normalizedText),
-    ]
-    : [
-      () => Bun.YAML.parse(normalizedText),
-      () => parseSimpleYamlConfig(normalizedText),
-      () => JSON.parse(normalizedText),
-    ];
+  const parsers = [
+    () => Bun.YAML.parse(normalizedText),
+    () => parseSimpleYamlConfig(normalizedText),
+  ];
 
   const errors: string[] = [];
 
@@ -190,7 +187,7 @@ function parseRawConfig(text: string, path: string): RawConfig {
     }
   }
 
-  throw new Error(`Failed to parse config file at ${path}: ${errors.join(" | ")}`);
+  throw new Error(`Failed to parse YAML config at ${path}: ${errors.join(" | ")}`);
 }
 
 function normalizeConfig(rawConfig: RawConfig): Config {
