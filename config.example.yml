@@ -2,5 +2,17 @@ timeout: 10
 every: 60
 
 sites:
-  - https://example.com
-  - https://api.example.com/health
+  - https://facile.studio
+  - https://portail.facile.studio
+  - https://gare.facile.studio
+  - https://abeille.facile.studio
+  - https://miel.facile.studio
+  - https://automate.facile.studio
+  - https://sign.facile.studio
+  - https://nuage.facile.studio
+  - https://stats.facile.studio
+  - https://coffre.facile.studio
+  - https://lauraherve.com
+  - https://api.lauraherve.com
+  - https://backoffice.lauraherve.com
+  - https://marcel.my
