@@ -1,6 +1,8 @@
 <script setup lang="ts">
+const route = useRoute();
+
 defineProps<{
-  sections: ReadonlyArray<{ id: string; label: string }>;
+  sections: ReadonlyArray<{ href: string; label: string }>;
   infoItems: Array<{ label: string; value: string }>;
 }>();
 </script>
@@ -18,14 +20,15 @@ defineProps<{
     </div>
 
     <nav class="sidebar-nav" aria-label="Settings sections">
-      <a
+      <NuxtLink
         v-for="section in sections"
-        :key="section.id"
+        :key="section.href"
         class="sidebar-link"
-        :href="`#${section.id}`"
+        :class="{ active: route.path === section.href }"
+        :to="section.href"
       >
         <span>{{ section.label }}</span>
-      </a>
+      </NuxtLink>
     </nav>
 
     <div class="sidebar-info">
@@ -112,6 +115,12 @@ defineProps<{
   background: var(--nook-surface-strong);
   border-color: var(--nook-border);
   color: var(--nook-text);
+}
+
+.sidebar-link.active {
+  background: var(--nook-text);
+  border-color: var(--nook-text);
+  color: var(--nook-bg);
 }
 
 .sidebar-info {
