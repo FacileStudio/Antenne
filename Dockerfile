@@ -6,6 +6,7 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
 COPY index.ts tsconfig.json config.example.yml ./
+COPY src/ ./src/
 
 ENV CONFIG_PATH=/data/config.yml
 

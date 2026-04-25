@@ -1,6 +1,10 @@
 timeout: 10
 every: 60
 
+webhook:
+  enabled: true
+  port: 9090
+
 sites:
   - https://facile.studio
   - https://portail.facile.studio
