@@ -32,7 +32,9 @@ defineProps<{
   align-content: start;
   gap: var(--space-5);
   padding: var(--space-6) var(--space-4);
-  min-height: calc(100vh - var(--space-7));
+  position: sticky;
+  top: 0;
+  height: 100vh;
   border-right: 1px solid var(--nook-border);
 }
 
@@ -73,7 +75,8 @@ defineProps<{
 
 @media (max-width: 960px) {
   .sidebar {
-    min-height: auto;
+    position: static;
+    height: auto;
     padding: var(--space-4);
     border-right: 0;
     border-bottom: 1px solid var(--nook-border);

@@ -1,6 +1,39 @@
+@font-face {
+  font-family: "Gambarino";
+  src: url("./fonts/Gambarino-Regular.woff2") format("woff2"),
+    url("./fonts/Gambarino-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./fonts/Satoshi-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./fonts/Satoshi-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./fonts/Satoshi-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Satoshi", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --nook-bg: #050505;
   --nook-surface: rgb(255 255 255 / 0.03);
   --nook-surface-strong: rgb(255 255 255 / 0.05);
@@ -28,6 +61,20 @@ body {
   min-height: 100vh;
   background: var(--nook-bg);
   letter-spacing: -0.02em;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 a {
@@ -96,6 +143,13 @@ input:focus {
 .field span {
   color: var(--nook-muted);
   font-size: 0.95rem;
+}
+
+h1,
+h2 {
+  font-family: "Gambarino", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.03em;
 }
 
 .primary {

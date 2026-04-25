@@ -118,7 +118,7 @@ function buildFallbackDashboardHtml() {
     <style>
       :root {
         color-scheme: dark;
-        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-family: "Satoshi", "Helvetica Neue", Helvetica, Arial, sans-serif;
         background: #050505;
         color: #fff;
       }
@@ -361,6 +361,9 @@ export function createAppServer(options: {
       h1 {
         margin: 0;
         font-size: 1.9rem;
+        font-family: "Gambarino", Georgia, serif;
+        font-weight: 400;
+        letter-spacing: -0.03em;
       }
       *, *::before, *::after { box-sizing: border-box; }
       .eyebrow {
