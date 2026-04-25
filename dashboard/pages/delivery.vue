@@ -1,53 +1,13 @@
 <script setup lang="ts">
-import { computed } from "vue";
-
 import SectionCard from "../components/SectionCard.vue";
 import RoomIdEditor from "../components/RoomIdEditor.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 
 const { settings } = useDashboardState();
-
-const activeTargets = computed(() => {
-  const targets: string[] = [];
-
-  if (settings.delivery.matrix.enabled && settings.delivery.matrix.roomIds.length > 0) {
-    targets.push("Matrix");
-  }
-
-  if (settings.delivery.discord.enabled && settings.delivery.discord.webhookUrl) {
-    targets.push("Discord");
-  }
-
-  if (settings.delivery.webhook.enabled && settings.delivery.webhook.url) {
-    targets.push("HTTP");
-  }
-
-  return targets;
-});
 </script>
 
 <template>
   <SectionCard eyebrow="Delivery" title="Targets">
-    <div class="delivery-overview">
-      <div class="overview-copy">
-        <p class="overview-title">Configure where alerts go.</p>
-        <p class="overview-text">You can enable multiple targets at once. Nook sends the same alert to every active delivery target.</p>
-      </div>
-
-      <div class="overview-meta">
-        <span class="meta-label">Active targets</span>
-        <div v-if="activeTargets.length > 0" class="target-list">
-          <span
-            v-for="target in activeTargets"
-            :key="target"
-            class="target-chip"
-          >
-            {{ target }}
-          </span>
-        </div>
-        <span v-else class="meta-empty">No active targets yet</span>
-      </div>
-    </div>
     <div class="delivery-grid">
       <article class="panel nested-panel matrix-panel" :class="{ inactive: !settings.delivery.matrix.enabled }">
         <div class="card-header">
@@ -134,51 +94,9 @@ const activeTargets = computed(() => {
 </template>
 
 <style scoped>
-.delivery-overview {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  align-items: flex-start;
-  padding: var(--space-4);
-  border-radius: 1.25rem;
-  border: 1px solid var(--nook-border);
-  background: var(--nook-surface-strong);
-}
-
-.overview-copy,
-.overview-meta {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.overview-title {
-  margin: 0;
-  font-weight: 700;
-}
-
-.overview-text,
-.timeout-help,
-.card-help,
-.meta-empty,
-.meta-label {
+.card-help {
   margin: 0;
   color: var(--nook-muted);
-}
-
-.target-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.target-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2rem;
-  padding: 0.3rem 0.8rem;
-  border-radius: 999px;
-  border: 1px solid var(--nook-border);
-  background: var(--nook-surface);
 }
 
 .delivery-grid {
@@ -220,12 +138,5 @@ const activeTargets = computed(() => {
   align-items: center;
   gap: 0.6rem;
   color: var(--nook-muted);
-}
-
-@media (max-width: 720px) {
-  .delivery-overview {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
 </style>

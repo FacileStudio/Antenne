@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { LogOut, Save, Send } from "lucide-vue-next";
 
 import AppSidebar from "./components/AppSidebar.vue";
@@ -26,6 +26,9 @@ const sections = [
   { href: "/sites", label: "Sites" },
   { href: "/info", label: "Info" },
 ] as const;
+const route = useRoute();
+
+const currentTitle = computed(() => sections.find((section) => section.href === route.path)?.label ?? "Settings");
 
 onMounted(() => {
   void loadSettings();
@@ -47,8 +50,7 @@ onMounted(() => {
       <div class="content-shell">
         <header class="topbar">
           <div class="topbar-copy">
-            <p class="eyebrow">Nook</p>
-            <h1>Settings</h1>
+            <h1>{{ currentTitle }}</h1>
           </div>
 
           <div class="topbar-actions">
@@ -108,12 +110,6 @@ onMounted(() => {
   gap: var(--space-3);
   flex-wrap: wrap;
   justify-content: flex-end;
-}
-
-.topbar-copy .eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
-  color: var(--nook-muted);
 }
 
 .topbar-copy h1 {

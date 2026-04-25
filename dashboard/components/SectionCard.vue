@@ -7,7 +7,7 @@ defineProps<{
 </script>
 
 <template>
-  <section :id="id" class="panel section-card">
+  <section :id="id" class="section-card">
     <header class="section-header">
       <div>
         <p class="eyebrow">{{ eyebrow }}</p>
