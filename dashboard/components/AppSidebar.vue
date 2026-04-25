@@ -10,9 +10,6 @@ defineProps<{
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="sidebar-mark" aria-hidden="true">
-        <div class="sidebar-mark-inner" />
-      </div>
       <div>
         <p class="sidebar-kicker">Nook</p>
         <h1 class="sidebar-title">Settings</h1>
@@ -62,25 +59,8 @@ defineProps<{
 }
 
 .sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.sidebar-mark {
-  width: 2.75rem;
-  height: 2.75rem;
   display: grid;
-  place-items: center;
-  border-radius: 1rem;
-  background: var(--nook-text);
-}
-
-.sidebar-mark-inner {
-  width: 0.8rem;
-  height: 0.8rem;
-  background: var(--nook-bg);
-  transform: rotate(45deg);
+  gap: 0.2rem;
 }
 
 .sidebar-kicker {

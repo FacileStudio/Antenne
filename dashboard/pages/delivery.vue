@@ -1,17 +1,69 @@
 <script setup lang="ts">
+import { computed } from "vue";
+
 import SectionCard from "../components/SectionCard.vue";
 import RoomIdEditor from "../components/RoomIdEditor.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 
 const { settings } = useDashboardState();
+
+const activeTargets = computed(() => {
+  const targets: string[] = [];
+
+  if (settings.delivery.matrix.enabled && settings.delivery.matrix.roomIds.length > 0) {
+    targets.push("Matrix");
+  }
+
+  if (settings.delivery.discord.enabled && settings.delivery.discord.webhookUrl) {
+    targets.push("Discord");
+  }
+
+  if (settings.delivery.webhook.enabled && settings.delivery.webhook.url) {
+    targets.push("HTTP");
+  }
+
+  return targets;
+});
 </script>
 
 <template>
   <SectionCard eyebrow="Delivery" title="Targets">
+    <div class="delivery-overview">
+      <div class="overview-copy">
+        <p class="overview-title">Configure where alerts go.</p>
+        <p class="overview-text">You can enable multiple targets at once. Nook sends the same alert to every active delivery target.</p>
+      </div>
+
+      <div class="overview-meta">
+        <span class="meta-label">Active targets</span>
+        <div v-if="activeTargets.length > 0" class="target-list">
+          <span
+            v-for="target in activeTargets"
+            :key="target"
+            class="target-chip"
+          >
+            {{ target }}
+          </span>
+        </div>
+        <span v-else class="meta-empty">No active targets yet</span>
+      </div>
+    </div>
+
+    <div class="timeout-card">
+      <label class="field timeout-field">
+        <span>Timeout in seconds</span>
+        <input v-model.number="settings.timeout" type="number" min="1" step="1">
+      </label>
+      <p class="timeout-help">Used for site checks and external alert delivery retries.</p>
+    </div>
+
     <div class="delivery-grid">
-      <article class="panel nested-panel">
+      <article class="panel nested-panel matrix-panel" :class="{ inactive: !settings.delivery.matrix.enabled }">
         <div class="card-header">
-          <h3>Matrix</h3>
+          <div>
+            <h3>Matrix</h3>
+            <p class="card-help">Primary delivery for rooms and operator chatter.</p>
+          </div>
           <label class="toggle">
             <input v-model="settings.delivery.matrix.enabled" type="checkbox">
             <span>Enabled</span>
@@ -36,9 +88,12 @@ const { settings } = useDashboardState();
         </div>
       </article>
 
-      <article class="panel nested-panel">
+      <article class="panel nested-panel" :class="{ inactive: !settings.delivery.discord.enabled }">
         <div class="card-header">
-          <h3>Discord webhook</h3>
+          <div>
+            <h3>Discord webhook</h3>
+            <p class="card-help">Send plain-text alerts into a Discord channel.</p>
+          </div>
           <label class="toggle">
             <input v-model="settings.delivery.discord.enabled" type="checkbox">
             <span>Enabled</span>
@@ -53,9 +108,12 @@ const { settings } = useDashboardState();
         </div>
       </article>
 
-      <article class="panel nested-panel">
+      <article class="panel nested-panel" :class="{ inactive: !settings.delivery.webhook.enabled }">
         <div class="card-header">
-          <h3>HTTP(S) webhook</h3>
+          <div>
+            <h3>HTTP(S) webhook</h3>
+            <p class="card-help">Post JSON to another service or automation endpoint.</p>
+          </div>
           <label class="toggle">
             <input v-model="settings.delivery.webhook.enabled" type="checkbox">
             <span>Enabled</span>
@@ -81,17 +139,71 @@ const { settings } = useDashboardState();
       </article>
     </div>
 
-    <label class="field timeout-field">
-      <span>Timeout in seconds</span>
-      <input v-model.number="settings.timeout" type="number" min="1" step="1">
-    </label>
   </SectionCard>
 </template>
 
 <style scoped>
+.delivery-overview {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-4);
+  border-radius: 1.25rem;
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface-strong);
+}
+
+.overview-copy,
+.overview-meta {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.overview-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.overview-text,
+.timeout-help,
+.card-help,
+.meta-empty,
+.meta-label {
+  margin: 0;
+  color: var(--nook-muted);
+}
+
+.target-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.target-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface);
+}
+
+.timeout-card {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: end;
+  padding: var(--space-4);
+  border-radius: 1.25rem;
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface-strong);
+}
+
 .delivery-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-4);
 }
 
@@ -103,11 +215,19 @@ const { settings } = useDashboardState();
   background: var(--nook-surface-strong);
 }
 
+.matrix-panel {
+  grid-column: span 2;
+}
+
+.inactive {
+  opacity: 0.76;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
-  align-items: center;
+  align-items: flex-start;
 }
 
 .card-header h3 {
@@ -133,6 +253,18 @@ const { settings } = useDashboardState();
 @media (max-width: 1120px) {
   .delivery-grid {
     grid-template-columns: 1fr;
+  }
+
+  .matrix-panel {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .delivery-overview,
+  .timeout-card {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>
