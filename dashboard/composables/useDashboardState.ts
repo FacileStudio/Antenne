@@ -1,4 +1,4 @@
-import { reactive, ref } from "vue";
+import { reactive } from "vue";
 
 import type { AppSettings, RuntimeStatus } from "../types";
 
@@ -7,6 +7,15 @@ type SettingsResponse = {
   runtime: RuntimeStatus;
   matrixConfigured: boolean;
 };
+
+type Toast = {
+  id: number;
+  type: "success" | "error";
+  message: string;
+};
+
+let nextToastId = 1;
+const toastTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
 const defaultSettings = (): AppSettings => ({
   delivery: {
@@ -77,6 +86,14 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
 
+  if (res.status === 401) {
+    if (import.meta.client) {
+      window.location.href = "/dashboard";
+    }
+
+    throw new Error("Unauthorized");
+  }
+
   if (!res.ok) {
     const payload = await res.json().catch(() => ({ error: `HTTP ${res.status}` })) as { error?: string };
     throw new Error(payload.error ?? `HTTP ${res.status}`);
@@ -93,8 +110,37 @@ export function useDashboardState() {
   const saving = useState("dashboard-saving", () => false);
   const testing = useState("dashboard-testing", () => false);
   const error = useState("dashboard-error", () => "");
-  const success = useState("dashboard-success", () => "");
   const loaded = useState("dashboard-loaded", () => false);
+  const toasts = useState<Toast[]>("dashboard-toasts", () => []);
+
+  function dismissToast(id: number) {
+    toasts.value = toasts.value.filter((toast) => toast.id !== id);
+
+    const timer = toastTimers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      toastTimers.delete(id);
+    }
+  }
+
+  function pushToast(type: Toast["type"], message: string, duration = 2600) {
+    const id = nextToastId++;
+    toasts.value = [...toasts.value, { id, type, message }];
+
+    const timer = setTimeout(() => {
+      dismissToast(id);
+    }, duration);
+
+    toastTimers.set(id, timer);
+  }
+
+  function notifySuccess(message: string) {
+    pushToast("success", message);
+  }
+
+  function notifyError(message: string) {
+    pushToast("error", message, 3200);
+  }
 
   async function loadSettings(force = false) {
     if (loaded.value && !force) {
@@ -112,6 +158,7 @@ export function useDashboardState() {
       loaded.value = true;
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : "Failed to load settings";
+      notifyError(error.value);
     } finally {
       loading.value = false;
     }
@@ -120,7 +167,6 @@ export function useDashboardState() {
   async function saveSettings() {
     saving.value = true;
     error.value = "";
-    success.value = "";
 
     try {
       const payload = await apiFetch<SettingsResponse>("/api/settings", {
@@ -139,9 +185,10 @@ export function useDashboardState() {
       cloneFromPayload(settings.value, payload.settings);
       runtime.value = payload.runtime;
       matrixConfigured.value = payload.matrixConfigured;
-      success.value = "Settings saved. Runtime reloaded.";
+      notifySuccess("Settings saved. Runtime reloaded.");
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : "Failed to save settings";
+      notifyError(error.value);
     } finally {
       saving.value = false;
     }
@@ -150,16 +197,16 @@ export function useDashboardState() {
   async function sendTestAlert() {
     testing.value = true;
     error.value = "";
-    success.value = "";
 
     try {
       await apiFetch<{ ok: boolean }>("/api/test-alert", {
         method: "POST",
         body: JSON.stringify({}),
       });
-      success.value = "Test alert sent.";
+      notifySuccess("Test alert sent.");
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : "Failed to send test alert";
+      notifyError(error.value);
     } finally {
       testing.value = false;
     }
@@ -181,7 +228,10 @@ export function useDashboardState() {
     saving,
     testing,
     error,
-    success,
+    toasts,
+    notifyError,
+    notifySuccess,
+    dismissToast,
     loadSettings,
     saveSettings,
     sendTestAlert,

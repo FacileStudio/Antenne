@@ -1,9 +1,16 @@
 <script setup lang="ts">
+import { Eye, EyeOff } from "lucide-vue-next";
+import { reactive } from "vue";
+
 import SectionCard from "../components/SectionCard.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 import type { WebhookProviderId } from "../types";
 
 const { settings } = useDashboardState();
+const revealedSecrets = reactive<Record<WebhookProviderId, boolean>>({
+  "uptime-kuma": false,
+  docuseal: false,
+});
 
 const providerCards = [
   {
@@ -46,7 +53,20 @@ const providerCards = [
 
           <label class="field">
             <span>Secret value</span>
-            <input v-model="settings.webhook.providers[provider.id].secretValue" type="password">
+            <div class="secret-field">
+              <input
+                v-model="settings.webhook.providers[provider.id].secretValue"
+                :type="revealedSecrets[provider.id] ? 'text' : 'password'"
+              >
+              <button
+                class="ghost action-button reveal-button"
+                type="button"
+                @click="revealedSecrets[provider.id] = !revealedSecrets[provider.id]"
+              >
+                <component :is="revealedSecrets[provider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[provider.id] ? "Hide" : "Show" }}</span>
+              </button>
+            </div>
           </label>
         </div>
       </article>
@@ -57,7 +77,7 @@ const providerCards = [
 <style scoped>
 .provider-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-4);
 }
 
@@ -85,6 +105,13 @@ const providerCards = [
   gap: var(--space-3);
 }
 
+.secret-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
 .toggle {
   display: inline-flex;
   align-items: center;
@@ -92,8 +119,12 @@ const providerCards = [
   color: var(--nook-muted);
 }
 
-@media (max-width: 960px) {
-  .provider-grid {
+.reveal-button {
+  min-height: 3.5rem;
+}
+
+@media (max-width: 720px) {
+  .secret-field {
     grid-template-columns: 1fr;
   }
 }

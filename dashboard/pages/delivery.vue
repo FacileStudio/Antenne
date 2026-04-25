@@ -48,15 +48,6 @@ const activeTargets = computed(() => {
         <span v-else class="meta-empty">No active targets yet</span>
       </div>
     </div>
-
-    <div class="timeout-card">
-      <label class="field timeout-field">
-        <span>Timeout in seconds</span>
-        <input v-model.number="settings.timeout" type="number" min="1" step="1">
-      </label>
-      <p class="timeout-help">Used for site checks and external alert delivery retries.</p>
-    </div>
-
     <div class="delivery-grid">
       <article class="panel nested-panel matrix-panel" :class="{ inactive: !settings.delivery.matrix.enabled }">
         <div class="card-header">
@@ -190,17 +181,6 @@ const activeTargets = computed(() => {
   background: var(--nook-surface);
 }
 
-.timeout-card {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  align-items: end;
-  padding: var(--space-4);
-  border-radius: 1.25rem;
-  border: 1px solid var(--nook-border);
-  background: var(--nook-surface-strong);
-}
-
 .delivery-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -235,10 +215,6 @@ const activeTargets = computed(() => {
   gap: var(--space-3);
 }
 
-.timeout-field {
-  max-width: 18rem;
-}
-
 .toggle {
   display: inline-flex;
   align-items: center;
@@ -247,8 +223,7 @@ const activeTargets = computed(() => {
 }
 
 @media (max-width: 720px) {
-  .delivery-overview,
-  .timeout-card {
+  .delivery-overview {
     flex-direction: column;
     align-items: stretch;
   }

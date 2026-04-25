@@ -323,6 +323,10 @@ export function createAppServer(options: {
     }
 
     if (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/")) {
+      if (session.password && !isAuthenticated(req, session) && url.pathname !== "/dashboard") {
+        return Response.redirect(new URL("/dashboard", req.url).toString(), 302);
+      }
+
       if (session.password && !isAuthenticated(req, session) && url.pathname === "/dashboard") {
         return new Response(`<!doctype html>
 <html lang="en">

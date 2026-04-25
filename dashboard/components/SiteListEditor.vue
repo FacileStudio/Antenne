@@ -49,17 +49,6 @@ function addSiteFromDraft() {
   emit("clearError");
 }
 
-function addBlankSite() {
-  updateSites([
-    ...props.modelValue,
-    {
-      name: "",
-      url: "https://",
-      interval: 60,
-    },
-  ]);
-}
-
 function updateSite(index: number, patch: Partial<SiteConfig>) {
   updateSites(
     props.modelValue.map((site, currentIndex) => currentIndex === index ? { ...site, ...patch } : site),
@@ -99,15 +88,6 @@ function duplicateSite(index: number) {
 
 <template>
   <div class="site-list">
-    <header class="site-list-header">
-      <slot name="actions">
-        <button class="secondary action-button" type="button" @click="addBlankSite">
-          <Plus :size="16" aria-hidden="true" />
-          <span>Add blank</span>
-        </button>
-      </slot>
-    </header>
-
     <article class="site-draft">
       <label class="field">
         <span>Name</span>
@@ -124,7 +104,7 @@ function duplicateSite(index: number) {
         <input v-model.number="draft.interval" type="number" min="1" step="1">
       </label>
 
-      <button class="primary action-button" type="button" @click="addSiteFromDraft">
+      <button class="primary action-button add-site-button" type="button" @click="addSiteFromDraft">
         <Plus :size="16" aria-hidden="true" />
         <span>Add site</span>
       </button>
@@ -191,11 +171,6 @@ function duplicateSite(index: number) {
   gap: var(--space-4);
 }
 
-.site-list-header {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .site-draft,
 .site-fields {
   display: grid;
@@ -237,6 +212,11 @@ function duplicateSite(index: number) {
   gap: 0.45rem;
 }
 
+.add-site-button {
+  align-self: end;
+  min-height: 3.5rem;
+}
+
 .empty {
   color: var(--nook-muted);
   padding: var(--space-4);
@@ -254,9 +234,12 @@ function duplicateSite(index: number) {
     flex-direction: column;
   }
 
-  .site-actions,
-  .site-list-header {
+  .site-actions {
     justify-content: flex-start;
+  }
+
+  .add-site-button {
+    width: 100%;
   }
 }
 </style>

@@ -3,19 +3,11 @@ const route = useRoute();
 
 defineProps<{
   sections: ReadonlyArray<{ href: string; label: string }>;
-  infoItems: Array<{ label: string; value: string }>;
 }>();
 </script>
 
 <template>
   <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div>
-        <p class="sidebar-kicker">Nook</p>
-        <h1 class="sidebar-title">Settings</h1>
-      </div>
-    </div>
-
     <nav class="sidebar-nav" aria-label="Settings sections">
       <NuxtLink
         v-for="section in sections"
@@ -28,17 +20,6 @@ defineProps<{
       </NuxtLink>
     </nav>
 
-    <div class="sidebar-info">
-      <div
-        v-for="item in infoItems"
-        :key="item.label"
-        class="sidebar-info-item"
-      >
-        <span>{{ item.label }}</span>
-        <strong>{{ item.value }}</strong>
-      </div>
-    </div>
-
     <div class="sidebar-footer">
       <slot name="footer" />
     </div>
@@ -47,31 +28,12 @@ defineProps<{
 
 <style scoped>
 .sidebar {
-  position: sticky;
-  top: 1.5rem;
   display: grid;
-  gap: var(--space-8);
-  padding: var(--space-7);
-  border-radius: 1.75rem;
-  border: 1px solid var(--nook-border);
-  background: var(--nook-surface);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
-}
-
-.sidebar-brand {
-  display: grid;
-  gap: 0.2rem;
-}
-
-.sidebar-kicker {
-  margin: 0 0 0.2rem;
-  font-size: 0.75rem;
-  color: var(--nook-muted);
-}
-
-.sidebar-title {
-  margin: 0;
-  font-size: 1.1rem;
+  align-content: start;
+  gap: var(--space-5);
+  padding: var(--space-6) var(--space-4);
+  min-height: calc(100vh - var(--space-7));
+  border-right: 1px solid var(--nook-border);
 }
 
 .sidebar-nav {
@@ -103,31 +65,18 @@ defineProps<{
   color: var(--nook-bg);
 }
 
-.sidebar-info {
-  display: grid;
-  gap: var(--space-4);
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--nook-border);
-}
-
 .sidebar-footer {
+  margin-top: auto;
   padding-top: var(--space-5);
   border-top: 1px solid var(--nook-border);
-}
-
-.sidebar-info-item {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.sidebar-info-item span {
-  color: var(--nook-muted);
-  font-size: 0.8rem;
 }
 
 @media (max-width: 960px) {
   .sidebar {
-    position: static;
+    min-height: auto;
+    padding: var(--space-4);
+    border-right: 0;
+    border-bottom: 1px solid var(--nook-border);
   }
 }
 </style>

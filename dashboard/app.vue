@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { onMounted } from "vue";
 import { LogOut, Save, Send } from "lucide-vue-next";
 
 import AppSidebar from "./components/AppSidebar.vue";
+import ToastStack from "./components/ToastStack.vue";
 import { useDashboardState } from "./composables/useDashboardState";
 
 const {
@@ -11,8 +12,8 @@ const {
   loading,
   saving,
   testing,
-  error,
-  success,
+  toasts,
+  dismissToast,
   loadSettings,
   saveSettings,
   sendTestAlert,
@@ -26,25 +27,6 @@ const sections = [
   { href: "/info", label: "Info" },
 ] as const;
 
-const sidebarInfoItems = computed(() => [
-  {
-    label: "Delivery",
-    value: [
-      settings.delivery.matrix.enabled && settings.delivery.matrix.roomIds.length > 0 ? "Matrix" : null,
-      settings.delivery.discord.enabled && settings.delivery.discord.webhookUrl ? "Discord" : null,
-      settings.delivery.webhook.enabled && settings.delivery.webhook.url ? "HTTP" : null,
-    ].filter(Boolean).join(", ") || "Not configured",
-  },
-  {
-    label: "Sites",
-    value: `${settings.sites.length}`,
-  },
-  {
-    label: "Status",
-    value: runtime.value?.usingPersistedSettings ? "Saved settings" : "Defaults",
-  },
-]);
-
 onMounted(() => {
   void loadSettings();
 });
@@ -52,55 +34,66 @@ onMounted(() => {
 
 <template>
   <main class="shell">
-    <header class="topbar">
-      <div class="topbar-copy">
-        <p class="eyebrow">Nook</p>
-        <h1>Settings</h1>
-      </div>
-
-      <div class="topbar-actions">
-        <button class="secondary action-button" type="button" :disabled="testing || loading" @click="sendTestAlert">
-          <Send :size="16" aria-hidden="true" />
-          <span>{{ testing ? "Sending..." : "Send test alert" }}</span>
-        </button>
-        <button class="primary action-button" type="button" :disabled="saving || loading" @click="saveSettings">
-          <Save :size="16" aria-hidden="true" />
-          <span>{{ saving ? "Saving..." : "Save settings" }}</span>
-        </button>
-      </div>
-    </header>
-
-    <p v-if="error" class="banner error">{{ error }}</p>
-    <p v-if="success" class="banner success">{{ success }}</p>
-
-    <section v-if="loading" class="panel loading-card">
-      Loading dashboard...
-    </section>
-
-    <template v-else>
-      <section class="layout">
-        <AppSidebar :sections="sections" :info-items="sidebarInfoItems">
-          <template #footer>
-            <button class="ghost action-button sidebar-logout" type="button" @click="logout">
+    <section class="layout">
+      <AppSidebar :sections="sections">
+        <template #footer>
+          <button class="danger action-button sidebar-logout" type="button" @click="logout">
               <LogOut :size="16" aria-hidden="true" />
               <span>Logout</span>
-            </button>
-          </template>
-        </AppSidebar>
+          </button>
+        </template>
+      </AppSidebar>
 
-        <div class="content">
+      <div class="content-shell">
+        <header class="topbar">
+          <div class="topbar-copy">
+            <p class="eyebrow">Nook</p>
+            <h1>Settings</h1>
+          </div>
+
+          <div class="topbar-actions">
+            <button class="secondary action-button" type="button" :disabled="testing || loading" @click="sendTestAlert">
+              <Send :size="16" aria-hidden="true" />
+              <span>{{ testing ? "Sending..." : "Send test alert" }}</span>
+            </button>
+            <button class="primary action-button" type="button" :disabled="saving || loading" @click="saveSettings">
+              <Save :size="16" aria-hidden="true" />
+              <span>{{ saving ? "Saving..." : "Save settings" }}</span>
+            </button>
+          </div>
+        </header>
+
+        <section v-if="loading" class="panel loading-card">
+          Loading dashboard...
+        </section>
+
+        <div v-else class="content">
           <NuxtPage />
         </div>
-      </section>
-    </template>
+      </div>
+    </section>
+
+    <ToastStack :toasts="toasts" @dismiss="dismissToast" />
   </main>
 </template>
 
 <style scoped>
 .shell {
-  width: min(1200px, calc(100vw - 2rem));
-  margin: 0 auto;
-  padding: var(--space-6) 0 var(--space-7);
+  min-height: 100vh;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.content-shell {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+  padding: var(--space-6) var(--space-6) var(--space-7);
 }
 
 .topbar {
@@ -108,7 +101,13 @@ onMounted(() => {
   justify-content: space-between;
   gap: var(--space-4);
   align-items: flex-end;
-  margin-bottom: var(--space-5);
+}
+
+.topbar-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .topbar-copy .eyebrow {
@@ -119,20 +118,6 @@ onMounted(() => {
 
 .topbar-copy h1 {
   margin: 0;
-}
-
-.topbar-actions {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: var(--space-5);
-  align-items: start;
 }
 
 .content {
@@ -152,15 +137,16 @@ onMounted(() => {
   width: 100%;
 }
 
-.banner {
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-radius: 1rem;
-  border: 1px solid var(--nook-border);
+.sidebar-logout.danger {
+  border-color: rgb(186 55 55 / 0.3);
+  color: rgb(255 131 131);
 }
 
-.banner.error,
-.banner.success,
+.sidebar-logout.danger:hover {
+  background: rgb(76 18 18 / 0.45);
+  border-color: rgb(186 55 55 / 0.45);
+}
+
 .loading-card {
   color: var(--nook-text);
 }
@@ -168,6 +154,10 @@ onMounted(() => {
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .content-shell {
+    padding: var(--space-4) var(--space-4) var(--space-6);
   }
 
   .topbar {
