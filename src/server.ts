@@ -116,40 +116,38 @@ function buildFallbackDashboardHtml() {
     <style>
       :root {
         color-scheme: dark;
-        font-family: "IBM Plex Sans", "Helvetica Neue", sans-serif;
-        background: #0c1115;
-        color: #f4f6f8;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        background: #050505;
+        color: #fff;
       }
       body {
         margin: 0;
         min-height: 100vh;
         display: grid;
         place-items: center;
-        background:
-          radial-gradient(circle at top left, rgba(76, 145, 149, 0.28), transparent 38%),
-          radial-gradient(circle at bottom right, rgba(233, 126, 51, 0.18), transparent 34%),
-          #0c1115;
+        background: #050505;
+        letter-spacing: -0.02em;
       }
       main {
         width: min(42rem, calc(100vw - 2rem));
         padding: 2rem;
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid rgb(255 255 255 / 0.1);
         border-radius: 1.5rem;
-        background: rgba(12, 17, 21, 0.88);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+        background: rgb(255 255 255 / 0.03);
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
       }
       h1 {
         margin-top: 0;
         font-size: 2rem;
       }
       p {
-        color: rgba(244, 246, 248, 0.76);
+        color: rgb(255 255 255 / 0.58);
         line-height: 1.5;
       }
       code {
         padding: 0.2rem 0.45rem;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.08);
+        background: rgb(255 255 255 / 0.05);
       }
     </style>
   </head>
@@ -321,46 +319,46 @@ export function createAppServer(options: {
     <style>
       :root {
         color-scheme: dark;
-        font-family: "IBM Plex Sans", "Helvetica Neue", sans-serif;
-        background: #10161b;
-        color: #f5f7f9;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        background: #050505;
+        color: #fff;
       }
       body {
         margin: 0;
         min-height: 100vh;
         display: grid;
         place-items: center;
-        background:
-          radial-gradient(circle at top left, rgba(68, 167, 177, 0.26), transparent 40%),
-          radial-gradient(circle at bottom right, rgba(240, 142, 64, 0.18), transparent 35%),
-          #10161b;
+        background: #050505;
+        letter-spacing: -0.02em;
       }
       main {
         width: min(26rem, calc(100vw - 2rem));
         padding: 2rem;
         border-radius: 1.4rem;
-        background: rgba(12, 17, 21, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgb(255 255 255 / 0.03);
+        border: 1px solid rgb(255 255 255 / 0.1);
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
       }
       h1 { margin-top: 0; }
       label, input, button { display: block; width: 100%; }
       input {
         margin: 1rem 0;
-        padding: 0.9rem 1rem;
-        border-radius: 0.9rem;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.06);
+        padding: 0.9rem 1.25rem;
+        border-radius: 1.4rem;
+        border: 1px solid rgb(255 255 255 / 0.1);
+        background: rgb(255 255 255 / 0.03);
         color: inherit;
+        outline: none;
       }
       button {
         padding: 0.9rem 1rem;
-        border: 0;
+        border: 1px solid rgb(255 255 255 / 0.1);
         border-radius: 999px;
-        background: linear-gradient(135deg, #4ea5a9, #df7c35);
-        color: #091014;
+        background: #fff;
+        color: #050505;
         font-weight: 700;
       }
-      p { color: rgba(245, 247, 249, 0.72); }
+      p { color: rgb(255 255 255 / 0.58); }
     </style>
   </head>
   <body>

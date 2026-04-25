@@ -200,14 +200,19 @@ const providerCards = computed(() => [
   {
     id: "uptime-kuma" as const,
     label: "Uptime Kuma",
-    tone: "teal",
   },
   {
     id: "docuseal" as const,
     label: "DocuSeal",
-    tone: "orange",
   },
 ]);
+
+const sections = [
+  { id: "overview", label: "Overview" },
+  { id: "matrix", label: "Matrix" },
+  { id: "webhooks", label: "Webhooks" },
+  { id: "sites", label: "Sites" },
+] as const;
 
 onMounted(() => {
   void loadSettings();
@@ -218,12 +223,8 @@ onMounted(() => {
   <main class="shell">
     <section class="hero">
       <div>
-        <p class="eyebrow">Nook Control Room</p>
-        <h1>Minimal dashboard. No YAML archaeology.</h1>
-        <p class="lede">
-          Edit Matrix, sites, and webhook providers here. Env config still works as bootstrap, but saved dashboard
-          settings take over once you hit save.
-        </p>
+        <p class="eyebrow">Nook</p>
+        <h1>Settings</h1>
       </div>
 
       <div class="hero-actions">
@@ -264,134 +265,167 @@ onMounted(() => {
     </section>
 
     <template v-else>
-      <section class="grid two">
-        <article class="panel">
-          <div class="panel-head">
+      <section class="layout">
+        <aside class="sidebar panel">
+          <nav class="sidebar-nav" aria-label="Settings sections">
+            <a
+              v-for="section in sections"
+              :key="section.id"
+              class="sidebar-link"
+              :href="`#${section.id}`"
+            >
+              {{ section.label }}
+            </a>
+          </nav>
+
+          <div class="sidebar-meta">
             <div>
-              <p class="eyebrow">Matrix</p>
-              <h2>Delivery</h2>
+              <span>Source</span>
+              <strong>{{ runtime?.usingPersistedSettings ? "Dashboard override" : "Env/YAML defaults" }}</strong>
+            </div>
+            <div>
+              <span>Matrix</span>
+              <strong>{{ matrixConfigured ? "Configured" : "Missing pieces" }}</strong>
+            </div>
+            <div>
+              <span>Port</span>
+              <strong>{{ runtime?.serverPort }}</strong>
             </div>
           </div>
+        </aside>
 
-          <label class="field">
-            <span>Homeserver</span>
-            <input v-model="settings.matrix.homeserver" type="url" placeholder="https://matrix.example.com">
-          </label>
-
-          <label class="field">
-            <span>Access token</span>
-            <input v-model="settings.matrix.accessToken" type="password" placeholder="syt_xxx">
-          </label>
-
-          <label class="field">
-            <span>Room IDs</span>
-            <input v-model="roomIdsText" type="text" placeholder="!room:example.com,!ops:example.com">
-          </label>
-
-          <label class="field">
-            <span>Timeout in seconds</span>
-            <input v-model.number="settings.timeout" type="number" min="1" step="1">
-          </label>
-        </article>
-
-        <article class="panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Runtime</p>
-              <h2>Server</h2>
+        <div class="content">
+          <section id="overview" class="panel section-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Overview</p>
+                <h2>Runtime</h2>
+              </div>
             </div>
-          </div>
 
-          <div class="summary">
-            <div>
-              <span>Dashboard bundle</span>
-              <strong>{{ runtime?.dashboardBuilt ? "Built" : "Missing" }}</strong>
+            <div class="status-grid compact">
+              <article class="status-card">
+                <span>Server port</span>
+                <strong>{{ runtime?.serverPort }}</strong>
+              </article>
+              <article class="status-card">
+                <span>Settings file</span>
+                <strong>{{ runtime?.settingsPath }}</strong>
+              </article>
+              <article class="status-card">
+                <span>Dashboard bundle</span>
+                <strong>{{ runtime?.dashboardBuilt ? "Built" : "Missing" }}</strong>
+              </article>
+              <article class="status-card">
+                <span>Reloaded</span>
+                <strong>{{ runtime?.lastReloadedAt }}</strong>
+              </article>
             </div>
-            <div>
-              <span>Reloaded</span>
-              <strong>{{ runtime?.lastReloadedAt }}</strong>
-            </div>
-            <div>
-              <span>Webhook port</span>
-              <strong>{{ settings.webhook.port }}</strong>
-            </div>
-          </div>
-        </article>
-      </section>
+          </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Webhooks</p>
-            <h2>Providers</h2>
-          </div>
-        </div>
-
-        <div class="providers">
-          <article
-            v-for="provider in providerCards"
-            :key="provider.id"
-            class="provider"
-            :class="provider.tone"
-          >
-            <div class="provider-head">
-              <h3>{{ provider.label }}</h3>
-              <label class="toggle">
-                <input v-model="settings.webhook.providers[provider.id].enabled" type="checkbox">
-                <span>{{ settings.webhook.providers[provider.id].enabled ? "Enabled" : "Disabled" }}</span>
-              </label>
+          <section id="matrix" class="panel section-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Matrix</p>
+                <h2>Delivery</h2>
+              </div>
             </div>
 
             <label class="field">
-              <span>Path</span>
-              <input v-model="settings.webhook.providers[provider.id].path" type="text">
+              <span>Homeserver</span>
+              <input v-model="settings.matrix.homeserver" type="url" placeholder="https://matrix.example.com">
             </label>
 
             <label class="field">
-              <span>Secret header</span>
-              <input v-model="settings.webhook.providers[provider.id].secretHeader" type="text">
+              <span>Access token</span>
+              <input v-model="settings.matrix.accessToken" type="password" placeholder="syt_xxx">
             </label>
 
             <label class="field">
-              <span>Secret value</span>
-              <input v-model="settings.webhook.providers[provider.id].secretValue" type="password">
-            </label>
-          </article>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Monitoring</p>
-            <h2>Sites</h2>
-          </div>
-          <button class="secondary" type="button" @click="addSite">Add site</button>
-        </div>
-
-        <div v-if="settings.sites.length === 0" class="empty">
-          No sites configured. Webhook-only mode still works.
-        </div>
-
-        <div v-else class="sites">
-          <article v-for="(site, index) in settings.sites" :key="`${site.url}-${index}`" class="site">
-            <label class="field">
-              <span>Name</span>
-              <input v-model="site.name" type="text" placeholder="facile.studio">
-            </label>
-
-            <label class="field wide">
-              <span>URL</span>
-              <input v-model="site.url" type="url" placeholder="https://example.com">
+              <span>Room IDs</span>
+              <input v-model="roomIdsText" type="text" placeholder="!room:example.com,!ops:example.com">
             </label>
 
             <label class="field">
-              <span>Interval</span>
-              <input v-model.number="site.interval" type="number" min="1" step="1">
+              <span>Timeout in seconds</span>
+              <input v-model.number="settings.timeout" type="number" min="1" step="1">
             </label>
+          </section>
 
-            <button class="danger" type="button" @click="removeSite(index)">Remove</button>
-          </article>
+          <section id="webhooks" class="panel section-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Webhooks</p>
+                <h2>Providers</h2>
+              </div>
+            </div>
+
+            <div class="providers">
+              <article
+                v-for="provider in providerCards"
+                :key="provider.id"
+                class="provider"
+              >
+                <div class="provider-head">
+                  <h3>{{ provider.label }}</h3>
+                  <label class="toggle">
+                    <input v-model="settings.webhook.providers[provider.id].enabled" type="checkbox">
+                    <span>{{ settings.webhook.providers[provider.id].enabled ? "Enabled" : "Disabled" }}</span>
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span>Path</span>
+                  <input v-model="settings.webhook.providers[provider.id].path" type="text">
+                </label>
+
+                <label class="field">
+                  <span>Secret header</span>
+                  <input v-model="settings.webhook.providers[provider.id].secretHeader" type="text">
+                </label>
+
+                <label class="field">
+                  <span>Secret value</span>
+                  <input v-model="settings.webhook.providers[provider.id].secretValue" type="password">
+                </label>
+              </article>
+            </div>
+          </section>
+
+          <section id="sites" class="panel section-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Monitoring</p>
+                <h2>Sites</h2>
+              </div>
+              <button class="secondary" type="button" @click="addSite">Add site</button>
+            </div>
+
+            <div v-if="settings.sites.length === 0" class="empty">
+              No sites configured.
+            </div>
+
+            <div v-else class="sites">
+              <article v-for="(site, index) in settings.sites" :key="`${site.url}-${index}`" class="site">
+                <label class="field">
+                  <span>Name</span>
+                  <input v-model="site.name" type="text" placeholder="facile.studio">
+                </label>
+
+                <label class="field wide">
+                  <span>URL</span>
+                  <input v-model="site.url" type="url" placeholder="https://example.com">
+                </label>
+
+                <label class="field">
+                  <span>Interval</span>
+                  <input v-model.number="site.interval" type="number" min="1" step="1">
+                </label>
+
+                <button class="danger" type="button" @click="removeSite(index)">Remove</button>
+              </article>
+            </div>
+          </section>
         </div>
       </section>
     </template>
@@ -402,7 +436,7 @@ onMounted(() => {
 .shell {
   width: min(1100px, calc(100vw - 2rem));
   margin: 0 auto;
-  padding: 2rem 0 4rem;
+  padding: 2.5rem 0 4rem;
 }
 
 .hero {
@@ -415,16 +449,10 @@ onMounted(() => {
 
 .eyebrow {
   margin: 0 0 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
+  text-transform: none;
+  letter-spacing: normal;
   font-size: 0.75rem;
-  color: rgba(245, 248, 250, 0.6);
-}
-
-.lede {
-  max-width: 52rem;
-  color: rgba(245, 248, 250, 0.72);
-  line-height: 1.6;
+  color: var(--nook-muted);
 }
 
 .hero h1,
@@ -440,15 +468,16 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
-.grid.two,
+.layout,
 .providers,
 .status-grid {
   display: grid;
   gap: 1rem;
 }
 
-.grid.two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.layout {
+  grid-template-columns: 240px minmax(0, 1fr);
+  align-items: start;
 }
 
 .providers {
@@ -460,15 +489,18 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
+.status-grid.compact {
+  margin-bottom: 0;
+}
+
 .status-card,
 .panel,
 .loading-card,
 .provider {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(11, 17, 21, 0.84);
-  backdrop-filter: blur(18px);
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface);
   border-radius: 1.4rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
 }
 
 .status-card {
@@ -478,7 +510,7 @@ onMounted(() => {
 .status-card span,
 .summary span {
   display: block;
-  color: rgba(245, 248, 250, 0.6);
+  color: var(--nook-muted);
   margin-bottom: 0.45rem;
 }
 
@@ -497,6 +529,53 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
+.sidebar {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sidebar-link {
+  display: block;
+  padding: 0.8rem 1rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--nook-muted);
+  text-decoration: none;
+}
+
+.sidebar-link:hover {
+  border-color: var(--nook-border);
+  background: var(--nook-surface-strong);
+  color: var(--nook-text);
+}
+
+.sidebar-meta {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--nook-border);
+}
+
+.sidebar-meta span {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--nook-muted);
+}
+
+.content {
+  min-width: 0;
+}
+
+.section-panel {
+  scroll-margin-top: 1.5rem;
+}
+
 .panel-head,
 .provider-head {
   display: flex;
@@ -513,76 +592,82 @@ onMounted(() => {
 }
 
 .field span {
-  color: rgba(245, 248, 250, 0.7);
+  color: var(--nook-muted);
   font-size: 0.95rem;
 }
 
 input {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.95rem;
-  padding: 0.9rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--nook-border);
+  border-radius: 1.4rem;
+  padding: 0.9rem 1.25rem;
+  background: var(--nook-surface);
   color: inherit;
+  outline: none;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+input:hover {
+  background: var(--nook-surface-strong);
+  border-color: rgb(255 255 255 / 0.14);
+}
+
+input:focus {
+  border-color: rgb(255 255 255 / 0.22);
+  background: var(--nook-surface-strong);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
 button {
-  border: 0;
+  border: 1px solid var(--nook-border);
   border-radius: 999px;
   padding: 0.85rem 1.15rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 120ms ease, opacity 120ms ease;
+  transition: background-color 150ms ease, border-color 150ms ease, opacity 120ms ease;
 }
 
 button:hover {
-  transform: translateY(-1px);
+  background: var(--nook-surface-strong);
+  border-color: rgb(255 255 255 / 0.14);
 }
 
 button:disabled {
   cursor: default;
   opacity: 0.55;
-  transform: none;
 }
 
 .primary {
-  background: linear-gradient(135deg, #4fa9af, #e0843c);
-  color: #091013;
+  background: var(--nook-text);
+  color: var(--nook-bg);
+  border-color: var(--nook-text);
+}
+
+.primary:hover {
+  background: rgb(255 255 255 / 0.86);
+  border-color: rgb(255 255 255 / 0.86);
 }
 
 .secondary {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f5f8fa;
+  background: var(--nook-surface);
+  color: var(--nook-text);
 }
 
 .ghost {
   background: transparent;
-  color: rgba(245, 248, 250, 0.76);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--nook-muted);
 }
 
 .danger {
-  background: rgba(227, 98, 65, 0.14);
-  color: #ffb49f;
-}
-
-.provider.teal {
-  background:
-    linear-gradient(180deg, rgba(73, 161, 170, 0.12), rgba(11, 17, 21, 0.92)),
-    rgba(11, 17, 21, 0.92);
-}
-
-.provider.orange {
-  background:
-    linear-gradient(180deg, rgba(221, 129, 58, 0.12), rgba(11, 17, 21, 0.92)),
-    rgba(11, 17, 21, 0.92);
+  background: transparent;
+  color: var(--nook-text);
 }
 
 .toggle {
   display: inline-flex;
   gap: 0.6rem;
   align-items: center;
-  color: rgba(245, 248, 250, 0.76);
+  color: var(--nook-muted);
 }
 
 .toggle input {
@@ -607,34 +692,36 @@ button:disabled {
   align-items: end;
   padding: 1rem;
   border-radius: 1.1rem;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--nook-surface-strong);
+  border: 1px solid var(--nook-border);
 }
 
 .empty,
 .loading-card,
 .banner {
-  color: rgba(245, 248, 250, 0.76);
+  color: var(--nook-muted);
 }
 
 .banner {
   padding: 0.95rem 1rem;
   border-radius: 1rem;
   margin: 0 0 1rem;
+  border: 1px solid var(--nook-border);
 }
 
 .banner.error {
-  background: rgba(216, 78, 48, 0.12);
-  color: #ffb8a4;
+  background: var(--nook-surface);
+  color: var(--nook-text);
 }
 
 .banner.success {
-  background: rgba(69, 160, 130, 0.14);
-  color: #aae2cb;
+  background: var(--nook-surface);
+  color: var(--nook-text);
 }
 
 @media (max-width: 960px) {
   .hero,
-  .grid.two,
+  .layout,
   .providers,
   .status-grid,
   .site {
@@ -647,6 +734,10 @@ button:disabled {
 
   .hero-actions {
     justify-content: flex-start;
+  }
+
+  .sidebar {
+    position: static;
   }
 }
 </style>

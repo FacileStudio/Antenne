@@ -1,11 +1,14 @@
 :root {
   color-scheme: dark;
-  font-family: "IBM Plex Sans", "Avenir Next", sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(69, 155, 168, 0.18), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(226, 130, 54, 0.14), transparent 34%),
-    #0c1114;
-  color: #f5f8fa;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --nook-bg: #050505;
+  --nook-surface: rgb(255 255 255 / 0.03);
+  --nook-surface-strong: rgb(255 255 255 / 0.05);
+  --nook-border: rgb(255 255 255 / 0.1);
+  --nook-text: #fff;
+  --nook-muted: rgb(255 255 255 / 0.58);
+  color: var(--nook-text);
+  background: var(--nook-bg);
 }
 
 * {
@@ -15,7 +18,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: transparent;
+  background: var(--nook-bg);
+  letter-spacing: -0.02em;
 }
 
 a {
