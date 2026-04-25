@@ -1,12 +1,22 @@
 {
   "name": "nook",
   "module": "index.ts",
+  "scripts": {
+    "dev": "bun run index.ts",
+    "dashboard:dev": "bunx nuxi dev dashboard",
+    "dashboard:build": "bunx nuxi generate dashboard",
+    "typecheck": "tsc --noEmit"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "nuxt": "^4.4.2"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "vue": "^3.5.33"
+  }
 }

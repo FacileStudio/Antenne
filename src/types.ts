@@ -1,3 +1,5 @@
+import type { WebhookConfig, RawWebhookConfig } from "./webhooks/types";
+
 export interface SiteConfig {
   name: string;
   url: string;
@@ -11,20 +13,16 @@ export interface SiteState {
   inFlight: boolean;
 }
 
-export interface WebhookConfig {
-  enabled: boolean;
-  port: number;
-}
-
 export interface MatrixConfig {
   homeserver: string;
   accessToken: string;
   roomIds: string[];
 }
 
-export interface Config {
-  sites: SiteConfig[];
+export interface AppSettings {
+  matrix: MatrixConfig;
   timeout: number;
+  sites: SiteConfig[];
   webhook: WebhookConfig;
 }
 
@@ -37,11 +35,6 @@ export interface RawSiteOptions {
 
 export type RawSiteConfig = string | RawSiteOptions;
 
-export interface RawWebhookConfig {
-  enabled?: boolean;
-  port?: number;
-}
-
 export interface RawConfig {
   timeout?: number;
   every?: number;
@@ -50,22 +43,18 @@ export interface RawConfig {
   webhook?: RawWebhookConfig;
 }
 
-export interface UptimeKumaPayload {
-  heartbeat?: {
-    monitorID?: number;
-    status?: number;
-    time?: string;
-    msg?: string;
-    ping?: number | null;
-    important?: boolean;
-    duration?: number;
-  } | null;
-  monitor?: {
-    id?: number;
-    name?: string;
-    url?: string;
-    type?: string;
-    hostname?: string | null;
-  } | null;
-  msg?: string;
+export interface DashboardSessionConfig {
+  enabled: boolean;
+  username: string;
+  password: string | null;
+  cookieName: string;
+  token: string;
+}
+
+export interface RuntimeStatus {
+  serverPort: number;
+  settingsPath: string;
+  usingPersistedSettings: boolean;
+  dashboardBuilt: boolean;
+  lastReloadedAt: string;
 }

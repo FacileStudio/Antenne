@@ -1,10 +1,21 @@
-import type { Config, RawConfig, RawSiteConfig, RawSiteOptions, WebhookConfig } from "./types";
+import type { AppSettings, RawConfig, RawSiteConfig, RawSiteOptions } from "./types";
+import type { WebhookConfig, WebhookProviderId, WebhookProviderSettings } from "./webhooks/types";
 
 const defaultConfigPath = "/data/config.yml";
 const configPath = process.env.CONFIG_PATH ?? defaultConfigPath;
 const defaultIntervalSeconds = 60;
 const defaultTimeoutSeconds = 10;
 const defaultWebhookPort = 9090;
+const webhookProviderDefaults = {
+  "uptime-kuma": {
+    path: "/webhook/uptime-kuma",
+    secretHeader: "x-webhook-secret",
+  },
+  docuseal: {
+    path: "/webhook/docuseal",
+    secretHeader: "x-docuseal-secret",
+  },
+} satisfies Record<WebhookProviderId, { path: string; secretHeader: string }>;
 
 function isPositiveNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
@@ -187,7 +198,7 @@ function parseRawConfig(text: string, path: string): RawConfig {
   throw new Error(`Failed to parse YAML config at ${path}: ${errors.join(" | ")}`);
 }
 
-function normalizeConfig(rawConfig: RawConfig): Config {
+function normalizeConfig(rawConfig: RawConfig): Pick<AppSettings, "timeout" | "sites" | "webhook"> {
   if (!rawConfig || typeof rawConfig !== "object") {
     throw new Error("Configuration file must contain a YAML object.");
   }
@@ -234,13 +245,54 @@ function normalizeConfig(rawConfig: RawConfig): Config {
     ? process.env.WEBHOOK_ENABLED === "true"
     : undefined;
   const envWebhookPort = process.env.WEBHOOK_PORT ? Number(process.env.WEBHOOK_PORT) : undefined;
+  const globalWebhookEnabled = envWebhookEnabled ?? rawWebhook?.enabled ?? webhookEnabledDefault;
+  const uptimeKumaEnabled = process.env.UPTIME_KUMA_WEBHOOK_ENABLED !== undefined
+    ? process.env.UPTIME_KUMA_WEBHOOK_ENABLED === "true"
+    : globalWebhookEnabled;
+  const docuSealEnabled = process.env.DOCUSEAL_WEBHOOK_ENABLED !== undefined
+    ? process.env.DOCUSEAL_WEBHOOK_ENABLED === "true"
+    : globalWebhookEnabled;
+
+  const providers: Record<WebhookProviderId, WebhookProviderSettings> = {
+    "uptime-kuma": {
+      enabled: uptimeKumaEnabled,
+      path: process.env.UPTIME_KUMA_WEBHOOK_PATH ?? webhookProviderDefaults["uptime-kuma"].path,
+      secretHeader: process.env.UPTIME_KUMA_WEBHOOK_SECRET_HEADER ?? webhookProviderDefaults["uptime-kuma"].secretHeader,
+      secretValue: process.env.UPTIME_KUMA_WEBHOOK_SECRET ?? process.env.WEBHOOK_SECRET ?? null,
+    },
+    docuseal: {
+      enabled: docuSealEnabled,
+      path: process.env.DOCUSEAL_WEBHOOK_PATH ?? webhookProviderDefaults.docuseal.path,
+      secretHeader: process.env.DOCUSEAL_WEBHOOK_SECRET_HEADER ?? webhookProviderDefaults.docuseal.secretHeader,
+      secretValue: process.env.DOCUSEAL_WEBHOOK_SECRET ?? null,
+    },
+  };
+
   const webhook: WebhookConfig = {
-    enabled: envWebhookEnabled ?? rawWebhook?.enabled ?? webhookEnabledDefault,
+    enabled: Object.values(providers).some((provider) => provider.enabled),
     port: envWebhookPort ?? rawWebhook?.port ?? defaultWebhookPort,
+    providers,
   };
 
   if (!isPositiveNumber(webhook.port) || !Number.isInteger(webhook.port)) {
     throw new Error("Configuration `webhook.port` must be a positive integer.");
+  }
+
+  const enabledPaths = new Set<string>();
+  for (const provider of Object.values(webhook.providers)) {
+    if (!provider.enabled) {
+      continue;
+    }
+
+    if (!provider.path.startsWith("/")) {
+      throw new Error("Webhook provider paths must start with `/`.");
+    }
+
+    if (enabledPaths.has(provider.path)) {
+      throw new Error(`Webhook path collision detected for \`${provider.path}\`.`);
+    }
+
+    enabledPaths.add(provider.path);
   }
 
   return {

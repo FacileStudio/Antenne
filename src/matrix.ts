@@ -41,6 +41,10 @@ async function sendToRoom(config: MatrixConfig, roomId: string, message: string)
 }
 
 export async function sendAlert(config: MatrixConfig, message: string) {
+  if (!hasMatrixConfig(config)) {
+    throw new Error("Matrix is not configured.");
+  }
+
   const results = await Promise.allSettled(
     config.roomIds.map((roomId) => sendToRoom(config, roomId, message)),
   );
@@ -52,25 +56,25 @@ export async function sendAlert(config: MatrixConfig, message: string) {
   }
 }
 
-export function loadMatrixConfig(): MatrixConfig {
+export function hasMatrixConfig(config: MatrixConfig): boolean {
+  return Boolean(config.homeserver && config.accessToken && config.roomIds.length > 0);
+}
+
+export function loadMatrixConfigFromEnv(): MatrixConfig {
   const homeserver = process.env.MATRIX_HOMESERVER;
   const accessToken = process.env.MATRIX_ACCESS_TOKEN;
 
   const roomIdsRaw = process.env.MATRIX_ROOM_IDS ?? process.env.MATRIX_ROOM_ID;
-  if (!homeserver || !accessToken || !roomIdsRaw) {
-    throw new Error(
-      "Missing Matrix configuration. Set MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, and MATRIX_ROOM_IDS (or MATRIX_ROOM_ID) in the environment.",
-    );
-  }
-
   const roomIds = roomIdsRaw
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
+    ? roomIdsRaw
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+    : [];
 
-  if (roomIds.length === 0) {
-    throw new Error("MATRIX_ROOM_IDS must contain at least one room ID.");
-  }
-
-  return { homeserver, accessToken, roomIds };
+  return {
+    homeserver: homeserver ?? "",
+    accessToken: accessToken ?? "",
+    roomIds,
+  };
 }

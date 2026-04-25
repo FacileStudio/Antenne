@@ -5,6 +5,9 @@ node_modules
 out
 dist
 *.tgz
+dashboard/.output
+dashboard/.nuxt
+node_modules/.cache/nuxt
 
 # code coverage
 coverage

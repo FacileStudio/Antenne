@@ -1,6 +1,7 @@
 # Connecting Uptime Kuma to Nook
 
 This guide assumes both Uptime Kuma and Nook are deployed through Dokploy on the same server.
+You can set these values from env first, then adjust them later in the Nook dashboard.
 
 ## Nook Setup
 
@@ -13,11 +14,13 @@ Set these in Dokploy's environment settings for the Nook service:
 | `MATRIX_HOMESERVER` | Yes | Your Matrix server URL (e.g. `https://matrix.facile.studio`) |
 | `MATRIX_ACCESS_TOKEN` | Yes | Bot access token |
 | `MATRIX_ROOM_IDS` | Yes | Comma-separated room IDs (e.g. `!abc:matrix.example.com`) |
-| `WEBHOOK_SECRET` | Recommended | A random secret string shared with Uptime Kuma |
+| `UPTIME_KUMA_WEBHOOK_SECRET` | Recommended | A random secret string shared with Uptime Kuma |
 | `WEBHOOK_ENABLED` | No | `true` or `false` — overrides auto-detection |
 | `WEBHOOK_PORT` | No | Webhook listener port (default: `9090`) |
+| `UPTIME_KUMA_WEBHOOK_PATH` | No | Custom Uptime Kuma webhook path |
+| `UPTIME_KUMA_WEBHOOK_SECRET_HEADER` | No | Secret header name (default: `x-webhook-secret`) |
 
-No `config.yml` is needed. Nook auto-enables the webhook server when no sites are configured.
+No `config.yml` is needed. Nook auto-enables the webhook server when no sites are configured, and the dashboard can later persist overrides into `/data/nook.json`.
 
 ### Network
 
@@ -31,7 +34,7 @@ Keep Nook internal — do not expose it publicly. Uptime Kuma reaches it through
    - **Notification Type**: Webhook
    - **Post URL**: `http://<nook-service-name>:9090/webhook/uptime-kuma`
    - **Request Body**: select **JSON**
-4. If you set `WEBHOOK_SECRET` on Nook, add a custom header:
+4. If you set `UPTIME_KUMA_WEBHOOK_SECRET` on Nook, add a custom header:
    - **Header Name**: `x-webhook-secret`
    - **Header Value**: the same secret you set in Nook's environment
 

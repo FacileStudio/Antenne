@@ -1,49 +1,90 @@
-import { loadConfig } from "./src/config";
-import { loadMatrixConfig, sendAlert } from "./src/matrix";
-import { initStates, startMonitoring } from "./src/monitor";
-import { startWebhookServer } from "./src/webhook";
+import { createMonitorManager } from "./src/monitor";
+import { hasMatrixConfig, sendAlert } from "./src/matrix";
+import { createAppServer, createDashboardSessionConfig } from "./src/server";
+import {
+  createInitialRuntimeStatus,
+  getServerPort,
+  getSettingsPath,
+  loadDefaultSettings,
+  loadPersistedSettings,
+  SettingsStore,
+} from "./src/settings";
 
-const { config, resolvedPath } = await loadConfig();
-const matrix = loadMatrixConfig();
+const settingsPath = getSettingsPath();
+const defaults = await loadDefaultSettings();
+const persistedSettings = await loadPersistedSettings(settingsPath);
+const initialSettings = persistedSettings ?? defaults;
+const store = new SettingsStore(defaults, initialSettings, settingsPath, Boolean(persistedSettings));
+const runtimeStatus = createInitialRuntimeStatus(settingsPath, Boolean(persistedSettings));
+const session = createDashboardSessionConfig();
 
-initStates(config);
-
-async function main() {
-  console.log("[startup] Nook booting");
-  console.log(`[startup] config path: ${resolvedPath ?? "none (defaults)"}`);
-  console.log(`[startup] homeserver: ${matrix.homeserver}`);
-  console.log(`[startup] room(s): ${matrix.roomIds.join(", ")}`);
-  console.log(`[startup] monitoring ${config.sites.length} site(s)`);
-  console.log(`[startup] webhook: ${config.webhook.enabled ? `enabled on port ${config.webhook.port}` : "disabled"}`);
-
-  if (config.sites.length === 0 && !config.webhook.enabled) {
-    console.error("[startup] No sites to monitor and webhook disabled. Nothing to do.");
-    process.exit(1);
+async function sendConfiguredAlert(message: string) {
+  const settings = store.getSettings();
+  if (!hasMatrixConfig(settings.matrix)) {
+    throw new Error("Matrix config incomplete. Fill homeserver, access token, and room IDs first.");
   }
 
-  const parts: string[] = [];
-
-  if (config.sites.length > 0) {
-    const siteList = config.sites
-      .map((s) => `• <b>${s.name}</b> (<code>${s.url}</code>) every ${s.interval}s`)
-      .join("<br/>");
-    parts.push(`Monitoring ${config.sites.length} site(s):<br/>${siteList}`);
-  }
-
-  if (config.webhook.enabled) {
-    parts.push(`Webhook listening on port ${config.webhook.port}`);
-  }
-
-  await sendAlert(matrix, `🟢 <b>Nook started</b><br/>${parts.join("<br/>")}`);
-  console.log("[startup] Matrix startup message sent");
-
-  if (config.webhook.enabled) {
-    startWebhookServer(matrix, config.webhook.port);
-  }
-
-  for (const site of config.sites) {
-    startMonitoring(matrix, site, config.timeout);
-  }
+  await sendAlert(settings.matrix, message);
 }
 
-main();
+const monitorManager = createMonitorManager(async (message) => {
+  try {
+    await sendConfiguredAlert(message);
+  } catch (error) {
+    console.error(`[matrix] ${error instanceof Error ? error.message : String(error)}`);
+  }
+});
+
+function applySettings() {
+  const settings = store.getSettings();
+  runtimeStatus.usingPersistedSettings = store.isUsingPersistedSettings();
+  runtimeStatus.lastReloadedAt = new Date().toISOString();
+  monitorManager.apply(settings);
+}
+
+async function updateSettings(input: unknown) {
+  const settings = await store.update(input);
+  applySettings();
+  return settings;
+}
+
+applySettings();
+
+const serverPort = getServerPort();
+const dashboardFile = Bun.file(new URL("./dashboard/.output/public/index.html", import.meta.url));
+runtimeStatus.dashboardBuilt = await dashboardFile.exists();
+runtimeStatus.serverPort = serverPort;
+
+const settings = store.getSettings();
+console.log("[startup] Nook booting");
+console.log(`[startup] settings path: ${settingsPath}`);
+console.log(`[startup] persisted settings: ${store.isUsingPersistedSettings() ? "yes" : "no"}`);
+console.log(`[startup] dashboard: ${runtimeStatus.dashboardBuilt ? "built" : "not built"}`);
+console.log(`[startup] server port: ${serverPort}`);
+console.log(`[startup] room(s): ${settings.matrix.roomIds.join(", ") || "none configured"}`);
+console.log(`[startup] monitoring ${settings.sites.length} site(s)`);
+console.log(`[startup] webhook: ${settings.webhook.enabled ? "enabled" : "disabled"}`);
+
+if (hasMatrixConfig(settings.matrix)) {
+  try {
+    await sendConfiguredAlert("🟢 <b>Nook started</b><br/>Dashboard and API ready.");
+    console.log("[startup] Matrix startup message sent");
+  } catch (error) {
+    console.error(`[startup] Failed to send Matrix startup message: ${error instanceof Error ? error.message : String(error)}`);
+  }
+} else {
+  console.warn("[startup] Matrix is not configured yet. Dashboard will still start.");
+}
+
+Bun.serve({
+  port: serverPort,
+  fetch: createAppServer({
+    getSettings: () => store.getSettings(),
+    updateSettings,
+    sendConfiguredAlert,
+    getRuntimeStatus: () => ({ ...runtimeStatus }),
+    session,
+  }),
+});
+
+console.log(`[startup] listening on ${serverPort}`);
