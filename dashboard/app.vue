@@ -1,5 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import {
+  ArrowDown,
+  ArrowUp,
+  Copy,
+  LogOut,
+  Plus,
+  Save,
+  Send,
+  Trash2,
+  X,
+} from "lucide-vue-next";
 
 type WebhookProviderId = "uptime-kuma" | "docuseal";
 
@@ -326,12 +337,17 @@ onMounted(() => {
       </div>
 
       <div class="hero-actions">
-        <button class="ghost" type="button" @click="logout">Logout</button>
+        <button class="ghost icon-button" type="button" @click="logout">
+          <LogOut :size="16" aria-hidden="true" />
+          <span>Logout</span>
+        </button>
         <button class="secondary" type="button" :disabled="testing || loading" @click="sendTestAlert">
-          {{ testing ? "Sending..." : "Send test alert" }}
+          <Send :size="16" aria-hidden="true" />
+          <span>{{ testing ? "Sending..." : "Send test alert" }}</span>
         </button>
         <button class="primary" type="button" :disabled="saving || loading" @click="saveSettings">
-          {{ saving ? "Saving..." : "Save settings" }}
+          <Save :size="16" aria-hidden="true" />
+          <span>{{ saving ? "Saving..." : "Save settings" }}</span>
         </button>
       </div>
     </section>
@@ -463,7 +479,9 @@ onMounted(() => {
                         class="chip"
                       >
                         <span>{{ roomId }}</span>
-                        <button class="chip-remove" type="button" @click="removeRoomId(index)">Remove</button>
+                        <button class="chip-remove icon-only-button" type="button" aria-label="Remove room" @click="removeRoomId(index)">
+                          <X :size="14" aria-hidden="true" />
+                        </button>
                       </span>
                     </div>
 
@@ -474,7 +492,10 @@ onMounted(() => {
                         placeholder="!room:example.com"
                         @keydown.enter.prevent="addRoomId"
                       >
-                      <button class="secondary" type="button" @click="addRoomId">Add room</button>
+                      <button class="secondary icon-button" type="button" @click="addRoomId">
+                        <Plus :size="16" aria-hidden="true" />
+                        <span>Add room</span>
+                      </button>
                     </div>
                   </div>
                 </label>
@@ -573,7 +594,10 @@ onMounted(() => {
                 <p class="eyebrow">Monitoring</p>
                 <h2>Sites</h2>
               </div>
-              <button class="secondary" type="button" @click="addBlankSite">Add blank</button>
+              <button class="secondary icon-button" type="button" @click="addBlankSite">
+                <Plus :size="16" aria-hidden="true" />
+                <span>Add blank</span>
+              </button>
             </div>
 
             <article class="site-draft">
@@ -592,7 +616,10 @@ onMounted(() => {
                 <input v-model.number="newSite.interval" type="number" min="1" step="1">
               </label>
 
-              <button class="primary" type="button" @click="addSiteFromDraft">Add site</button>
+              <button class="primary icon-button" type="button" @click="addSiteFromDraft">
+                <Plus :size="16" aria-hidden="true" />
+                <span>Add site</span>
+              </button>
             </article>
 
             <div v-if="settings.sites.length === 0" class="empty">No sites configured.</div>
@@ -606,10 +633,22 @@ onMounted(() => {
                   </div>
 
                   <div class="site-actions">
-                    <button class="ghost" type="button" :disabled="index === 0" @click="moveSite(index, -1)">Up</button>
-                    <button class="ghost" type="button" :disabled="index === settings.sites.length - 1" @click="moveSite(index, 1)">Down</button>
-                    <button class="ghost" type="button" @click="duplicateSite(index)">Duplicate</button>
-                    <button class="danger" type="button" @click="removeSite(index)">Remove</button>
+                    <button class="ghost icon-button" type="button" :disabled="index === 0" @click="moveSite(index, -1)">
+                      <ArrowUp :size="16" aria-hidden="true" />
+                      <span>Up</span>
+                    </button>
+                    <button class="ghost icon-button" type="button" :disabled="index === settings.sites.length - 1" @click="moveSite(index, 1)">
+                      <ArrowDown :size="16" aria-hidden="true" />
+                      <span>Down</span>
+                    </button>
+                    <button class="ghost icon-button" type="button" @click="duplicateSite(index)">
+                      <Copy :size="16" aria-hidden="true" />
+                      <span>Duplicate</span>
+                    </button>
+                    <button class="danger icon-button" type="button" @click="removeSite(index)">
+                      <Trash2 :size="16" aria-hidden="true" />
+                      <span>Remove</span>
+                    </button>
                   </div>
                 </div>
 
@@ -869,6 +908,22 @@ button {
   font-weight: 700;
   cursor: pointer;
   transition: background-color 150ms ease, border-color 150ms ease, opacity 120ms ease;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.icon-only-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
 }
 
 button:hover {

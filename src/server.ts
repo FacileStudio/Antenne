@@ -340,6 +340,7 @@ export function createAppServer(options: {
         box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
       }
       h1 { margin-top: 0; }
+      *, *::before, *::after { box-sizing: border-box; }
       label, input, button { display: block; width: 100%; }
       input {
         margin: 1rem 0;
