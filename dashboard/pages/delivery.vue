@@ -203,7 +203,7 @@ const activeTargets = computed(() => {
 
 .delivery-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: var(--space-4);
 }
 
@@ -213,10 +213,6 @@ const activeTargets = computed(() => {
   padding: var(--space-4);
   border-radius: 1.25rem;
   background: var(--nook-surface-strong);
-}
-
-.matrix-panel {
-  grid-column: span 2;
 }
 
 .inactive {
@@ -248,16 +244,6 @@ const activeTargets = computed(() => {
   align-items: center;
   gap: 0.6rem;
   color: var(--nook-muted);
-}
-
-@media (max-width: 1120px) {
-  .delivery-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .matrix-panel {
-    grid-column: auto;
-  }
 }
 
 @media (max-width: 720px) {

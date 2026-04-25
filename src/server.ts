@@ -1,10 +1,11 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import { hasMatrixDelivery } from "./delivery";
 import type { AppSettings, DashboardSessionConfig, RuntimeStatus } from "./types";
 import { handleWebhookRequest } from "./webhooks";
 
 const dashboardDistDir = new URL("../dashboard/.output/public/", import.meta.url);
+const dashboardSessionMaxAgeSeconds = 60 * 60 * 24 * 30;
 
 function escapeHtml(value: string) {
   return value
@@ -52,6 +53,7 @@ function buildSessionCookie(req: Request, session: DashboardSessionConfig) {
   const flags = [
     `${session.cookieName}=${encodeURIComponent(session.token)}`,
     "Path=/",
+    `Max-Age=${dashboardSessionMaxAgeSeconds}`,
     "HttpOnly",
     "SameSite=Lax",
   ];
@@ -188,13 +190,25 @@ async function parseJson(req: Request) {
 }
 
 export function createDashboardSessionConfig(): DashboardSessionConfig {
+  const password = process.env.NOOK_ADMIN_PASSWORD ?? null;
+
   return {
     enabled: true,
     username: process.env.NOOK_ADMIN_USERNAME ?? "admin",
-    password: process.env.NOOK_ADMIN_PASSWORD ?? null,
+    password,
     cookieName: "nook_session",
-    token: randomBytes(32).toString("hex"),
+    token: password ? createSessionToken(password) : "",
   };
+}
+
+function createSessionToken(password: string) {
+  const sessionSecret = process.env.NOOK_SESSION_SECRET;
+
+  if (sessionSecret) {
+    return createHmac("sha256", sessionSecret).update(password).digest("hex");
+  }
+
+  return createHash("sha256").update(password).digest("hex");
 }
 
 export function createAppServer(options: {
@@ -330,26 +344,55 @@ export function createAppServer(options: {
         place-items: center;
         background: #050505;
         letter-spacing: -0.02em;
+        padding: 1rem;
       }
       main {
-        width: min(26rem, calc(100vw - 2rem));
+        width: min(28rem, 100%);
         padding: 2rem;
-        border-radius: 1.4rem;
+        border-radius: 1.5rem;
         background: rgb(255 255 255 / 0.03);
         border: 1px solid rgb(255 255 255 / 0.1);
         box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
       }
-      h1 { margin-top: 0; }
+      h1 {
+        margin: 0;
+        font-size: 1.9rem;
+      }
       *, *::before, *::after { box-sizing: border-box; }
+      .eyebrow {
+        margin: 0 0 0.85rem;
+        color: rgb(255 255 255 / 0.42);
+        font-size: 0.78rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      p {
+        margin: 0;
+        color: rgb(255 255 255 / 0.58);
+        line-height: 1.55;
+      }
+      form {
+        margin-top: 1.5rem;
+      }
       label, input, button { display: block; width: 100%; }
+      label {
+        margin-bottom: 0.55rem;
+        color: rgb(255 255 255 / 0.78);
+        font-size: 0.92rem;
+      }
       input {
-        margin: 1rem 0;
+        margin: 0 0 1rem;
         padding: 0.9rem 1.25rem;
         border-radius: 1.4rem;
         border: 1px solid rgb(255 255 255 / 0.1);
         background: rgb(255 255 255 / 0.03);
         color: inherit;
         outline: none;
+        transition: border-color 120ms ease, background 120ms ease;
+      }
+      input:focus {
+        border-color: rgb(255 255 255 / 0.24);
+        background: rgb(255 255 255 / 0.05);
       }
       button {
         padding: 0.9rem 1rem;
@@ -358,34 +401,59 @@ export function createAppServer(options: {
         background: #fff;
         color: #050505;
         font-weight: 700;
+        cursor: pointer;
       }
-      p { color: rgb(255 255 255 / 0.58); }
+      button[disabled] {
+        opacity: 0.7;
+        cursor: wait;
+      }
+      #error {
+        margin-top: 0.85rem;
+        color: rgb(255 255 255 / 0.72);
+      }
+      .footnote {
+        margin-top: 1rem;
+        color: rgb(255 255 255 / 0.4);
+        font-size: 0.88rem;
+      }
     </style>
   </head>
   <body>
     <main>
+      <p class="eyebrow">Dashboard login</p>
       <h1>Nook dashboard</h1>
       <p>Password gate enabled for <b>${escapeHtml(session.username)}</b>.</p>
       <form method="dialog" id="login-form">
         <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password">
-        <button type="submit">Enter dashboard</button>
+        <input id="password" name="password" type="password" autocomplete="current-password" autofocus>
+        <button type="submit" id="submit-button">Enter dashboard</button>
       </form>
       <p id="error" hidden>Wrong password.</p>
+      <p class="footnote">Session stays signed in on this browser for 30 days unless you log out.</p>
       <script>
         document.getElementById("login-form").addEventListener("submit", async (event) => {
           event.preventDefault();
-          const password = document.getElementById("password").value;
-          const res = await fetch("/api/login", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ password })
-          });
-          if (res.ok) {
-            window.location.reload();
-            return;
+          const passwordField = document.getElementById("password");
+          const submitButton = document.getElementById("submit-button");
+          const error = document.getElementById("error");
+          error.hidden = true;
+          submitButton.disabled = true;
+          try {
+            const res = await fetch("/api/login", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ password: passwordField.value })
+            });
+            if (res.ok) {
+              window.location.reload();
+              return;
+            }
+          } finally {
+            submitButton.disabled = false;
           }
-          document.getElementById("error").hidden = false;
+          error.hidden = false;
+          passwordField.focus();
+          passwordField.select();
         });
       </script>
     </main>
