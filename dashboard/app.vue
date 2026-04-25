@@ -10,9 +10,22 @@ interface SiteConfig {
 }
 
 interface MatrixConfig {
+  enabled: boolean;
   homeserver: string;
   accessToken: string;
   roomIds: string[];
+}
+
+interface DiscordDeliveryConfig {
+  enabled: boolean;
+  webhookUrl: string;
+}
+
+interface HttpDeliveryConfig {
+  enabled: boolean;
+  url: string;
+  secretHeader: string | null;
+  secretValue: string | null;
 }
 
 interface WebhookProviderSettings {
@@ -23,7 +36,11 @@ interface WebhookProviderSettings {
 }
 
 interface AppSettings {
-  matrix: MatrixConfig;
+  delivery: {
+    matrix: MatrixConfig;
+    discord: DiscordDeliveryConfig;
+    webhook: HttpDeliveryConfig;
+  };
   timeout: number;
   sites: SiteConfig[];
   webhook: {
@@ -46,13 +63,32 @@ const saving = ref(false);
 const testing = ref(false);
 const error = ref("");
 const success = ref("");
+const roomIdDraft = ref("");
 const runtime = ref<RuntimeStatus | null>(null);
 const matrixConfigured = ref(false);
+const newSite = reactive<SiteConfig>({
+  name: "",
+  url: "https://",
+  interval: 60,
+});
 const settings = reactive<AppSettings>({
-  matrix: {
-    homeserver: "",
-    accessToken: "",
-    roomIds: [],
+  delivery: {
+    matrix: {
+      enabled: true,
+      homeserver: "",
+      accessToken: "",
+      roomIds: [],
+    },
+    discord: {
+      enabled: false,
+      webhookUrl: "",
+    },
+    webhook: {
+      enabled: false,
+      url: "",
+      secretHeader: "x-nook-secret",
+      secretValue: "",
+    },
   },
   timeout: 10,
   sites: [],
@@ -77,9 +113,16 @@ const settings = reactive<AppSettings>({
 });
 
 function cloneFromPayload(next: AppSettings) {
-  settings.matrix.homeserver = next.matrix.homeserver;
-  settings.matrix.accessToken = next.matrix.accessToken;
-  settings.matrix.roomIds = [...next.matrix.roomIds];
+  settings.delivery.matrix.enabled = next.delivery.matrix.enabled;
+  settings.delivery.matrix.homeserver = next.delivery.matrix.homeserver;
+  settings.delivery.matrix.accessToken = next.delivery.matrix.accessToken;
+  settings.delivery.matrix.roomIds = [...next.delivery.matrix.roomIds];
+  settings.delivery.discord.enabled = next.delivery.discord.enabled;
+  settings.delivery.discord.webhookUrl = next.delivery.discord.webhookUrl;
+  settings.delivery.webhook.enabled = next.delivery.webhook.enabled;
+  settings.delivery.webhook.url = next.delivery.webhook.url;
+  settings.delivery.webhook.secretHeader = next.delivery.webhook.secretHeader;
+  settings.delivery.webhook.secretValue = next.delivery.webhook.secretValue ?? "";
   settings.timeout = next.timeout;
   settings.sites = next.sites.map((site) => ({ ...site }));
   settings.webhook.enabled = next.webhook.enabled;
@@ -131,9 +174,12 @@ async function saveSettings() {
       method: "PUT",
       body: JSON.stringify({
         ...settings,
-        matrix: {
-          ...settings.matrix,
-          roomIds: settings.matrix.roomIds,
+        delivery: {
+          ...settings.delivery,
+          matrix: {
+            ...settings.delivery.matrix,
+            roomIds: settings.delivery.matrix.roomIds,
+          },
         },
       }),
     });
@@ -174,7 +220,30 @@ async function logout() {
   window.location.href = "/dashboard";
 }
 
-function addSite() {
+function resetNewSite() {
+  newSite.name = "";
+  newSite.url = "https://";
+  newSite.interval = 60;
+}
+
+function addSiteFromDraft() {
+  const url = newSite.url.trim();
+  if (!url || url === "https://") {
+    error.value = "Site URL is required.";
+    success.value = "";
+    return;
+  }
+
+  settings.sites.push({
+    name: newSite.name.trim(),
+    url,
+    interval: newSite.interval,
+  });
+  resetNewSite();
+  error.value = "";
+}
+
+function addBlankSite() {
   settings.sites.push({
     name: "",
     url: "https://",
@@ -186,15 +255,44 @@ function removeSite(index: number) {
   settings.sites.splice(index, 1);
 }
 
-const roomIdsText = computed({
-  get: () => settings.matrix.roomIds.join(", "),
-  set: (value: string) => {
-    settings.matrix.roomIds = value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  },
-});
+function moveSite(index: number, direction: -1 | 1) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= settings.sites.length) {
+    return;
+  }
+
+  const [site] = settings.sites.splice(index, 1);
+  settings.sites.splice(targetIndex, 0, site);
+}
+
+function duplicateSite(index: number) {
+  const site = settings.sites[index];
+  if (!site) {
+    return;
+  }
+
+  settings.sites.splice(index + 1, 0, {
+    ...site,
+    name: site.name ? `${site.name} copy` : "",
+  });
+}
+
+function addRoomId() {
+  const roomId = roomIdDraft.value.trim();
+  if (!roomId) {
+    return;
+  }
+
+  if (!settings.delivery.matrix.roomIds.includes(roomId)) {
+    settings.delivery.matrix.roomIds.push(roomId);
+  }
+
+  roomIdDraft.value = "";
+}
+
+function removeRoomId(index: number) {
+  settings.delivery.matrix.roomIds.splice(index, 1);
+}
 
 const providerCards = computed(() => [
   {
@@ -209,7 +307,7 @@ const providerCards = computed(() => [
 
 const sections = [
   { id: "overview", label: "Overview" },
-  { id: "matrix", label: "Matrix" },
+  { id: "delivery", label: "Delivery" },
   { id: "webhooks", label: "Webhooks" },
   { id: "sites", label: "Sites" },
 ] as const;
@@ -288,6 +386,10 @@ onMounted(() => {
               <strong>{{ matrixConfigured ? "Configured" : "Missing pieces" }}</strong>
             </div>
             <div>
+              <span>Discord</span>
+              <strong>{{ settings.delivery.discord.enabled && settings.delivery.discord.webhookUrl ? "Configured" : "Disabled" }}</strong>
+            </div>
+            <div>
               <span>Port</span>
               <strong>{{ runtime?.serverPort }}</strong>
             </div>
@@ -323,28 +425,101 @@ onMounted(() => {
             </div>
           </section>
 
-          <section id="matrix" class="panel section-panel">
+          <section id="delivery" class="panel section-panel">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Matrix</p>
-                <h2>Delivery</h2>
+                <p class="eyebrow">Delivery</p>
+                <h2>Targets</h2>
               </div>
             </div>
 
-            <label class="field">
-              <span>Homeserver</span>
-              <input v-model="settings.matrix.homeserver" type="url" placeholder="https://matrix.example.com">
-            </label>
+            <div class="delivery-grid">
+              <article class="provider">
+                <div class="provider-head">
+                  <h3>Matrix</h3>
+                  <label class="toggle">
+                    <input v-model="settings.delivery.matrix.enabled" type="checkbox">
+                    <span>{{ settings.delivery.matrix.enabled ? "Enabled" : "Disabled" }}</span>
+                  </label>
+                </div>
 
-            <label class="field">
-              <span>Access token</span>
-              <input v-model="settings.matrix.accessToken" type="password" placeholder="syt_xxx">
-            </label>
+                <label class="field">
+                  <span>Homeserver</span>
+                  <input v-model="settings.delivery.matrix.homeserver" type="url" placeholder="https://matrix.example.com">
+                </label>
 
-            <label class="field">
-              <span>Room IDs</span>
-              <input v-model="roomIdsText" type="text" placeholder="!room:example.com,!ops:example.com">
-            </label>
+                <label class="field">
+                  <span>Access token</span>
+                  <input v-model="settings.delivery.matrix.accessToken" type="password" placeholder="syt_xxx">
+                </label>
+
+                <label class="field">
+                  <span>Room IDs</span>
+                  <div class="list-editor">
+                    <div v-if="settings.delivery.matrix.roomIds.length > 0" class="chip-list">
+                      <span
+                        v-for="(roomId, index) in settings.delivery.matrix.roomIds"
+                        :key="roomId"
+                        class="chip"
+                      >
+                        <span>{{ roomId }}</span>
+                        <button class="chip-remove" type="button" @click="removeRoomId(index)">Remove</button>
+                      </span>
+                    </div>
+
+                    <div class="list-input">
+                      <input
+                        v-model="roomIdDraft"
+                        type="text"
+                        placeholder="!room:example.com"
+                        @keydown.enter.prevent="addRoomId"
+                      >
+                      <button class="secondary" type="button" @click="addRoomId">Add room</button>
+                    </div>
+                  </div>
+                </label>
+              </article>
+
+              <article class="provider">
+                <div class="provider-head">
+                  <h3>Discord webhook</h3>
+                  <label class="toggle">
+                    <input v-model="settings.delivery.discord.enabled" type="checkbox">
+                    <span>{{ settings.delivery.discord.enabled ? "Enabled" : "Disabled" }}</span>
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span>Webhook URL</span>
+                  <input v-model="settings.delivery.discord.webhookUrl" type="url" placeholder="https://discord.com/api/webhooks/...">
+                </label>
+              </article>
+
+              <article class="provider">
+                <div class="provider-head">
+                  <h3>HTTP(S) webhook</h3>
+                  <label class="toggle">
+                    <input v-model="settings.delivery.webhook.enabled" type="checkbox">
+                    <span>{{ settings.delivery.webhook.enabled ? "Enabled" : "Disabled" }}</span>
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span>Webhook URL</span>
+                  <input v-model="settings.delivery.webhook.url" type="url" placeholder="https://example.com/hooks/nook">
+                </label>
+
+                <label class="field">
+                  <span>Secret header</span>
+                  <input v-model="settings.delivery.webhook.secretHeader" type="text" placeholder="x-nook-secret">
+                </label>
+
+                <label class="field">
+                  <span>Secret value</span>
+                  <input v-model="settings.delivery.webhook.secretValue" type="password">
+                </label>
+              </article>
+            </div>
 
             <label class="field">
               <span>Timeout in seconds</span>
@@ -398,15 +573,46 @@ onMounted(() => {
                 <p class="eyebrow">Monitoring</p>
                 <h2>Sites</h2>
               </div>
-              <button class="secondary" type="button" @click="addSite">Add site</button>
+              <button class="secondary" type="button" @click="addBlankSite">Add blank</button>
             </div>
 
-            <div v-if="settings.sites.length === 0" class="empty">
-              No sites configured.
-            </div>
+            <article class="site-draft">
+              <label class="field">
+                <span>Name</span>
+                <input v-model="newSite.name" type="text" placeholder="facile.studio">
+              </label>
+
+              <label class="field wide">
+                <span>URL</span>
+                <input v-model="newSite.url" type="url" placeholder="https://example.com">
+              </label>
+
+              <label class="field">
+                <span>Interval</span>
+                <input v-model.number="newSite.interval" type="number" min="1" step="1">
+              </label>
+
+              <button class="primary" type="button" @click="addSiteFromDraft">Add site</button>
+            </article>
+
+            <div v-if="settings.sites.length === 0" class="empty">No sites configured.</div>
 
             <div v-else class="sites">
               <article v-for="(site, index) in settings.sites" :key="`${site.url}-${index}`" class="site">
+                <div class="site-header">
+                  <div class="site-title">
+                    <strong>{{ site.name || `Site ${index + 1}` }}</strong>
+                    <span>{{ site.url || "No URL yet" }}</span>
+                  </div>
+
+                  <div class="site-actions">
+                    <button class="ghost" type="button" :disabled="index === 0" @click="moveSite(index, -1)">Up</button>
+                    <button class="ghost" type="button" :disabled="index === settings.sites.length - 1" @click="moveSite(index, 1)">Down</button>
+                    <button class="ghost" type="button" @click="duplicateSite(index)">Duplicate</button>
+                    <button class="danger" type="button" @click="removeSite(index)">Remove</button>
+                  </div>
+                </div>
+
                 <label class="field">
                   <span>Name</span>
                   <input v-model="site.name" type="text" placeholder="facile.studio">
@@ -421,8 +627,6 @@ onMounted(() => {
                   <span>Interval</span>
                   <input v-model.number="site.interval" type="number" min="1" step="1">
                 </label>
-
-                <button class="danger" type="button" @click="removeSite(index)">Remove</button>
               </article>
             </div>
           </section>
@@ -482,6 +686,13 @@ onMounted(() => {
 
 .providers {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.delivery-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 1rem;
 }
 
 .status-grid {
@@ -596,6 +807,39 @@ onMounted(() => {
   font-size: 0.95rem;
 }
 
+.list-editor {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.list-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface-strong);
+}
+
+.chip-remove {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+}
+
 input {
   width: 100%;
   border: 1px solid var(--nook-border);
@@ -685,6 +929,7 @@ button:disabled {
   gap: 0.9rem;
 }
 
+.site-draft,
 .site {
   display: grid;
   grid-template-columns: 1.1fr 2fr 0.7fr auto;
@@ -694,6 +939,32 @@ button:disabled {
   border-radius: 1.1rem;
   background: var(--nook-surface-strong);
   border: 1px solid var(--nook-border);
+}
+
+.site {
+  grid-template-columns: 1fr 1fr 2fr 0.7fr;
+}
+
+.site-header {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.site-title span {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--nook-muted);
+  word-break: break-all;
+}
+
+.site-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .empty,
@@ -723,7 +994,9 @@ button:disabled {
   .hero,
   .layout,
   .providers,
+  .delivery-grid,
   .status-grid,
+  .site-draft,
   .site {
     grid-template-columns: 1fr;
   }
@@ -738,6 +1011,18 @@ button:disabled {
 
   .sidebar {
     position: static;
+  }
+
+  .list-input {
+    grid-template-columns: 1fr;
+  }
+
+  .site-header {
+    flex-direction: column;
+  }
+
+  .site-actions {
+    justify-content: flex-start;
   }
 }
 </style>

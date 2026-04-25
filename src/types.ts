@@ -13,14 +13,33 @@ export interface SiteState {
   inFlight: boolean;
 }
 
-export interface MatrixConfig {
+export interface MatrixDeliveryConfig {
+  enabled: boolean;
   homeserver: string;
   accessToken: string;
   roomIds: string[];
 }
 
+export interface DiscordDeliveryConfig {
+  enabled: boolean;
+  webhookUrl: string;
+}
+
+export interface HttpDeliveryConfig {
+  enabled: boolean;
+  url: string;
+  secretHeader: string | null;
+  secretValue: string | null;
+}
+
+export interface DeliveryConfig {
+  matrix: MatrixDeliveryConfig;
+  discord: DiscordDeliveryConfig;
+  webhook: HttpDeliveryConfig;
+}
+
 export interface AppSettings {
-  matrix: MatrixConfig;
+  delivery: DeliveryConfig;
   timeout: number;
   sites: SiteConfig[];
   webhook: WebhookConfig;

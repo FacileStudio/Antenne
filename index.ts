@@ -1,5 +1,5 @@
 import { createMonitorManager } from "./src/monitor";
-import { hasMatrixConfig, sendAlert } from "./src/matrix";
+import { hasAnyDelivery, hasMatrixDelivery, sendAlert } from "./src/delivery";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
 import {
   createInitialRuntimeStatus,
@@ -20,11 +20,11 @@ const session = createDashboardSessionConfig();
 
 async function sendConfiguredAlert(message: string) {
   const settings = store.getSettings();
-  if (!hasMatrixConfig(settings.matrix)) {
-    throw new Error("Matrix config incomplete. Fill homeserver, access token, and room IDs first.");
+  if (!hasAnyDelivery(settings.delivery)) {
+    throw new Error("No delivery channel configured. Fill Matrix, Discord, or HTTP webhook settings first.");
   }
 
-  await sendAlert(settings.matrix, message);
+  await sendAlert(settings.delivery, message);
 }
 
 const monitorManager = createMonitorManager(async (message) => {
@@ -61,19 +61,19 @@ console.log(`[startup] settings path: ${settingsPath}`);
 console.log(`[startup] persisted settings: ${store.isUsingPersistedSettings() ? "yes" : "no"}`);
 console.log(`[startup] dashboard: ${runtimeStatus.dashboardBuilt ? "built" : "not built"}`);
 console.log(`[startup] server port: ${serverPort}`);
-console.log(`[startup] room(s): ${settings.matrix.roomIds.join(", ") || "none configured"}`);
+console.log(`[startup] room(s): ${settings.delivery.matrix.roomIds.join(", ") || "none configured"}`);
 console.log(`[startup] monitoring ${settings.sites.length} site(s)`);
 console.log(`[startup] webhook: ${settings.webhook.enabled ? "enabled" : "disabled"}`);
 
-if (hasMatrixConfig(settings.matrix)) {
+if (hasAnyDelivery(settings.delivery)) {
   try {
     await sendConfiguredAlert("🟢 <b>Nook started</b><br/>Dashboard and API ready.");
-    console.log("[startup] Matrix startup message sent");
+    console.log("[startup] Startup notification sent");
   } catch (error) {
-    console.error(`[startup] Failed to send Matrix startup message: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[startup] Failed to send startup notification: ${error instanceof Error ? error.message : String(error)}`);
   }
 } else {
-  console.warn("[startup] Matrix is not configured yet. Dashboard will still start.");
+  console.warn("[startup] No delivery channel is configured yet. Dashboard will still start.");
 }
 
 Bun.serve({

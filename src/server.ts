@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 
-import { hasMatrixConfig } from "./matrix";
+import { hasMatrixDelivery } from "./delivery";
 import type { AppSettings, DashboardSessionConfig, RuntimeStatus } from "./types";
 import { handleWebhookRequest } from "./webhooks";
 
@@ -265,10 +265,10 @@ export function createAppServer(options: {
 
       if (url.pathname === "/api/settings" && req.method === "GET") {
         return createJsonResponse({
-          settings: options.getSettings(),
-          runtime: options.getRuntimeStatus(),
-          matrixConfigured: hasMatrixConfig(options.getSettings().matrix),
-        });
+            settings: options.getSettings(),
+            runtime: options.getRuntimeStatus(),
+            matrixConfigured: hasMatrixDelivery(options.getSettings().delivery.matrix),
+          });
       }
 
       if (url.pathname === "/api/settings" && req.method === "PUT") {
@@ -278,7 +278,7 @@ export function createAppServer(options: {
           return createJsonResponse({
             settings,
             runtime: options.getRuntimeStatus(),
-            matrixConfigured: hasMatrixConfig(settings.matrix),
+            matrixConfigured: hasMatrixDelivery(settings.delivery.matrix),
           });
         } catch (error) {
           return createJsonResponse({ error: error instanceof Error ? error.message : "failed to save" }, { status: 400 });

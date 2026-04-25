@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 
 import { loadConfig } from "./config";
-import { loadMatrixConfigFromEnv } from "./matrix";
+import { loadDeliveryConfigFromEnv } from "./delivery";
 import type { AppSettings, RuntimeStatus } from "./types";
 import type { WebhookConfig, WebhookProviderId, WebhookProviderSettings } from "./webhooks/types";
 
@@ -27,6 +27,42 @@ function normalizeRoomIds(value: unknown): string[] {
   }
 
   return [];
+}
+
+function normalizeDeliveryConfig(input: unknown, fallback: AppSettings["delivery"]): AppSettings["delivery"] {
+  const candidate = input && typeof input === "object" ? input as Partial<AppSettings["delivery"]> : {};
+  const matrix = candidate.matrix && typeof candidate.matrix === "object"
+    ? candidate.matrix as Partial<AppSettings["delivery"]["matrix"]>
+    : {};
+  const discord = candidate.discord && typeof candidate.discord === "object"
+    ? candidate.discord as Partial<AppSettings["delivery"]["discord"]>
+    : {};
+  const webhook = candidate.webhook && typeof candidate.webhook === "object"
+    ? candidate.webhook as Partial<AppSettings["delivery"]["webhook"]>
+    : {};
+
+  return {
+    matrix: {
+      enabled: typeof matrix.enabled === "boolean" ? matrix.enabled : fallback.matrix.enabled,
+      homeserver: "homeserver" in matrix ? normalizeString(matrix.homeserver) : fallback.matrix.homeserver,
+      accessToken: "accessToken" in matrix ? normalizeString(matrix.accessToken) : fallback.matrix.accessToken,
+      roomIds: "roomIds" in matrix ? normalizeRoomIds(matrix.roomIds) : fallback.matrix.roomIds,
+    },
+    discord: {
+      enabled: typeof discord.enabled === "boolean" ? discord.enabled : fallback.discord.enabled,
+      webhookUrl: "webhookUrl" in discord ? normalizeString(discord.webhookUrl) : fallback.discord.webhookUrl,
+    },
+    webhook: {
+      enabled: typeof webhook.enabled === "boolean" ? webhook.enabled : fallback.webhook.enabled,
+      url: "url" in webhook ? normalizeString(webhook.url) : fallback.webhook.url,
+      secretHeader: "secretHeader" in webhook
+        ? (normalizeString(webhook.secretHeader) || null)
+        : fallback.webhook.secretHeader,
+      secretValue: "secretValue" in webhook
+        ? (normalizeString(webhook.secretValue) || null)
+        : fallback.webhook.secretValue,
+    },
+  };
 }
 
 function normalizeString(value: unknown): string {
@@ -92,9 +128,6 @@ function normalizeWebhookConfig(input: unknown, fallback: WebhookConfig): Webhoo
 
 export function normalizeAppSettings(input: unknown, fallback: AppSettings): AppSettings {
   const candidate = input && typeof input === "object" ? input as Partial<AppSettings> : {};
-  const matrix = candidate.matrix && typeof candidate.matrix === "object"
-    ? candidate.matrix as Partial<AppSettings["matrix"]>
-    : {};
   const rawSites = Array.isArray(candidate.sites) ? candidate.sites : fallback.sites;
   const sites = rawSites.map((site, index) => {
     const parsed = site && typeof site === "object" ? site as Partial<AppSettings["sites"][number]> : {};
@@ -123,11 +156,7 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
   }
 
   return {
-    matrix: {
-      homeserver: "homeserver" in matrix ? normalizeString(matrix.homeserver) : fallback.matrix.homeserver,
-      accessToken: "accessToken" in matrix ? normalizeString(matrix.accessToken) : fallback.matrix.accessToken,
-      roomIds: "roomIds" in matrix ? normalizeRoomIds(matrix.roomIds) : fallback.matrix.roomIds,
-    },
+    delivery: normalizeDeliveryConfig(candidate.delivery, fallback.delivery),
     timeout,
     sites,
     webhook: normalizeWebhookConfig(candidate.webhook, fallback.webhook),
@@ -137,7 +166,7 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
 export async function loadDefaultSettings(): Promise<AppSettings> {
   const { config } = await loadConfig();
   return {
-    matrix: loadMatrixConfigFromEnv(),
+    delivery: loadDeliveryConfigFromEnv(),
     timeout: config.timeout,
     sites: config.sites,
     webhook: config.webhook,
