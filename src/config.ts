@@ -178,10 +178,6 @@ function normalizeConfig(rawConfig: RawConfig): Config {
     throw new Error("Configuration file must contain a YAML object.");
   }
 
-  if (!Array.isArray(rawConfig.sites) || rawConfig.sites.length === 0) {
-    throw new Error("Configuration must define at least one site under `sites`.");
-  }
-
   const timeout = rawConfig.timeout ?? defaultTimeoutSeconds;
   if (!isPositiveNumber(timeout)) {
     throw new Error("Configuration `timeout` must be a positive number.");
@@ -192,7 +188,9 @@ function normalizeConfig(rawConfig: RawConfig): Config {
     throw new Error("Configuration `every` must be a positive number.");
   }
 
-  const sites = rawConfig.sites.map((site, index) => {
+  const rawSites = Array.isArray(rawConfig.sites) ? rawConfig.sites : [];
+
+  const sites = rawSites.map((site, index) => {
     const siteConfig = typeof site === "string" ? { url: site } : site;
     const url = siteConfig.url?.trim();
     const interval = siteConfig.every ?? siteConfig.interval ?? defaultInterval;
@@ -215,8 +213,9 @@ function normalizeConfig(rawConfig: RawConfig): Config {
   });
 
   const rawWebhook = rawConfig.webhook;
+  const webhookEnabledDefault = sites.length === 0;
   const webhook: WebhookConfig = {
-    enabled: rawWebhook?.enabled ?? false,
+    enabled: rawWebhook?.enabled ?? webhookEnabledDefault,
     port: rawWebhook?.port ?? defaultWebhookPort,
   };
 
@@ -264,7 +263,9 @@ export async function loadConfig() {
     };
   }
 
-  throw new Error(
-    `Configuration file missing. Please provide a config.yml at ${configPath} or include config.example.yml in the app directory.`
-  );
+  console.warn("[startup] No config file found. Using defaults (webhook-only mode).");
+  return {
+    config: normalizeConfig({}),
+    resolvedPath: null,
+  };
 }
