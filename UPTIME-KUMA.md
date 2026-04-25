@@ -14,6 +14,8 @@ Set these in Dokploy's environment settings for the Nook service:
 | `MATRIX_ACCESS_TOKEN` | Yes | Bot access token |
 | `MATRIX_ROOM_IDS` | Yes | Comma-separated room IDs (e.g. `!abc:matrix.example.com`) |
 | `WEBHOOK_SECRET` | Recommended | A random secret string shared with Uptime Kuma |
+| `WEBHOOK_ENABLED` | No | `true` or `false` — overrides auto-detection |
+| `WEBHOOK_PORT` | No | Webhook listener port (default: `9090`) |
 
 No `config.yml` is needed. Nook auto-enables the webhook server when no sites are configured.
 

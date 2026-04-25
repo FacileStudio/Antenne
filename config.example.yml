@@ -1,22 +1,14 @@
-timeout: 10
-every: 60
-
-webhook:
-  enabled: true
-  port: 9090
-
-sites:
-  - https://facile.studio
-  - https://portail.facile.studio
-  - https://gare.facile.studio
-  - https://abeille.facile.studio
-  - https://miel.facile.studio
-  - https://automate.facile.studio
-  - https://sign.facile.studio
-  - https://nuage.facile.studio
-  - https://stats.facile.studio
-  - https://coffre.facile.studio
-  - https://lauraherve.com
-  - https://api.lauraherve.com
-  - https://backoffice.lauraherve.com
-  - https://marcel.my
+- https://facile.studio
+- https://portail.facile.studio
+- https://gare.facile.studio
+- https://abeille.facile.studio
+- https://miel.facile.studio
+- https://automate.facile.studio
+- https://sign.facile.studio
+- https://nuage.facile.studio
+- https://stats.facile.studio
+- https://coffre.facile.studio
+- https://lauraherve.com
+- https://api.lauraherve.com
+- https://backoffice.lauraherve.com
+- https://marcel.my

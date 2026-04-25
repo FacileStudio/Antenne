@@ -87,7 +87,11 @@ function parseSimpleYamlConfig(text: string): RawConfig {
 
     const indent = rawLine.length - rawLine.trimStart().length;
 
-    if (indent === 0) {
+    if (indent === 0 && trimmed.startsWith("- ")) {
+      inSites = true;
+    }
+
+    if (indent === 0 && !trimmed.startsWith("- ")) {
       pushCurrentSite();
 
       if (trimmed === "sites:") {
@@ -103,10 +107,6 @@ function parseSimpleYamlConfig(text: string): RawConfig {
 
     if (!inSites) {
       throw new Error(`Unexpected indentation outside \`sites\`: ${trimmed}`);
-    }
-
-    if (indent < 2) {
-      throw new Error(`Invalid site indentation: ${trimmed}`);
     }
 
     if (trimmed.startsWith("- ")) {
@@ -149,14 +149,28 @@ function parseSimpleYamlConfig(text: string): RawConfig {
   return rawConfig;
 }
 
+function coerceToRawConfig(parsed: unknown): RawConfig {
+  if (Array.isArray(parsed)) {
+    return { sites: parsed.map((item) => String(item)) };
+  }
+  if (parsed && typeof parsed === "object") {
+    return parsed as RawConfig;
+  }
+  return {};
+}
+
 function parseRawConfig(text: string, path: string): RawConfig {
   if (path.endsWith(".json")) {
     throw new Error(`JSON config is no longer supported at ${path}. Use config.yml instead.`);
   }
 
   const normalizedText = text.replace(/^\uFEFF/, "").trim();
+  if (!normalizedText) {
+    return {};
+  }
+
   const parsers = [
-    () => Bun.YAML.parse(normalizedText),
+    () => coerceToRawConfig(Bun.YAML.parse(normalizedText)),
     () => parseSimpleYamlConfig(normalizedText),
   ];
 
@@ -164,7 +178,7 @@ function parseRawConfig(text: string, path: string): RawConfig {
 
   for (const parse of parsers) {
     try {
-      return parse() as RawConfig;
+      return parse();
     } catch (error) {
       errors.push(error instanceof Error ? error.message : "unknown parse error");
     }
@@ -178,12 +192,14 @@ function normalizeConfig(rawConfig: RawConfig): Config {
     throw new Error("Configuration file must contain a YAML object.");
   }
 
-  const timeout = rawConfig.timeout ?? defaultTimeoutSeconds;
+  const envTimeout = process.env.TIMEOUT ? Number(process.env.TIMEOUT) : undefined;
+  const timeout = envTimeout ?? rawConfig.timeout ?? defaultTimeoutSeconds;
   if (!isPositiveNumber(timeout)) {
     throw new Error("Configuration `timeout` must be a positive number.");
   }
 
-  const defaultInterval = rawConfig.every ?? rawConfig.interval ?? defaultIntervalSeconds;
+  const envInterval = process.env.EVERY ? Number(process.env.EVERY) : undefined;
+  const defaultInterval = envInterval ?? rawConfig.every ?? rawConfig.interval ?? defaultIntervalSeconds;
   if (!isPositiveNumber(defaultInterval)) {
     throw new Error("Configuration `every` must be a positive number.");
   }
@@ -214,9 +230,13 @@ function normalizeConfig(rawConfig: RawConfig): Config {
 
   const rawWebhook = rawConfig.webhook;
   const webhookEnabledDefault = sites.length === 0;
+  const envWebhookEnabled = process.env.WEBHOOK_ENABLED !== undefined
+    ? process.env.WEBHOOK_ENABLED === "true"
+    : undefined;
+  const envWebhookPort = process.env.WEBHOOK_PORT ? Number(process.env.WEBHOOK_PORT) : undefined;
   const webhook: WebhookConfig = {
-    enabled: rawWebhook?.enabled ?? webhookEnabledDefault,
-    port: rawWebhook?.port ?? defaultWebhookPort,
+    enabled: envWebhookEnabled ?? rawWebhook?.enabled ?? webhookEnabledDefault,
+    port: envWebhookPort ?? rawWebhook?.port ?? defaultWebhookPort,
   };
 
   if (!isPositiveNumber(webhook.port) || !Number.isInteger(webhook.port)) {

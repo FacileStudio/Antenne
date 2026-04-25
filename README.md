@@ -21,28 +21,22 @@ Lightweight uptime monitor that sends alerts to Matrix rooms. Built with Bun.
 | `MATRIX_ROOM_IDS` | Yes | Comma-separated room IDs (also accepts `MATRIX_ROOM_ID`) |
 | `CONFIG_PATH` | No | Config file path (default: `/data/config.yml`) |
 | `WEBHOOK_SECRET` | No | Secret for authenticating incoming webhooks |
+| `WEBHOOK_ENABLED` | No | `true` or `false` — overrides config and auto-detection |
+| `WEBHOOK_PORT` | No | Webhook listener port (default: `9090`) |
+| `TIMEOUT` | No | HTTP request timeout in seconds (default: `10`) |
+| `EVERY` | No | Default check interval in seconds (default: `60`) |
 
 ### Configuration
 
+The config file is a simple list of URLs to monitor:
+
 ```yaml
-timeout: 10
-every: 60
-
-webhook:
-  enabled: true
-  port: 9090
-
-sites:
-  - https://example.com
-  - name: My API
-    url: https://api.example.com
-    every: 30
+- https://example.com
+- https://api.example.com
+- https://status.example.com
 ```
 
-- `timeout` — HTTP request timeout in seconds (default: 10)
-- `every` — default check interval in seconds (default: 60), overridable per site
-- `webhook.enabled` — start the webhook HTTP server
-- `webhook.port` — webhook listener port (default: 9090)
+All other settings (timeout, interval, webhook) are configured via environment variables.
 
 ### Run
 
@@ -58,7 +52,7 @@ docker run -d \
   -e MATRIX_HOMESERVER=https://matrix.example.com \
   -e MATRIX_ACCESS_TOKEN=syt_... \
   -e MATRIX_ROOM_IDS='!room1:example.com,!room2:example.com' \
-  -v ./config.yml:/data/config.yml \
+  -v ./config.yml:/data/config.yml:ro \
   nook
 ```
 
@@ -90,12 +84,15 @@ docker run -d \
 
 ### How It Decides
 
+Environment variables take precedence over config file values.
+
 | Config state | Webhook default |
 |---|---|
+| `WEBHOOK_ENABLED=true` or `false` | Respected (highest priority) |
 | No config file | Enabled |
 | Config with no `sites` | Enabled |
 | Config with `sites`, no `webhook` key | Disabled |
-| Explicit `webhook.enabled: true/false` | Respected |
+| Explicit `webhook.enabled: true/false` in YAML | Respected |
 
 ### Endpoints
 
