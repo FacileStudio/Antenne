@@ -1,87 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
-import {
-  ArrowDown,
-  ArrowUp,
-  Copy,
-  LogOut,
-  Plus,
-  Save,
-  Send,
-  Trash2,
-  X,
-} from "lucide-vue-next";
+import { LogOut, Save, Send } from "lucide-vue-next";
 
-type WebhookProviderId = "uptime-kuma" | "docuseal";
-
-interface SiteConfig {
-  name: string;
-  url: string;
-  interval: number;
-}
-
-interface MatrixConfig {
-  enabled: boolean;
-  homeserver: string;
-  accessToken: string;
-  roomIds: string[];
-}
-
-interface DiscordDeliveryConfig {
-  enabled: boolean;
-  webhookUrl: string;
-}
-
-interface HttpDeliveryConfig {
-  enabled: boolean;
-  url: string;
-  secretHeader: string | null;
-  secretValue: string | null;
-}
-
-interface WebhookProviderSettings {
-  enabled: boolean;
-  path: string;
-  secretHeader: string | null;
-  secretValue: string | null;
-}
-
-interface AppSettings {
-  delivery: {
-    matrix: MatrixConfig;
-    discord: DiscordDeliveryConfig;
-    webhook: HttpDeliveryConfig;
-  };
-  timeout: number;
-  sites: SiteConfig[];
-  webhook: {
-    enabled: boolean;
-    port: number;
-    providers: Record<WebhookProviderId, WebhookProviderSettings>;
-  };
-}
-
-interface RuntimeStatus {
-  serverPort: number;
-  settingsPath: string;
-  usingPersistedSettings: boolean;
-  dashboardBuilt: boolean;
-  lastReloadedAt: string;
-}
+import AppSidebar from "./components/AppSidebar.vue";
+import RoomIdEditor from "./components/RoomIdEditor.vue";
+import SectionCard from "./components/SectionCard.vue";
+import SiteListEditor from "./components/SiteListEditor.vue";
+import StatusGrid from "./components/StatusGrid.vue";
+import type { AppSettings, RuntimeStatus, WebhookProviderId } from "./types";
 
 const loading = ref(true);
 const saving = ref(false);
 const testing = ref(false);
 const error = ref("");
 const success = ref("");
-const roomIdDraft = ref("");
 const runtime = ref<RuntimeStatus | null>(null);
 const matrixConfigured = ref(false);
-const newSite = reactive<SiteConfig>({
-  name: "",
-  url: "https://",
-  interval: 60,
-});
+
 const settings = reactive<AppSettings>({
   delivery: {
     matrix: {
@@ -197,7 +132,7 @@ async function saveSettings() {
     cloneFromPayload(payload.settings);
     runtime.value = payload.runtime;
     matrixConfigured.value = payload.matrixConfigured;
-    success.value = "Settings saved. Runtime reloaded."
+    success.value = "Settings saved. Runtime reloaded.";
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : "Failed to save settings";
   } finally {
@@ -215,7 +150,7 @@ async function sendTestAlert() {
       method: "POST",
       body: JSON.stringify({}),
     });
-    success.value = "Test alert sent."
+    success.value = "Test alert sent.";
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : "Failed to send test alert";
   } finally {
@@ -231,97 +166,61 @@ async function logout() {
   window.location.href = "/dashboard";
 }
 
-function resetNewSite() {
-  newSite.name = "";
-  newSite.url = "https://";
-  newSite.interval = 60;
-}
-
-function addSiteFromDraft() {
-  const url = newSite.url.trim();
-  if (!url || url === "https://") {
-    error.value = "Site URL is required.";
-    success.value = "";
-    return;
-  }
-
-  settings.sites.push({
-    name: newSite.name.trim(),
-    url,
-    interval: newSite.interval,
-  });
-  resetNewSite();
-  error.value = "";
-}
-
-function addBlankSite() {
-  settings.sites.push({
-    name: "",
-    url: "https://",
-    interval: 60,
-  });
-}
-
-function removeSite(index: number) {
-  settings.sites.splice(index, 1);
-}
-
-function moveSite(index: number, direction: -1 | 1) {
-  const targetIndex = index + direction;
-  if (targetIndex < 0 || targetIndex >= settings.sites.length) {
-    return;
-  }
-
-  const [site] = settings.sites.splice(index, 1);
-  settings.sites.splice(targetIndex, 0, site);
-}
-
-function duplicateSite(index: number) {
-  const site = settings.sites[index];
-  if (!site) {
-    return;
-  }
-
-  settings.sites.splice(index + 1, 0, {
-    ...site,
-    name: site.name ? `${site.name} copy` : "",
-  });
-}
-
-function addRoomId() {
-  const roomId = roomIdDraft.value.trim();
-  if (!roomId) {
-    return;
-  }
-
-  if (!settings.delivery.matrix.roomIds.includes(roomId)) {
-    settings.delivery.matrix.roomIds.push(roomId);
-  }
-
-  roomIdDraft.value = "";
-}
-
-function removeRoomId(index: number) {
-  settings.delivery.matrix.roomIds.splice(index, 1);
-}
-
-const providerCards = computed(() => [
-  {
-    id: "uptime-kuma" as const,
-    label: "Uptime Kuma",
-  },
-  {
-    id: "docuseal" as const,
-    label: "DocuSeal",
-  },
-]);
-
 const sections = [
-  { id: "overview", label: "Overview" },
   { id: "delivery", label: "Delivery" },
   { id: "webhooks", label: "Webhooks" },
   { id: "sites", label: "Sites" },
+  { id: "info", label: "Info" },
 ] as const;
+
+const sidebarInfoItems = computed(() => [
+  {
+    label: "Delivery",
+    value: [
+      settings.delivery.matrix.enabled && settings.delivery.matrix.roomIds.length > 0 ? "Matrix" : null,
+      settings.delivery.discord.enabled && settings.delivery.discord.webhookUrl ? "Discord" : null,
+      settings.delivery.webhook.enabled && settings.delivery.webhook.url ? "HTTP" : null,
+    ].filter(Boolean).join(", ") || "Not configured",
+  },
+  {
+    label: "Sites",
+    value: `${settings.sites.length}`,
+  },
+  {
+    label: "Status",
+    value: runtime.value?.usingPersistedSettings ? "Saved settings" : "Defaults",
+  },
+]);
+
+const infoItems = computed(() => [
+  {
+    label: "Server port",
+    value: runtime.value?.serverPort ? String(runtime.value.serverPort) : "Unknown",
+  },
+  {
+    label: "Settings file",
+    value: runtime.value?.settingsPath ?? "Unknown",
+  },
+  {
+    label: "Source",
+    value: runtime.value?.usingPersistedSettings ? "Dashboard override" : "Env/YAML defaults",
+  },
+  {
+    label: "Reloaded",
+    value: runtime.value?.lastReloadedAt ?? "Unknown",
+  },
+]);
+
+const providerCards = computed(() => [
+  {
+    id: "uptime-kuma" as const satisfies WebhookProviderId,
+    label: "Uptime Kuma",
+  },
+  {
+    id: "docuseal" as const satisfies WebhookProviderId,
+    label: "DocuSeal",
+  },
+]);
 
 onMounted(() => {
   void loadSettings();
@@ -330,345 +229,169 @@ onMounted(() => {
 
 <template>
   <main class="shell">
-    <section class="hero">
-      <div>
+    <header class="topbar">
+      <div class="topbar-copy">
         <p class="eyebrow">Nook</p>
         <h1>Settings</h1>
       </div>
 
-      <div class="hero-actions">
-        <button class="ghost icon-button" type="button" @click="logout">
-          <LogOut :size="16" aria-hidden="true" />
-          <span>Logout</span>
-        </button>
-        <button class="secondary" type="button" :disabled="testing || loading" @click="sendTestAlert">
+      <div class="topbar-actions">
+        <button class="secondary action-button" type="button" :disabled="testing || loading" @click="sendTestAlert">
           <Send :size="16" aria-hidden="true" />
           <span>{{ testing ? "Sending..." : "Send test alert" }}</span>
         </button>
-        <button class="primary" type="button" :disabled="saving || loading" @click="saveSettings">
+        <button class="primary action-button" type="button" :disabled="saving || loading" @click="saveSettings">
           <Save :size="16" aria-hidden="true" />
           <span>{{ saving ? "Saving..." : "Save settings" }}</span>
         </button>
       </div>
-    </section>
-
-    <section v-if="runtime" class="status-grid">
-      <article class="status-card">
-        <span>Server port</span>
-        <strong>{{ runtime.serverPort }}</strong>
-      </article>
-      <article class="status-card">
-        <span>Settings file</span>
-        <strong>{{ runtime.settingsPath }}</strong>
-      </article>
-      <article class="status-card">
-        <span>Source</span>
-        <strong>{{ runtime.usingPersistedSettings ? "Dashboard override" : "Env/YAML defaults" }}</strong>
-      </article>
-      <article class="status-card">
-        <span>Matrix</span>
-        <strong>{{ matrixConfigured ? "Configured" : "Missing pieces" }}</strong>
-      </article>
-    </section>
+    </header>
 
     <p v-if="error" class="banner error">{{ error }}</p>
     <p v-if="success" class="banner success">{{ success }}</p>
 
-    <section v-if="loading" class="loading-card">
+    <section v-if="loading" class="panel loading-card">
       Loading dashboard...
     </section>
 
     <template v-else>
       <section class="layout">
-        <aside class="sidebar panel">
-          <nav class="sidebar-nav" aria-label="Settings sections">
-            <a
-              v-for="section in sections"
-              :key="section.id"
-              class="sidebar-link"
-              :href="`#${section.id}`"
-            >
-              {{ section.label }}
-            </a>
-          </nav>
-
-          <div class="sidebar-meta">
-            <div>
-              <span>Source</span>
-              <strong>{{ runtime?.usingPersistedSettings ? "Dashboard override" : "Env/YAML defaults" }}</strong>
-            </div>
-            <div>
-              <span>Matrix</span>
-              <strong>{{ matrixConfigured ? "Configured" : "Missing pieces" }}</strong>
-            </div>
-            <div>
-              <span>Discord</span>
-              <strong>{{ settings.delivery.discord.enabled && settings.delivery.discord.webhookUrl ? "Configured" : "Disabled" }}</strong>
-            </div>
-            <div>
-              <span>Port</span>
-              <strong>{{ runtime?.serverPort }}</strong>
-            </div>
-          </div>
-        </aside>
+        <AppSidebar :sections="sections" :info-items="sidebarInfoItems">
+          <template #footer>
+            <button class="ghost action-button sidebar-logout" type="button" @click="logout">
+              <LogOut :size="16" aria-hidden="true" />
+              <span>Logout</span>
+            </button>
+          </template>
+        </AppSidebar>
 
         <div class="content">
-          <section id="overview" class="panel section-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Overview</p>
-                <h2>Runtime</h2>
-              </div>
-            </div>
-
-            <div class="status-grid compact">
-              <article class="status-card">
-                <span>Server port</span>
-                <strong>{{ runtime?.serverPort }}</strong>
-              </article>
-              <article class="status-card">
-                <span>Settings file</span>
-                <strong>{{ runtime?.settingsPath }}</strong>
-              </article>
-              <article class="status-card">
-                <span>Dashboard bundle</span>
-                <strong>{{ runtime?.dashboardBuilt ? "Built" : "Missing" }}</strong>
-              </article>
-              <article class="status-card">
-                <span>Reloaded</span>
-                <strong>{{ runtime?.lastReloadedAt }}</strong>
-              </article>
-            </div>
-          </section>
-
-          <section id="delivery" class="panel section-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Delivery</p>
-                <h2>Targets</h2>
-              </div>
-            </div>
-
+          <SectionCard id="delivery" eyebrow="Delivery" title="Targets">
             <div class="delivery-grid">
-              <article class="provider">
-                <div class="provider-head">
+              <article class="panel nested-panel">
+                <div class="card-header">
                   <h3>Matrix</h3>
                   <label class="toggle">
                     <input v-model="settings.delivery.matrix.enabled" type="checkbox">
-                    <span>{{ settings.delivery.matrix.enabled ? "Enabled" : "Disabled" }}</span>
+                    <span>Enabled</span>
                   </label>
                 </div>
 
-                <label class="field">
-                  <span>Homeserver</span>
-                  <input v-model="settings.delivery.matrix.homeserver" type="url" placeholder="https://matrix.example.com">
-                </label>
+                <div class="field-list">
+                  <label class="field">
+                    <span>Homeserver</span>
+                    <input v-model="settings.delivery.matrix.homeserver" type="url" placeholder="https://matrix.example.com">
+                  </label>
 
-                <label class="field">
-                  <span>Access token</span>
-                  <input v-model="settings.delivery.matrix.accessToken" type="password" placeholder="syt_xxx">
-                </label>
+                  <label class="field">
+                    <span>Access token</span>
+                    <input v-model="settings.delivery.matrix.accessToken" type="password" placeholder="syt_xxx">
+                  </label>
 
-                <label class="field">
-                  <span>Room IDs</span>
-                  <div class="list-editor">
-                    <div v-if="settings.delivery.matrix.roomIds.length > 0" class="chip-list">
-                      <span
-                        v-for="(roomId, index) in settings.delivery.matrix.roomIds"
-                        :key="roomId"
-                        class="chip"
-                      >
-                        <span>{{ roomId }}</span>
-                        <button class="chip-remove icon-only-button" type="button" aria-label="Remove room" @click="removeRoomId(index)">
-                          <X :size="14" aria-hidden="true" />
-                        </button>
-                      </span>
-                    </div>
-
-                    <div class="list-input">
-                      <input
-                        v-model="roomIdDraft"
-                        type="text"
-                        placeholder="!room:example.com"
-                        @keydown.enter.prevent="addRoomId"
-                      >
-                      <button class="secondary icon-button" type="button" @click="addRoomId">
-                        <Plus :size="16" aria-hidden="true" />
-                        <span>Add room</span>
-                      </button>
-                    </div>
-                  </div>
-                </label>
+                  <label class="field">
+                    <span>Room IDs</span>
+                    <RoomIdEditor v-model="settings.delivery.matrix.roomIds" />
+                  </label>
+                </div>
               </article>
 
-              <article class="provider">
-                <div class="provider-head">
+              <article class="panel nested-panel">
+                <div class="card-header">
                   <h3>Discord webhook</h3>
                   <label class="toggle">
                     <input v-model="settings.delivery.discord.enabled" type="checkbox">
-                    <span>{{ settings.delivery.discord.enabled ? "Enabled" : "Disabled" }}</span>
+                    <span>Enabled</span>
                   </label>
                 </div>
 
-                <label class="field">
-                  <span>Webhook URL</span>
-                  <input v-model="settings.delivery.discord.webhookUrl" type="url" placeholder="https://discord.com/api/webhooks/...">
-                </label>
+                <div class="field-list">
+                  <label class="field">
+                    <span>Webhook URL</span>
+                    <input v-model="settings.delivery.discord.webhookUrl" type="url" placeholder="https://discord.com/api/webhooks/...">
+                  </label>
+                </div>
               </article>
 
-              <article class="provider">
-                <div class="provider-head">
+              <article class="panel nested-panel">
+                <div class="card-header">
                   <h3>HTTP(S) webhook</h3>
                   <label class="toggle">
                     <input v-model="settings.delivery.webhook.enabled" type="checkbox">
-                    <span>{{ settings.delivery.webhook.enabled ? "Enabled" : "Disabled" }}</span>
+                    <span>Enabled</span>
                   </label>
                 </div>
 
-                <label class="field">
-                  <span>Webhook URL</span>
-                  <input v-model="settings.delivery.webhook.url" type="url" placeholder="https://example.com/hooks/nook">
-                </label>
+                <div class="field-list">
+                  <label class="field">
+                    <span>Webhook URL</span>
+                    <input v-model="settings.delivery.webhook.url" type="url" placeholder="https://example.com/hooks/nook">
+                  </label>
 
-                <label class="field">
-                  <span>Secret header</span>
-                  <input v-model="settings.delivery.webhook.secretHeader" type="text" placeholder="x-nook-secret">
-                </label>
+                  <label class="field">
+                    <span>Secret header</span>
+                    <input v-model="settings.delivery.webhook.secretHeader" type="text" placeholder="x-nook-secret">
+                  </label>
 
-                <label class="field">
-                  <span>Secret value</span>
-                  <input v-model="settings.delivery.webhook.secretValue" type="password">
-                </label>
+                  <label class="field">
+                    <span>Secret value</span>
+                    <input v-model="settings.delivery.webhook.secretValue" type="password">
+                  </label>
+                </div>
               </article>
             </div>
 
-            <label class="field">
+            <label class="field timeout-field">
               <span>Timeout in seconds</span>
               <input v-model.number="settings.timeout" type="number" min="1" step="1">
             </label>
-          </section>
+          </SectionCard>
 
-          <section id="webhooks" class="panel section-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Webhooks</p>
-                <h2>Providers</h2>
-              </div>
-            </div>
-
-            <div class="providers">
+          <SectionCard id="webhooks" eyebrow="Webhooks" title="Providers">
+            <div class="provider-grid">
               <article
                 v-for="provider in providerCards"
                 :key="provider.id"
-                class="provider"
+                class="panel nested-panel"
               >
-                <div class="provider-head">
+                <div class="card-header">
                   <h3>{{ provider.label }}</h3>
                   <label class="toggle">
                     <input v-model="settings.webhook.providers[provider.id].enabled" type="checkbox">
-                    <span>{{ settings.webhook.providers[provider.id].enabled ? "Enabled" : "Disabled" }}</span>
+                    <span>Enabled</span>
                   </label>
                 </div>
 
-                <label class="field">
-                  <span>Path</span>
-                  <input v-model="settings.webhook.providers[provider.id].path" type="text">
-                </label>
+                <div class="field-list">
+                  <label class="field">
+                    <span>Path</span>
+                    <input v-model="settings.webhook.providers[provider.id].path" type="text">
+                  </label>
 
-                <label class="field">
-                  <span>Secret header</span>
-                  <input v-model="settings.webhook.providers[provider.id].secretHeader" type="text">
-                </label>
+                  <label class="field">
+                    <span>Secret header</span>
+                    <input v-model="settings.webhook.providers[provider.id].secretHeader" type="text">
+                  </label>
 
-                <label class="field">
-                  <span>Secret value</span>
-                  <input v-model="settings.webhook.providers[provider.id].secretValue" type="password">
-                </label>
-              </article>
-            </div>
-          </section>
-
-          <section id="sites" class="panel section-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">Monitoring</p>
-                <h2>Sites</h2>
-              </div>
-              <button class="secondary icon-button" type="button" @click="addBlankSite">
-                <Plus :size="16" aria-hidden="true" />
-                <span>Add blank</span>
-              </button>
-            </div>
-
-            <article class="site-draft">
-              <label class="field">
-                <span>Name</span>
-                <input v-model="newSite.name" type="text" placeholder="facile.studio">
-              </label>
-
-              <label class="field wide">
-                <span>URL</span>
-                <input v-model="newSite.url" type="url" placeholder="https://example.com">
-              </label>
-
-              <label class="field">
-                <span>Interval</span>
-                <input v-model.number="newSite.interval" type="number" min="1" step="1">
-              </label>
-
-              <button class="primary icon-button" type="button" @click="addSiteFromDraft">
-                <Plus :size="16" aria-hidden="true" />
-                <span>Add site</span>
-              </button>
-            </article>
-
-            <div v-if="settings.sites.length === 0" class="empty">No sites configured.</div>
-
-            <div v-else class="sites">
-              <article v-for="(site, index) in settings.sites" :key="`${site.url}-${index}`" class="site">
-                <div class="site-header">
-                  <div class="site-title">
-                    <strong>{{ site.name || `Site ${index + 1}` }}</strong>
-                    <span>{{ site.url || "No URL yet" }}</span>
-                  </div>
-
-                  <div class="site-actions">
-                    <button class="ghost icon-button" type="button" :disabled="index === 0" @click="moveSite(index, -1)">
-                      <ArrowUp :size="16" aria-hidden="true" />
-                      <span>Up</span>
-                    </button>
-                    <button class="ghost icon-button" type="button" :disabled="index === settings.sites.length - 1" @click="moveSite(index, 1)">
-                      <ArrowDown :size="16" aria-hidden="true" />
-                      <span>Down</span>
-                    </button>
-                    <button class="ghost icon-button" type="button" @click="duplicateSite(index)">
-                      <Copy :size="16" aria-hidden="true" />
-                      <span>Duplicate</span>
-                    </button>
-                    <button class="danger icon-button" type="button" @click="removeSite(index)">
-                      <Trash2 :size="16" aria-hidden="true" />
-                      <span>Remove</span>
-                    </button>
-                  </div>
+                  <label class="field">
+                    <span>Secret value</span>
+                    <input v-model="settings.webhook.providers[provider.id].secretValue" type="password">
+                  </label>
                 </div>
-
-                <label class="field">
-                  <span>Name</span>
-                  <input v-model="site.name" type="text" placeholder="facile.studio">
-                </label>
-
-                <label class="field wide">
-                  <span>URL</span>
-                  <input v-model="site.url" type="url" placeholder="https://example.com">
-                </label>
-
-                <label class="field">
-                  <span>Interval</span>
-                  <input v-model.number="site.interval" type="number" min="1" step="1">
-                </label>
               </article>
             </div>
-          </section>
+          </SectionCard>
+
+          <SectionCard id="sites" eyebrow="Sites" title="Monitoring">
+            <SiteListEditor
+              v-model="settings.sites"
+              @error="error = $event"
+              @clear-error="error = ''"
+            />
+          </SectionCard>
+
+          <SectionCard id="info" eyebrow="Info" title="Runtime">
+            <StatusGrid :items="infoItems" />
+          </SectionCard>
         </div>
       </section>
     </template>
@@ -677,406 +400,138 @@ onMounted(() => {
 
 <style scoped>
 .shell {
-  width: min(1100px, calc(100vw - 2rem));
+  width: min(1200px, calc(100vw - 2rem));
   margin: 0 auto;
-  padding: 2.5rem 0 4rem;
+  padding: var(--space-6) 0 var(--space-7);
 }
 
-.hero {
+.topbar {
   display: flex;
-  gap: 1.5rem;
   justify-content: space-between;
+  gap: var(--space-4);
   align-items: flex-end;
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-5);
 }
 
-.eyebrow {
-  margin: 0 0 0.5rem;
-  text-transform: none;
-  letter-spacing: normal;
+.topbar-copy .eyebrow {
+  margin: 0 0 0.35rem;
   font-size: 0.75rem;
   color: var(--nook-muted);
 }
 
-.hero h1,
-.panel h2,
-.provider h3 {
+.topbar-copy h1 {
   margin: 0;
 }
 
-.hero-actions {
+.topbar-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
-.layout,
-.providers,
-.status-grid {
-  display: grid;
-  gap: 1rem;
-}
-
 .layout {
-  grid-template-columns: 240px minmax(0, 1fr);
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: var(--space-5);
   align-items: start;
 }
 
-.providers {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.content {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
 }
 
 .delivery-grid {
   display: grid;
-  gap: 1rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: 1rem;
+  gap: var(--space-4);
 }
 
-.status-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 1rem;
-}
-
-.status-grid.compact {
-  margin-bottom: 0;
-}
-
-.status-card,
-.panel,
-.loading-card,
-.provider {
-  border: 1px solid var(--nook-border);
-  background: var(--nook-surface);
-  border-radius: 1.4rem;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
-}
-
-.status-card {
-  padding: 1rem 1.2rem;
-}
-
-.status-card span,
-.summary span {
-  display: block;
-  color: var(--nook-muted);
-  margin-bottom: 0.45rem;
-}
-
-.status-card strong,
-.summary strong {
-  font-size: 1rem;
-}
-
-.panel,
-.provider,
-.loading-card {
-  padding: 1.2rem;
-}
-
-.panel {
-  margin-bottom: 1rem;
-}
-
-.sidebar {
-  position: sticky;
-  top: 1.5rem;
-}
-
-.sidebar-nav {
+.provider-grid {
   display: grid;
-  gap: 0.4rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
-.sidebar-link {
-  display: block;
-  padding: 0.8rem 1rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  color: var(--nook-muted);
-  text-decoration: none;
-}
-
-.sidebar-link:hover {
-  border-color: var(--nook-border);
+.nested-panel {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: 1.25rem;
   background: var(--nook-surface-strong);
-  color: var(--nook-text);
 }
 
-.sidebar-meta {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1.4rem;
-  padding-top: 1.4rem;
-  border-top: 1px solid var(--nook-border);
-}
-
-.sidebar-meta span {
-  display: block;
-  margin-bottom: 0.35rem;
-  color: var(--nook-muted);
-}
-
-.content {
-  min-width: 0;
-}
-
-.section-panel {
-  scroll-margin-top: 1.5rem;
-}
-
-.panel-head,
-.provider-head {
+.card-header {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-3);
   align-items: center;
-  margin-bottom: 1rem;
 }
 
-.field {
+.card-header h3 {
+  margin: 0;
+}
+
+.field-list {
   display: grid;
-  gap: 0.45rem;
-  margin-bottom: 0.9rem;
+  gap: var(--space-3);
 }
 
-.field span {
-  color: var(--nook-muted);
-  font-size: 0.95rem;
-}
-
-.list-editor {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.list-input {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.45rem 0.55rem 0.45rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid var(--nook-border);
-  background: var(--nook-surface-strong);
-}
-
-.chip-remove {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.78rem;
-}
-
-input {
-  width: 100%;
-  border: 1px solid var(--nook-border);
-  border-radius: 1.4rem;
-  padding: 0.9rem 1.25rem;
-  background: var(--nook-surface);
-  color: inherit;
-  outline: none;
-  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
-}
-
-input:hover {
-  background: var(--nook-surface-strong);
-  border-color: rgb(255 255 255 / 0.14);
-}
-
-input:focus {
-  border-color: rgb(255 255 255 / 0.22);
-  background: var(--nook-surface-strong);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
-}
-
-button {
-  border: 1px solid var(--nook-border);
-  border-radius: 999px;
-  padding: 0.85rem 1.15rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background-color 150ms ease, border-color 150ms ease, opacity 120ms ease;
-}
-
-.icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.icon-only-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.9rem;
-  height: 1.9rem;
-  padding: 0;
-}
-
-button:hover {
-  background: var(--nook-surface-strong);
-  border-color: rgb(255 255 255 / 0.14);
-}
-
-button:disabled {
-  cursor: default;
-  opacity: 0.55;
-}
-
-.primary {
-  background: var(--nook-text);
-  color: var(--nook-bg);
-  border-color: var(--nook-text);
-}
-
-.primary:hover {
-  background: rgb(255 255 255 / 0.86);
-  border-color: rgb(255 255 255 / 0.86);
-}
-
-.secondary {
-  background: var(--nook-surface);
-  color: var(--nook-text);
-}
-
-.ghost {
-  background: transparent;
-  color: var(--nook-muted);
-}
-
-.danger {
-  background: transparent;
-  color: var(--nook-text);
+.timeout-field {
+  max-width: 18rem;
 }
 
 .toggle {
   display: inline-flex;
-  gap: 0.6rem;
   align-items: center;
+  gap: 0.6rem;
   color: var(--nook-muted);
 }
 
-.toggle input {
-  width: auto;
-  margin: 0;
-}
-
-.summary {
-  display: grid;
-  gap: 1rem;
-}
-
-.sites {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.site-draft,
-.site {
-  display: grid;
-  grid-template-columns: 1.1fr 2fr 0.7fr auto;
-  gap: 0.8rem;
-  align-items: end;
-  padding: 1rem;
-  border-radius: 1.1rem;
-  background: var(--nook-surface-strong);
-  border: 1px solid var(--nook-border);
-}
-
-.site {
-  grid-template-columns: 1fr 1fr 2fr 0.7fr;
-}
-
-.site-header {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
-}
-
-.site-title span {
-  display: block;
-  margin-top: 0.3rem;
-  color: var(--nook-muted);
-  word-break: break-all;
-}
-
-.site-actions {
-  display: flex;
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
-.empty,
-.loading-card,
-.banner {
-  color: var(--nook-muted);
+.sidebar-logout {
+  width: 100%;
 }
 
 .banner {
-  padding: 0.95rem 1rem;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border-radius: 1rem;
-  margin: 0 0 1rem;
   border: 1px solid var(--nook-border);
 }
 
-.banner.error {
-  background: var(--nook-surface);
+.banner.error,
+.banner.success,
+.loading-card {
   color: var(--nook-text);
 }
 
-.banner.success {
-  background: var(--nook-surface);
-  color: var(--nook-text);
+@media (max-width: 1120px) {
+  .delivery-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 960px) {
-  .hero,
   .layout,
-  .providers,
-  .delivery-grid,
-  .status-grid,
-  .site-draft,
-  .site {
+  .provider-grid {
     grid-template-columns: 1fr;
   }
 
-  .hero {
+  .topbar {
+    flex-direction: column;
     align-items: stretch;
   }
 
-  .hero-actions {
-    justify-content: flex-start;
-  }
-
-  .sidebar {
-    position: static;
-  }
-
-  .list-input {
-    grid-template-columns: 1fr;
-  }
-
-  .site-header {
-    flex-direction: column;
-  }
-
-  .site-actions {
+  .topbar-actions {
     justify-content: flex-start;
   }
 }

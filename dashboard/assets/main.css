@@ -7,6 +7,14 @@
   --nook-border: rgb(255 255 255 / 0.1);
   --nook-text: #fff;
   --nook-muted: rgb(255 255 255 / 0.58);
+  --space-1: 0.5rem;
+  --space-2: 0.75rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+  --space-6: 2.5rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
   color: var(--nook-text);
   background: var(--nook-bg);
 }
@@ -29,4 +37,89 @@ a {
 button,
 input {
   font: inherit;
+}
+
+button {
+  border: 1px solid var(--nook-border);
+  border-radius: 999px;
+  padding: 0.85rem 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, opacity 120ms ease;
+}
+
+button:hover {
+  background: var(--nook-surface-strong);
+  border-color: rgb(255 255 255 / 0.14);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--nook-border);
+  border-radius: 1.4rem;
+  padding: 0.9rem 1.25rem;
+  background: var(--nook-surface);
+  color: inherit;
+  outline: none;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+input:hover {
+  background: var(--nook-surface-strong);
+  border-color: rgb(255 255 255 / 0.14);
+}
+
+input:focus {
+  border-color: rgb(255 255 255 / 0.22);
+  background: var(--nook-surface-strong);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+.panel {
+  padding: var(--space-5);
+  border-radius: 1.5rem;
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
+}
+
+.field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.field span {
+  color: var(--nook-muted);
+  font-size: 0.95rem;
+}
+
+.primary {
+  background: var(--nook-text);
+  color: var(--nook-bg);
+  border-color: var(--nook-text);
+}
+
+.primary:hover {
+  background: rgb(255 255 255 / 0.86);
+  border-color: rgb(255 255 255 / 0.86);
+}
+
+.secondary {
+  background: var(--nook-surface);
+  color: var(--nook-text);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--nook-muted);
+}
+
+.danger {
+  background: transparent;
+  color: var(--nook-text);
 }
