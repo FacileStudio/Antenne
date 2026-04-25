@@ -11,15 +11,15 @@ function formatUptimeKumaAlert(payload: UptimeKumaPayload): string | null {
   const reason = heartbeat?.msg ?? payload.msg ?? "";
 
   if (status === 1) {
-    return `✅ <b>[External] ${name}</b> is back UP` + (reason ? `<br/><i>${reason}</i>` : "");
+    return `✅ <b>[Uptime Kuma] ${name}</b> is back UP` + (reason ? `<br/><i>${reason}</i>` : "");
   }
 
   if (status === 0) {
-    return `🔴 <b>[External] ${name}</b> is DOWN — ${reason}` + (monitor?.url ? `<br/><code>${monitor.url}</code>` : "");
+    return `🔴 <b>[Uptime Kuma] ${name}</b> is DOWN — ${reason}` + (monitor?.url ? `<br/><code>${monitor.url}</code>` : "");
   }
 
   if (payload.msg) {
-    return `ℹ️ <b>[External] ${name}</b> — ${payload.msg}`;
+    return `ℹ️ <b>[Uptime Kuma] ${name}</b> — ${payload.msg}`;
   }
 
   return null;
