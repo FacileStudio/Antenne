@@ -35,6 +35,10 @@ export function getProviderLabel(type: ProviderType) {
     return "Dokploy";
   }
 
+  if (type === "git") {
+    return "Git";
+  }
+
   return toTitleCase(type);
 }
 
@@ -47,6 +51,10 @@ export function getWebhookDefaultPath(type: WebhookProviderType) {
     return "/webhook/docuseal";
   }
 
+  if (type === "git") {
+    return "/webhook/git";
+  }
+
   return "/webhook/dokploy";
 }
 
@@ -57,6 +65,10 @@ export function getWebhookDefaultSecretHeader(type: WebhookProviderType) {
 
   if (type === "docuseal") {
     return "x-docuseal-secret";
+  }
+
+  if (type === "git") {
+    return "x-hub-signature-256";
   }
 
   return "x-dokploy-secret";

@@ -9,6 +9,7 @@ import type {
 } from "./types";
 import { docuSealWebhookProvider } from "./providers/docuseal";
 import { dokployWebhookProvider } from "./providers/dokploy";
+import { gitWebhookProvider } from "./providers/git";
 import { uptimeKumaWebhookProvider } from "./providers/uptime-kuma";
 import { isWebhookProviderSettings } from "./types";
 
@@ -16,6 +17,7 @@ const providerDefinitions = {
   "uptime-kuma": uptimeKumaWebhookProvider,
   docuseal: docuSealWebhookProvider,
   dokploy: dokployWebhookProvider,
+  git: gitWebhookProvider,
 } satisfies Record<WebhookProviderType, WebhookProviderDefinition>;
 
 function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhookProvider[] {
