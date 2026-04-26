@@ -201,7 +201,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         </label>
 
         <template v-if="editingProvider.type === 'website'">
-          <label class="field">
+          <label class="field required">
             <span>URL</span>
             <input :value="editingProvider.url" type="url" @input="patchProvider(editingIndex, { url: ($event.target as HTMLInputElement).value })">
           </label>
@@ -213,12 +213,12 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         </template>
 
         <template v-else-if="editingProvider.type === 'imap'">
-          <label class="field">
+          <label class="field required">
             <span>Host</span>
             <input :value="editingProvider.host" type="text" @input="patchProvider(editingIndex, { host: ($event.target as HTMLInputElement).value })">
           </label>
 
-          <label class="field">
+          <label class="field required">
             <span>Port</span>
             <input :value="editingProvider.port" type="number" min="1" step="1" @input="patchProvider(editingIndex, { port: Number(($event.target as HTMLInputElement).value) || 993 })">
           </label>
@@ -228,12 +228,12 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
             <span>TLS</span>
           </label>
 
-          <label class="field">
+          <label class="field required">
             <span>Username</span>
             <input :value="editingProvider.username" type="text" @input="patchProvider(editingIndex, { username: ($event.target as HTMLInputElement).value })">
           </label>
 
-          <label class="field">
+          <label class="field required">
             <span>Password</span>
             <div class="secret-field">
               <input
@@ -255,7 +255,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         </template>
 
         <template v-else>
-          <label class="field">
+          <label class="field required">
             <span>Path</span>
             <input :value="editingProvider.path" type="text" @input="patchProvider(editingIndex, { path: ($event.target as HTMLInputElement).value })">
           </label>

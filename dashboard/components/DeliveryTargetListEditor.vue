@@ -202,12 +202,12 @@ async function runTargetTest(target: DeliveryTarget) {
         </label>
 
         <template v-if="editingTarget.type === 'matrix'">
-          <label class="field">
+          <label class="field required">
             <span>Homeserver</span>
             <input :value="editingTarget.homeserver" type="url" placeholder="https://matrix.example.com" @input="patchTarget(editingIndex, { homeserver: ($event.target as HTMLInputElement).value })">
           </label>
 
-          <label class="field">
+          <label class="field required">
             <span>Access token</span>
             <div class="secret-field">
               <input
@@ -223,21 +223,21 @@ async function runTargetTest(target: DeliveryTarget) {
             </div>
           </label>
 
-          <label class="field">
+          <label class="field required">
             <span>Room IDs</span>
             <RoomIdEditor :model-value="editingTarget.roomIds" @update:model-value="patchTarget(editingIndex, { roomIds: $event })" />
           </label>
         </template>
 
         <template v-else-if="editingTarget.type === 'discord'">
-          <label class="field">
+          <label class="field required">
             <span>Webhook URL</span>
             <input :value="editingTarget.webhookUrl" type="url" placeholder="https://discord.com/api/webhooks/..." @input="patchTarget(editingIndex, { webhookUrl: ($event.target as HTMLInputElement).value })">
           </label>
         </template>
 
         <template v-else>
-          <label class="field">
+          <label class="field required">
             <span>Webhook URL</span>
             <input :value="editingTarget.url" type="url" placeholder="https://example.com/hooks/nook" @input="patchTarget(editingIndex, { url: ($event.target as HTMLInputElement).value })">
           </label>

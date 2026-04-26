@@ -171,6 +171,11 @@ select {
   font-size: 0.95rem;
 }
 
+.field.required span::after {
+  content: " *";
+  color: rgb(255 80 80);
+}
+
 h1,
 h2 {
   font-family: "Poppins", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -213,13 +218,13 @@ h2 {
 }
 
 .toggle input:checked {
-  background: rgb(255 255 255 / 0.15);
-  border-color: rgb(255 255 255 / 0.22);
+  background: #1CDB81;
+  border-color: #1CDB81;
 }
 
 .toggle input:checked::after {
   transform: translateX(1.25rem);
-  background: var(--nook-text);
+  background: #fff;
 }
 
 .toggle span {
