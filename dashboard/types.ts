@@ -1,24 +1,34 @@
 export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy";
 export type ProviderType = WebhookProviderType | "imap" | "website";
+export type DeliveryTargetType = "matrix" | "discord" | "webhook";
 
-export interface MatrixConfig {
+export interface DeliveryTargetBase {
+  id: string;
+  type: DeliveryTargetType;
+  name: string;
   enabled: boolean;
+}
+
+export interface MatrixTarget extends DeliveryTargetBase {
+  type: "matrix";
   homeserver: string;
   accessToken: string;
   roomIds: string[];
 }
 
-export interface DiscordDeliveryConfig {
-  enabled: boolean;
+export interface DiscordTarget extends DeliveryTargetBase {
+  type: "discord";
   webhookUrl: string;
 }
 
-export interface HttpDeliveryConfig {
-  enabled: boolean;
+export interface WebhookTarget extends DeliveryTargetBase {
+  type: "webhook";
   url: string;
   secretHeader: string | null;
   secretValue: string | null;
 }
+
+export type DeliveryTarget = MatrixTarget | DiscordTarget | WebhookTarget;
 
 export interface WebsiteProviderSettings {
   id: string;
@@ -57,9 +67,7 @@ export type ProviderSettings = WebsiteProviderSettings | WebhookProviderSettings
 
 export interface AppSettings {
   delivery: {
-    matrix: MatrixConfig;
-    discord: DiscordDeliveryConfig;
-    webhook: HttpDeliveryConfig;
+    items: DeliveryTarget[];
   };
   timeout: number;
   providers: {
@@ -77,6 +85,7 @@ export interface RuntimeStatus {
 }
 
 export const providerTypes = ["website", "imap", "uptime-kuma", "docuseal", "dokploy"] as const satisfies ProviderType[];
+export const deliveryTargetTypes = ["matrix", "discord", "webhook"] as const satisfies DeliveryTargetType[];
 
 function createId() {
   return globalThis.crypto.randomUUID();
@@ -88,6 +97,12 @@ export function getProviderLabel(type: ProviderType) {
   if (type === "docuseal") return "DocuSeal";
   if (type === "dokploy") return "Dokploy";
   return "Uptime Kuma";
+}
+
+export function getDeliveryTargetLabel(type: DeliveryTargetType) {
+  if (type === "matrix") return "Matrix";
+  if (type === "discord") return "Discord webhook";
+  return "HTTP webhook";
 }
 
 export function createDefaultProvider(type: ProviderType): ProviderSettings {
@@ -125,6 +140,40 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
     enabled: true,
     path: type === "dokploy" ? "/webhook/dokploy" : type === "docuseal" ? "/webhook/docuseal" : "/webhook/uptime-kuma",
     secretHeader: type === "dokploy" ? "x-dokploy-secret" : type === "docuseal" ? "x-docuseal-secret" : "x-webhook-secret",
+    secretValue: "",
+  };
+}
+
+export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryTarget {
+  if (type === "matrix") {
+    return {
+      id: createId(),
+      type,
+      name: "Matrix",
+      enabled: true,
+      homeserver: "",
+      accessToken: "",
+      roomIds: [],
+    };
+  }
+
+  if (type === "discord") {
+    return {
+      id: createId(),
+      type,
+      name: "Discord webhook",
+      enabled: true,
+      webhookUrl: "",
+    };
+  }
+
+  return {
+    id: createId(),
+    type,
+    name: "HTTP webhook",
+    enabled: true,
+    url: "",
+    secretHeader: "x-nook-secret",
     secretValue: "",
   };
 }

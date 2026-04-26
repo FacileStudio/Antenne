@@ -1,6 +1,11 @@
 import { reactive } from "vue";
 
-import { createDefaultProvider, type AppSettings, type RuntimeStatus } from "../types";
+import {
+  createDefaultDeliveryTarget,
+  createDefaultProvider,
+  type AppSettings,
+  type RuntimeStatus,
+} from "../types";
 
 type SettingsResponse = {
   settings: AppSettings;
@@ -19,22 +24,11 @@ const toastTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
 const defaultSettings = (): AppSettings => ({
   delivery: {
-    matrix: {
-      enabled: true,
-      homeserver: "",
-      accessToken: "",
-      roomIds: [],
-    },
-    discord: {
-      enabled: false,
-      webhookUrl: "",
-    },
-    webhook: {
-      enabled: false,
-      url: "",
-      secretHeader: "x-nook-secret",
-      secretValue: "",
-    },
+    items: [
+      createDefaultDeliveryTarget("matrix"),
+      createDefaultDeliveryTarget("discord"),
+      createDefaultDeliveryTarget("webhook"),
+    ],
   },
   timeout: 10,
   providers: {
@@ -48,16 +42,7 @@ const defaultSettings = (): AppSettings => ({
 });
 
 function cloneFromPayload(target: AppSettings, next: AppSettings) {
-  target.delivery.matrix.enabled = next.delivery.matrix.enabled;
-  target.delivery.matrix.homeserver = next.delivery.matrix.homeserver;
-  target.delivery.matrix.accessToken = next.delivery.matrix.accessToken;
-  target.delivery.matrix.roomIds = [...next.delivery.matrix.roomIds];
-  target.delivery.discord.enabled = next.delivery.discord.enabled;
-  target.delivery.discord.webhookUrl = next.delivery.discord.webhookUrl;
-  target.delivery.webhook.enabled = next.delivery.webhook.enabled;
-  target.delivery.webhook.url = next.delivery.webhook.url;
-  target.delivery.webhook.secretHeader = next.delivery.webhook.secretHeader;
-  target.delivery.webhook.secretValue = next.delivery.webhook.secretValue ?? "";
+  target.delivery.items = next.delivery.items.map((item) => ({ ...item }));
   target.timeout = next.timeout;
   target.providers.port = next.providers.port;
   target.providers.items = next.providers.items.map((provider) => ({ ...provider }));
@@ -157,16 +142,7 @@ export function useDashboardState() {
     try {
       const payload = await apiFetch<SettingsResponse>("/api/settings", {
         method: "PUT",
-        body: JSON.stringify({
-          ...settings.value,
-          delivery: {
-            ...settings.value.delivery,
-            matrix: {
-              ...settings.value.delivery.matrix,
-              roomIds: settings.value.delivery.matrix.roomIds,
-            },
-          },
-        }),
+        body: JSON.stringify(settings.value),
       });
       cloneFromPayload(settings.value, payload.settings);
       runtime.value = payload.runtime;

@@ -2,8 +2,22 @@ import { mkdir } from "node:fs/promises";
 
 import { loadConfig } from "./config";
 import { createDefaultProvider, createDefaultWebhookProvider, createDefaultWebsiteProvider } from "./provider-config";
+import {
+  createDefaultDeliveryTarget,
+  isDiscordDeliveryTarget,
+  isHttpDeliveryTarget,
+  isMatrixDeliveryTarget,
+} from "./delivery-config";
 import { loadDeliveryConfigFromEnv } from "./delivery";
-import type { AppSettings, ProvidersConfig, RuntimeStatus } from "./types";
+import type {
+  AppSettings,
+  DeliveryTarget,
+  DiscordDeliveryTarget,
+  HttpDeliveryTarget,
+  MatrixDeliveryTarget,
+  ProvidersConfig,
+  RuntimeStatus,
+} from "./types";
 import type {
   ImapProviderSettings,
   ProviderSettings,
@@ -42,38 +56,63 @@ function normalizeRoomIds(value: unknown): string[] {
 }
 
 function normalizeDeliveryConfig(input: unknown, fallback: AppSettings["delivery"]): AppSettings["delivery"] {
-  const candidate = input && typeof input === "object" ? input as Partial<AppSettings["delivery"]> : {};
-  const matrix = candidate.matrix && typeof candidate.matrix === "object"
-    ? candidate.matrix as Partial<AppSettings["delivery"]["matrix"]>
-    : {};
-  const discord = candidate.discord && typeof candidate.discord === "object"
-    ? candidate.discord as Partial<AppSettings["delivery"]["discord"]>
-    : {};
-  const webhook = candidate.webhook && typeof candidate.webhook === "object"
-    ? candidate.webhook as Partial<AppSettings["delivery"]["webhook"]>
+  const candidate = input && typeof input === "object" ? input as {
+    delivery?: unknown;
+    matrix?: unknown;
+    discord?: unknown;
+    webhook?: unknown;
+  } : {};
+  const itemsContainer = candidate.delivery && typeof candidate.delivery === "object"
+    ? candidate.delivery as { items?: unknown; matrix?: unknown; discord?: unknown; webhook?: unknown }
     : {};
 
+  const rawItems = Array.isArray(itemsContainer.items)
+    ? itemsContainer.items
+    : null;
+
+  if (rawItems) {
+    return {
+      items: rawItems.map((target) => normalizeDeliveryTarget(target)),
+    };
+  }
+
+  const matrixInput = itemsContainer.matrix ?? candidate.matrix;
+  const discordInput = itemsContainer.discord ?? candidate.discord;
+  const webhookInput = itemsContainer.webhook ?? candidate.webhook;
+
+  const legacyTargets = fallback.items.map((target) => {
+    if (isMatrixDeliveryTarget(target)) {
+      const matrix = matrixInput && typeof matrixInput === "object" ? matrixInput as Partial<typeof target> : {};
+      return {
+        ...target,
+        enabled: typeof matrix.enabled === "boolean" ? matrix.enabled : target.enabled,
+        homeserver: "homeserver" in matrix ? normalizeString(matrix.homeserver) : target.homeserver,
+        accessToken: "accessToken" in matrix ? normalizeString(matrix.accessToken) : target.accessToken,
+        roomIds: "roomIds" in matrix ? normalizeRoomIds(matrix.roomIds) : target.roomIds,
+      };
+    }
+
+    if (isDiscordDeliveryTarget(target)) {
+      const discord = discordInput && typeof discordInput === "object" ? discordInput as Partial<typeof target> : {};
+      return {
+        ...target,
+        enabled: typeof discord.enabled === "boolean" ? discord.enabled : target.enabled,
+        webhookUrl: "webhookUrl" in discord ? normalizeString(discord.webhookUrl) : target.webhookUrl,
+      };
+    }
+
+    const webhook = webhookInput && typeof webhookInput === "object" ? webhookInput as Partial<typeof target> : {};
+    return {
+      ...target,
+      enabled: typeof webhook.enabled === "boolean" ? webhook.enabled : target.enabled,
+      url: "url" in webhook ? normalizeString(webhook.url) : target.url,
+      secretHeader: "secretHeader" in webhook ? (normalizeString(webhook.secretHeader) || null) : target.secretHeader,
+      secretValue: "secretValue" in webhook ? (normalizeString(webhook.secretValue) || null) : target.secretValue,
+    };
+  });
+
   return {
-    matrix: {
-      enabled: typeof matrix.enabled === "boolean" ? matrix.enabled : fallback.matrix.enabled,
-      homeserver: "homeserver" in matrix ? normalizeString(matrix.homeserver) : fallback.matrix.homeserver,
-      accessToken: "accessToken" in matrix ? normalizeString(matrix.accessToken) : fallback.matrix.accessToken,
-      roomIds: "roomIds" in matrix ? normalizeRoomIds(matrix.roomIds) : fallback.matrix.roomIds,
-    },
-    discord: {
-      enabled: typeof discord.enabled === "boolean" ? discord.enabled : fallback.discord.enabled,
-      webhookUrl: "webhookUrl" in discord ? normalizeString(discord.webhookUrl) : fallback.discord.webhookUrl,
-    },
-    webhook: {
-      enabled: typeof webhook.enabled === "boolean" ? webhook.enabled : fallback.webhook.enabled,
-      url: "url" in webhook ? normalizeString(webhook.url) : fallback.webhook.url,
-      secretHeader: "secretHeader" in webhook
-        ? (normalizeString(webhook.secretHeader) || null)
-        : fallback.webhook.secretHeader,
-      secretValue: "secretValue" in webhook
-        ? (normalizeString(webhook.secretValue) || null)
-        : fallback.webhook.secretValue,
-    },
+    items: legacyTargets,
   };
 }
 
@@ -83,6 +122,46 @@ function normalizeString(value: unknown): string {
 
 function normalizeBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
+  const candidate = input && typeof input === "object" ? input as Partial<DeliveryTarget> : {};
+  const type = candidate.type;
+
+  if (type === "matrix") {
+    const fallback = createDefaultDeliveryTarget("matrix") as MatrixDeliveryTarget;
+    return {
+      ...fallback,
+      id: normalizeString(candidate.id) || fallback.id,
+      name: normalizeString(candidate.name) || fallback.name,
+      enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+      homeserver: "homeserver" in candidate ? normalizeString(candidate.homeserver) : fallback.homeserver,
+      accessToken: "accessToken" in candidate ? normalizeString(candidate.accessToken) : fallback.accessToken,
+      roomIds: "roomIds" in candidate ? normalizeRoomIds(candidate.roomIds) : fallback.roomIds,
+    };
+  }
+
+  if (type === "discord") {
+    const fallback = createDefaultDeliveryTarget("discord") as DiscordDeliveryTarget;
+    return {
+      ...fallback,
+      id: normalizeString(candidate.id) || fallback.id,
+      name: normalizeString(candidate.name) || fallback.name,
+      enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+      webhookUrl: "webhookUrl" in candidate ? normalizeString(candidate.webhookUrl) : fallback.webhookUrl,
+    };
+  }
+
+  const fallback = createDefaultDeliveryTarget("webhook") as HttpDeliveryTarget;
+  return {
+    ...fallback,
+    id: normalizeString(candidate.id) || fallback.id,
+    name: normalizeString(candidate.name) || fallback.name,
+    enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+    url: "url" in candidate ? normalizeString(candidate.url) : fallback.url,
+    secretHeader: "secretHeader" in candidate ? (normalizeString(candidate.secretHeader) || null) : fallback.secretHeader,
+    secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : fallback.secretValue,
+  };
 }
 
 function normalizeInteger(value: unknown, fallback: number, fieldName: string): number {

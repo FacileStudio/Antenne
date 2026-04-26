@@ -7,29 +7,39 @@ export interface SiteState {
   inFlight: boolean;
 }
 
-export interface MatrixDeliveryConfig {
+export type DeliveryTargetType = "matrix" | "discord" | "webhook";
+
+export interface DeliveryTargetBase {
+  id: string;
+  type: DeliveryTargetType;
+  name: string;
+  enabled: boolean;
+}
+
+export interface MatrixDeliveryTarget extends DeliveryTargetBase {
+  type: "matrix";
   enabled: boolean;
   homeserver: string;
   accessToken: string;
   roomIds: string[];
 }
 
-export interface DiscordDeliveryConfig {
-  enabled: boolean;
+export interface DiscordDeliveryTarget extends DeliveryTargetBase {
+  type: "discord";
   webhookUrl: string;
 }
 
-export interface HttpDeliveryConfig {
-  enabled: boolean;
+export interface HttpDeliveryTarget extends DeliveryTargetBase {
+  type: "webhook";
   url: string;
   secretHeader: string | null;
   secretValue: string | null;
 }
 
+export type DeliveryTarget = MatrixDeliveryTarget | DiscordDeliveryTarget | HttpDeliveryTarget;
+
 export interface DeliveryConfig {
-  matrix: MatrixDeliveryConfig;
-  discord: DiscordDeliveryConfig;
-  webhook: HttpDeliveryConfig;
+  items: DeliveryTarget[];
 }
 
 export interface ProvidersConfig {

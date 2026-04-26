@@ -1,6 +1,7 @@
 import { createImapManager } from "./src/imap";
 import { createMonitorManager } from "./src/monitor";
-import { hasAnyDelivery, hasMatrixDelivery, sendAlert } from "./src/delivery";
+import { hasAnyDelivery, sendAlert } from "./src/delivery";
+import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
 import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
@@ -71,7 +72,8 @@ console.log(`[startup] settings path: ${settingsPath}`);
 console.log(`[startup] persisted settings: ${store.isUsingPersistedSettings() ? "yes" : "no"}`);
 console.log(`[startup] dashboard: ${runtimeStatus.dashboardBuilt ? "built" : "not built"}`);
 console.log(`[startup] server port: ${serverPort}`);
-console.log(`[startup] room(s): ${settings.delivery.matrix.roomIds.join(", ") || "none configured"}`);
+console.log(`[startup] delivery targets: ${settings.delivery.items.length}`);
+console.log(`[startup] matrix rooms: ${settings.delivery.items.filter(isMatrixDeliveryTarget).flatMap((target) => target.roomIds).join(", ") || "none configured"}`);
 console.log(`[startup] providers: ${settings.providers.items.length} total`);
 console.log(`[startup] websites: ${settings.providers.items.filter(isWebsiteProviderSettings).length}`);
 console.log(`[startup] imap: ${settings.providers.items.filter(isImapProviderSettings).length}`);

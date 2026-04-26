@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
-import { hasMatrixDelivery } from "./delivery";
+import { hasConfiguredMatrixDelivery } from "./delivery";
 import type { AppSettings, DashboardSessionConfig, RuntimeStatus } from "./types";
 import { handleWebhookRequest } from "./webhooks";
 
@@ -281,7 +281,7 @@ export function createAppServer(options: {
         return createJsonResponse({
             settings: options.getSettings(),
             runtime: options.getRuntimeStatus(),
-            matrixConfigured: hasMatrixDelivery(options.getSettings().delivery.matrix),
+            matrixConfigured: hasConfiguredMatrixDelivery(options.getSettings().delivery),
           });
       }
 
@@ -292,7 +292,7 @@ export function createAppServer(options: {
           return createJsonResponse({
             settings,
             runtime: options.getRuntimeStatus(),
-            matrixConfigured: hasMatrixDelivery(settings.delivery.matrix),
+            matrixConfigured: hasConfiguredMatrixDelivery(settings.delivery),
           });
         } catch (error) {
           return createJsonResponse({ error: error instanceof Error ? error.message : "failed to save" }, { status: 400 });

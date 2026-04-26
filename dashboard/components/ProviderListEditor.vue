@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-vue-next";
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 
 import {
   createDefaultProvider,
@@ -19,6 +19,7 @@ const emit = defineEmits<{
 }>();
 
 const revealedSecrets = reactive<Record<string, boolean>>({});
+const nextProviderType = ref<ProviderType>("website");
 
 function updateProviders(nextProviders: ProviderSettings[]) {
   emit("update:modelValue", nextProviders);
@@ -27,14 +28,8 @@ function updateProviders(nextProviders: ProviderSettings[]) {
 function addProvider() {
   updateProviders([
     ...props.modelValue,
-    createDefaultProvider("website"),
+    createDefaultProvider(nextProviderType.value),
   ]);
-}
-
-function updateProvider(index: number, nextProvider: ProviderSettings) {
-  updateProviders(
-    props.modelValue.map((provider, currentIndex) => currentIndex === index ? nextProvider : provider),
-  );
 }
 
 function patchProvider(index: number, patch: Partial<ProviderSettings>) {
@@ -43,19 +38,11 @@ function patchProvider(index: number, patch: Partial<ProviderSettings>) {
     return;
   }
 
-  updateProvider(index, { ...provider, ...patch } as ProviderSettings);
-}
-
-function changeProviderType(index: number, nextType: ProviderType) {
-  const current = props.modelValue[index];
-  if (!current) {
-    return;
-  }
-
-  const next = createDefaultProvider(nextType);
-  next.name = current.name;
-  next.enabled = current.enabled;
-  updateProvider(index, next);
+  updateProviders(
+    props.modelValue.map((currentProvider, currentIndex) =>
+      currentIndex === index ? { ...provider, ...patch } as ProviderSettings : currentProvider
+    ),
+  );
 }
 
 function removeProvider(index: number) {
@@ -98,6 +85,15 @@ function toggleReveal(id: string) {
 <template>
   <div class="provider-list">
     <div class="toolbar">
+      <label class="field toolbar-field">
+        <span>New provider type</span>
+        <select v-model="nextProviderType">
+          <option v-for="type in providerTypes" :key="type" :value="type">
+            {{ getProviderLabel(type) }}
+          </option>
+        </select>
+      </label>
+
       <button class="primary action-button add-provider-button" type="button" @click="addProvider">
         <Plus :size="16" aria-hidden="true" />
         <span>Add provider</span>
@@ -146,11 +142,7 @@ function toggleReveal(id: string) {
 
           <label class="field">
             <span>Type</span>
-            <select :value="provider.type" @change="changeProviderType(index, ($event.target as HTMLSelectElement).value as ProviderType)">
-              <option v-for="type in providerTypes" :key="type" :value="type">
-                {{ getProviderLabel(type) }}
-              </option>
-            </select>
+            <input :value="getProviderLabel(provider.type)" type="text" readonly>
           </label>
 
           <label class="toggle provider-toggle">
@@ -259,6 +251,13 @@ function toggleReveal(id: string) {
 .toolbar {
   display: flex;
   justify-content: flex-start;
+  gap: var(--space-3);
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.toolbar-field {
+  min-width: 15rem;
 }
 
 .provider-card {

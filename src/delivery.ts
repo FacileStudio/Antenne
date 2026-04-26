@@ -1,8 +1,15 @@
+import {
+  isDiscordDeliveryTarget,
+  isHttpDeliveryTarget,
+  isMatrixDeliveryTarget,
+} from "./delivery-config";
+import { createDefaultDeliveryTarget } from "./delivery-config";
 import type {
   DeliveryConfig,
-  DiscordDeliveryConfig,
-  HttpDeliveryConfig,
-  MatrixDeliveryConfig,
+  DeliveryTarget,
+  DiscordDeliveryTarget,
+  HttpDeliveryTarget,
+  MatrixDeliveryTarget,
 } from "./types";
 
 let txnId = 0;
@@ -15,7 +22,7 @@ function htmlToPlainText(message: string) {
     .trim();
 }
 
-async function requestMatrix(config: MatrixDeliveryConfig, method: string, path: string, body?: unknown) {
+async function requestMatrix(config: MatrixDeliveryTarget, method: string, path: string, body?: unknown) {
   const base = config.homeserver.endsWith("/") ? config.homeserver : `${config.homeserver}/`;
   const url = new URL(path, base);
 
@@ -35,7 +42,7 @@ async function requestMatrix(config: MatrixDeliveryConfig, method: string, path:
   }
 }
 
-async function sendToMatrixRoom(config: MatrixDeliveryConfig, roomId: string, message: string) {
+async function sendToMatrixRoom(config: MatrixDeliveryTarget, roomId: string, message: string) {
   txnId += 1;
   const txn = `${Date.now()}-${txnId}`;
   const path = `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${encodeURIComponent(txn)}`;
@@ -48,7 +55,7 @@ async function sendToMatrixRoom(config: MatrixDeliveryConfig, roomId: string, me
   });
 }
 
-async function sendMatrixAlert(config: MatrixDeliveryConfig, message: string) {
+async function sendMatrixAlert(config: MatrixDeliveryTarget, message: string) {
   const results = await Promise.allSettled(config.roomIds.map((roomId) => sendToMatrixRoom(config, roomId, message)));
 
   for (const result of results) {
@@ -58,7 +65,7 @@ async function sendMatrixAlert(config: MatrixDeliveryConfig, message: string) {
   }
 }
 
-async function sendDiscordAlert(config: DiscordDeliveryConfig, message: string) {
+async function sendDiscordAlert(config: DiscordDeliveryTarget, message: string) {
   const res = await fetch(config.webhookUrl, {
     method: "POST",
     headers: {
@@ -76,7 +83,7 @@ async function sendDiscordAlert(config: DiscordDeliveryConfig, message: string) 
   }
 }
 
-async function sendHttpAlert(config: HttpDeliveryConfig, message: string) {
+async function sendHttpAlert(config: HttpDeliveryTarget, message: string) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "User-Agent": "Nook/1.0 uptime-bot",
@@ -103,23 +110,38 @@ async function sendHttpAlert(config: HttpDeliveryConfig, message: string) {
   }
 }
 
-export function hasMatrixDelivery(config: MatrixDeliveryConfig): boolean {
+export function hasMatrixDelivery(config: MatrixDeliveryTarget): boolean {
   return Boolean(config.enabled && config.homeserver && config.accessToken && config.roomIds.length > 0);
 }
 
-export function hasDiscordDelivery(config: DiscordDeliveryConfig): boolean {
+export function hasDiscordDelivery(config: DiscordDeliveryTarget): boolean {
   return Boolean(config.enabled && config.webhookUrl);
 }
 
-export function hasHttpDelivery(config: HttpDeliveryConfig): boolean {
+export function hasHttpDelivery(config: HttpDeliveryTarget): boolean {
   return Boolean(config.enabled && config.url);
 }
 
 export function hasAnyDelivery(config: DeliveryConfig): boolean {
-  return hasMatrixDelivery(config.matrix) || hasDiscordDelivery(config.discord) || hasHttpDelivery(config.webhook);
+  return config.items.some((target) => {
+    if (isMatrixDeliveryTarget(target)) {
+      return hasMatrixDelivery(target);
+    }
+
+    if (isDiscordDeliveryTarget(target)) {
+      return hasDiscordDelivery(target);
+    }
+
+    return hasHttpDelivery(target);
+  });
+}
+
+export function hasConfiguredMatrixDelivery(config: DeliveryConfig): boolean {
+  return config.items.some((target) => isMatrixDeliveryTarget(target) && hasMatrixDelivery(target));
 }
 
 export function loadDeliveryConfigFromEnv(): DeliveryConfig {
+  const items: DeliveryTarget[] = [];
   const roomIdsRaw = process.env.MATRIX_ROOM_IDS ?? process.env.MATRIX_ROOM_ID;
   const roomIds = roomIdsRaw
     ? roomIdsRaw
@@ -128,24 +150,26 @@ export function loadDeliveryConfigFromEnv(): DeliveryConfig {
       .filter(Boolean)
     : [];
 
-  return {
-    matrix: {
-      enabled: process.env.MATRIX_ENABLED !== "false",
-      homeserver: process.env.MATRIX_HOMESERVER ?? "",
-      accessToken: process.env.MATRIX_ACCESS_TOKEN ?? "",
-      roomIds,
-    },
-    discord: {
-      enabled: process.env.DISCORD_ENABLED === "true" || Boolean(process.env.DISCORD_WEBHOOK_URL),
-      webhookUrl: process.env.DISCORD_WEBHOOK_URL ?? "",
-    },
-    webhook: {
-      enabled: process.env.HTTP_WEBHOOK_ENABLED === "true" || Boolean(process.env.HTTP_WEBHOOK_URL),
-      url: process.env.HTTP_WEBHOOK_URL ?? "",
-      secretHeader: process.env.HTTP_WEBHOOK_SECRET_HEADER ?? "x-nook-secret",
-      secretValue: process.env.HTTP_WEBHOOK_SECRET ?? null,
-    },
-  };
+  const matrix = createDefaultDeliveryTarget("matrix") as MatrixDeliveryTarget;
+  matrix.enabled = process.env.MATRIX_ENABLED !== "false";
+  matrix.homeserver = process.env.MATRIX_HOMESERVER ?? "";
+  matrix.accessToken = process.env.MATRIX_ACCESS_TOKEN ?? "";
+  matrix.roomIds = roomIds;
+  items.push(matrix);
+
+  const discord = createDefaultDeliveryTarget("discord") as DiscordDeliveryTarget;
+  discord.enabled = process.env.DISCORD_ENABLED === "true" || Boolean(process.env.DISCORD_WEBHOOK_URL);
+  discord.webhookUrl = process.env.DISCORD_WEBHOOK_URL ?? "";
+  items.push(discord);
+
+  const webhook = createDefaultDeliveryTarget("webhook") as HttpDeliveryTarget;
+  webhook.enabled = process.env.HTTP_WEBHOOK_ENABLED === "true" || Boolean(process.env.HTTP_WEBHOOK_URL);
+  webhook.url = process.env.HTTP_WEBHOOK_URL ?? "";
+  webhook.secretHeader = process.env.HTTP_WEBHOOK_SECRET_HEADER ?? "x-nook-secret";
+  webhook.secretValue = process.env.HTTP_WEBHOOK_SECRET ?? null;
+  items.push(webhook);
+
+  return { items };
 }
 
 export async function sendAlert(config: DeliveryConfig, message: string) {
@@ -155,16 +179,20 @@ export async function sendAlert(config: DeliveryConfig, message: string) {
 
   const tasks: Promise<void>[] = [];
 
-  if (hasMatrixDelivery(config.matrix)) {
-    tasks.push(sendMatrixAlert(config.matrix, message));
-  }
+  for (const target of config.items) {
+    if (isMatrixDeliveryTarget(target) && hasMatrixDelivery(target)) {
+      tasks.push(sendMatrixAlert(target, message));
+      continue;
+    }
 
-  if (hasDiscordDelivery(config.discord)) {
-    tasks.push(sendDiscordAlert(config.discord, message));
-  }
+    if (isDiscordDeliveryTarget(target) && hasDiscordDelivery(target)) {
+      tasks.push(sendDiscordAlert(target, message));
+      continue;
+    }
 
-  if (hasHttpDelivery(config.webhook)) {
-    tasks.push(sendHttpAlert(config.webhook, message));
+    if (isHttpDeliveryTarget(target) && hasHttpDelivery(target)) {
+      tasks.push(sendHttpAlert(target, message));
+    }
   }
 
   const results = await Promise.allSettled(tasks);
