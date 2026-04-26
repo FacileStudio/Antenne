@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
+import SideDrawer from "./SideDrawer.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 import {
   createDefaultProvider,
@@ -23,16 +24,31 @@ const { notifyError, notifySuccess, testProviderConnection } = useDashboardState
 const revealedSecrets = reactive<Record<string, boolean>>({});
 const nextProviderType = ref<ProviderType>("website");
 const testingProviders = reactive<Record<string, boolean>>({});
+const editingIndex = ref<number | null>(null);
+
+const editingProvider = computed(() =>
+  editingIndex.value !== null ? props.modelValue[editingIndex.value] ?? null : null
+);
+
+function openEditor(index: number) {
+  editingIndex.value = index;
+}
+
+function closeEditor() {
+  editingIndex.value = null;
+}
 
 function updateProviders(nextProviders: ProviderSettings[]) {
   emit("update:modelValue", nextProviders);
 }
 
 function addProvider() {
-  updateProviders([
+  const nextProviders = [
     createDefaultProvider(nextProviderType.value),
     ...props.modelValue,
-  ]);
+  ];
+  updateProviders(nextProviders);
+  editingIndex.value = 0;
 }
 
 function patchProvider(index: number, patch: Partial<ProviderSettings>) {
@@ -49,6 +65,11 @@ function patchProvider(index: number, patch: Partial<ProviderSettings>) {
 }
 
 function removeProvider(index: number) {
+  if (editingIndex.value === index) {
+    closeEditor();
+  } else if (editingIndex.value !== null && editingIndex.value > index) {
+    editingIndex.value--;
+  }
   updateProviders(props.modelValue.filter((_, currentIndex) => currentIndex !== index));
 }
 
@@ -62,6 +83,12 @@ function moveProvider(index: number, direction: -1 | 1) {
   const [provider] = nextProviders.splice(index, 1);
   nextProviders.splice(targetIndex, 0, provider);
   updateProviders(nextProviders);
+
+  if (editingIndex.value === index) {
+    editingIndex.value = targetIndex;
+  } else if (editingIndex.value === targetIndex) {
+    editingIndex.value = index;
+  }
 }
 
 function duplicateProvider(index: number) {
@@ -78,6 +105,10 @@ function duplicateProvider(index: number) {
   const nextProviders = [...props.modelValue];
   nextProviders.splice(index + 1, 0, duplicate);
   updateProviders(nextProviders);
+
+  if (editingIndex.value !== null && editingIndex.value > index) {
+    editingIndex.value++;
+  }
 }
 
 function toggleReveal(id: string) {
@@ -111,7 +142,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         </select>
       </label>
 
-      <button class="primary action-button add-provider-button" type="button" @click="addProvider">
+      <button class="primary action-button add-button" type="button" @click="addProvider">
         <Plus :size="16" aria-hidden="true" />
         <span>Add provider</span>
       </button>
@@ -119,149 +150,157 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 
     <div v-if="modelValue.length === 0" class="empty">No providers configured.</div>
 
-    <div v-else class="providers">
+    <div v-else class="items">
       <article
         v-for="(provider, index) in modelValue"
         :key="provider.id"
-        class="provider-card"
+        class="item-card"
+        :class="{ dimmed: !provider.enabled }"
       >
-        <div class="provider-card-header">
-          <div class="provider-heading">
-            <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
-            <span class="provider-chip">{{ getProviderLabel(provider.type) }}</span>
-          </div>
-
-          <div class="provider-actions">
-            <button
-              v-if="provider.type === 'imap'"
-              class="ghost action-button"
-              type="button"
-              :disabled="testingProviders[provider.id]"
-              @click="runProviderConnectionTest(provider)"
-            >
-              <span>{{ testingProviders[provider.id] ? "Testing..." : "Test connection" }}</span>
-            </button>
-            <button class="ghost action-button" type="button" :disabled="index === 0" @click="moveProvider(index, -1)">
-              <ArrowUp :size="16" aria-hidden="true" />
-              <span>Up</span>
-            </button>
-            <button class="ghost action-button" type="button" :disabled="index === modelValue.length - 1" @click="moveProvider(index, 1)">
-              <ArrowDown :size="16" aria-hidden="true" />
-              <span>Down</span>
-            </button>
-            <button class="ghost action-button" type="button" @click="duplicateProvider(index)">
-              <Copy :size="16" aria-hidden="true" />
-              <span>Duplicate</span>
-            </button>
-            <button class="danger action-button" type="button" @click="removeProvider(index)">
-              <Trash2 :size="16" aria-hidden="true" />
-              <span>Remove</span>
-            </button>
-          </div>
+        <div class="item-info">
+          <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
+          <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
+          <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>
         </div>
 
+        <div class="item-actions">
+          <button class="ghost action-button" type="button" :disabled="index === 0" @click="moveProvider(index, -1)">
+            <ArrowUp :size="16" aria-hidden="true" />
+          </button>
+          <button class="ghost action-button" type="button" :disabled="index === modelValue.length - 1" @click="moveProvider(index, 1)">
+            <ArrowDown :size="16" aria-hidden="true" />
+          </button>
+          <button class="ghost action-button" type="button" @click="openEditor(index)">
+            <Pencil :size="16" aria-hidden="true" />
+            <span>Edit</span>
+          </button>
+          <button class="ghost action-button" type="button" @click="duplicateProvider(index)">
+            <Copy :size="16" aria-hidden="true" />
+          </button>
+          <button class="danger action-button" type="button" @click="removeProvider(index)">
+            <Trash2 :size="16" aria-hidden="true" />
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <SideDrawer
+      :open="editingProvider !== null"
+      :title="`Edit ${editingProvider ? (editingProvider.name || getProviderLabel(editingProvider.type)) : 'provider'}`"
+      @close="closeEditor"
+    >
+      <template v-if="editingProvider !== null && editingIndex !== null">
         <label class="toggle">
-          <input :checked="provider.enabled" type="checkbox" @change="patchProvider(index, { enabled: ($event.target as HTMLInputElement).checked })">
+          <input :checked="editingProvider.enabled" type="checkbox" @change="patchProvider(editingIndex, { enabled: ($event.target as HTMLInputElement).checked })">
           <span>Enabled</span>
         </label>
 
-        <div class="provider-fields">
-          <label class="field">
-            <span>Name</span>
-            <input :value="provider.name" type="text" @input="patchProvider(index, { name: ($event.target as HTMLInputElement).value })">
-          </label>
-        </div>
+        <label class="field">
+          <span>Name</span>
+          <input :value="editingProvider.name" type="text" @input="patchProvider(editingIndex, { name: ($event.target as HTMLInputElement).value })">
+        </label>
 
-        <div v-if="provider.type === 'website'" class="provider-fields detail-grid">
-          <label class="field wide">
+        <template v-if="editingProvider.type === 'website'">
+          <label class="field">
             <span>URL</span>
-            <input :value="provider.url" type="url" @input="patchProvider(index, { url: ($event.target as HTMLInputElement).value })">
+            <input :value="editingProvider.url" type="url" @input="patchProvider(editingIndex, { url: ($event.target as HTMLInputElement).value })">
           </label>
 
           <label class="field">
             <span>Interval</span>
-            <input :value="provider.interval" type="number" min="1" step="1" @input="patchProvider(index, { interval: Number(($event.target as HTMLInputElement).value) || 1 })">
+            <input :value="editingProvider.interval" type="number" min="1" step="1" @input="patchProvider(editingIndex, { interval: Number(($event.target as HTMLInputElement).value) || 1 })">
           </label>
-        </div>
+        </template>
 
-        <div v-else-if="provider.type === 'imap'" class="provider-fields detail-grid imap-grid">
+        <template v-else-if="editingProvider.type === 'imap'">
           <label class="field">
             <span>Host</span>
-            <input :value="provider.host" type="text" @input="patchProvider(index, { host: ($event.target as HTMLInputElement).value })">
+            <input :value="editingProvider.host" type="text" @input="patchProvider(editingIndex, { host: ($event.target as HTMLInputElement).value })">
           </label>
 
           <label class="field">
             <span>Port</span>
-            <input :value="provider.port" type="number" min="1" step="1" @input="patchProvider(index, { port: Number(($event.target as HTMLInputElement).value) || 993 })">
+            <input :value="editingProvider.port" type="number" min="1" step="1" @input="patchProvider(editingIndex, { port: Number(($event.target as HTMLInputElement).value) || 993 })">
           </label>
 
-          <label class="toggle provider-toggle">
-            <input :checked="provider.secure" type="checkbox" @change="patchProvider(index, { secure: ($event.target as HTMLInputElement).checked })">
+          <label class="toggle">
+            <input :checked="editingProvider.secure" type="checkbox" @change="patchProvider(editingIndex, { secure: ($event.target as HTMLInputElement).checked })">
             <span>TLS</span>
           </label>
 
           <label class="field">
             <span>Username</span>
-            <input :value="provider.username" type="text" @input="patchProvider(index, { username: ($event.target as HTMLInputElement).value })">
+            <input :value="editingProvider.username" type="text" @input="patchProvider(editingIndex, { username: ($event.target as HTMLInputElement).value })">
           </label>
 
-          <label class="field wide">
+          <label class="field">
             <span>Password</span>
             <div class="secret-field">
               <input
-                :value="provider.password ?? ''"
-                :type="revealedSecrets[provider.id] ? 'text' : 'password'"
-                @input="patchProvider(index, { password: ($event.target as HTMLInputElement).value })"
+                :value="editingProvider.password ?? ''"
+                :type="revealedSecrets[editingProvider.id] ? 'text' : 'password'"
+                @input="patchProvider(editingIndex, { password: ($event.target as HTMLInputElement).value })"
               >
-              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(provider.id)">
-                <component :is="revealedSecrets[provider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
-                <span>{{ revealedSecrets[provider.id] ? "Hide" : "Show" }}</span>
+              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingProvider.id)">
+                <component :is="revealedSecrets[editingProvider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[editingProvider.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
           </label>
 
           <label class="field">
             <span>Poll interval</span>
-            <input :value="provider.pollInterval" type="number" min="1" step="1" @input="patchProvider(index, { pollInterval: Number(($event.target as HTMLInputElement).value) || 60 })">
+            <input :value="editingProvider.pollInterval" type="number" min="1" step="1" @input="patchProvider(editingIndex, { pollInterval: Number(($event.target as HTMLInputElement).value) || 60 })">
           </label>
-        </div>
+        </template>
 
-        <div v-else class="provider-fields detail-grid webhook-grid">
-          <label class="field wide">
+        <template v-else>
+          <label class="field">
             <span>Path</span>
-            <input :value="provider.path" type="text" @input="patchProvider(index, { path: ($event.target as HTMLInputElement).value })">
+            <input :value="editingProvider.path" type="text" @input="patchProvider(editingIndex, { path: ($event.target as HTMLInputElement).value })">
           </label>
 
           <label class="field">
             <span>Secret header</span>
-            <input :value="provider.secretHeader ?? ''" type="text" @input="patchProvider(index, { secretHeader: ($event.target as HTMLInputElement).value })">
+            <input :value="editingProvider.secretHeader ?? ''" type="text" @input="patchProvider(editingIndex, { secretHeader: ($event.target as HTMLInputElement).value })">
           </label>
 
-          <label class="field wide">
+          <label class="field">
             <span>Secret value</span>
             <div class="secret-field">
               <input
-                :value="provider.secretValue ?? ''"
-                :type="revealedSecrets[provider.id] ? 'text' : 'password'"
-                @input="patchProvider(index, { secretValue: ($event.target as HTMLInputElement).value })"
+                :value="editingProvider.secretValue ?? ''"
+                :type="revealedSecrets[editingProvider.id] ? 'text' : 'password'"
+                @input="patchProvider(editingIndex, { secretValue: ($event.target as HTMLInputElement).value })"
               >
-              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(provider.id)">
-                <component :is="revealedSecrets[provider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
-                <span>{{ revealedSecrets[provider.id] ? "Hide" : "Show" }}</span>
+              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingProvider.id)">
+                <component :is="revealedSecrets[editingProvider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[editingProvider.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
           </label>
-        </div>
-      </article>
-    </div>
+        </template>
+      </template>
+
+      <template v-if="editingProvider !== null && editingProvider.type === 'imap'" #footer>
+        <button
+          class="secondary action-button"
+          type="button"
+          :disabled="testingProviders[editingProvider.id]"
+          @click="runProviderConnectionTest(editingProvider)"
+        >
+          <span>{{ testingProviders[editingProvider.id] ? "Testing..." : "Test connection" }}</span>
+        </button>
+      </template>
+    </SideDrawer>
   </div>
 </template>
 
 <style scoped>
 .provider-list,
-.providers {
+.items {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .toolbar {
@@ -276,69 +315,51 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   min-width: 15rem;
 }
 
-.provider-card {
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4);
+.item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: 1.25rem;
   border: 1px solid var(--nook-border);
   background: var(--nook-surface-strong);
-}
-
-.provider-card-header,
-.provider-fields {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  align-items: flex-start;
   flex-wrap: wrap;
 }
 
-.provider-heading {
+.item-card.dimmed {
+  opacity: 0.5;
+}
+
+.item-info {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+  min-width: 0;
 }
 
-.provider-chip {
+.item-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 1.75rem;
-  padding: 0 0.7rem;
+  min-height: 1.5rem;
+  padding: 0 0.6rem;
   border-radius: 999px;
   border: 1px solid var(--nook-border);
   color: var(--nook-muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
-.provider-actions {
+.item-chip--off {
+  border-color: rgb(186 55 55 / 0.3);
+  color: rgb(255 131 131);
+}
+
+.item-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-1);
   flex-wrap: wrap;
   justify-content: flex-end;
-}
-
-.detail-grid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.imap-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.webhook-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.field.wide {
-  grid-column: span 2;
-}
-
-.provider-toggle {
-  padding-top: 1.75rem;
 }
 
 .secret-field {
@@ -374,7 +395,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   gap: 0.45rem;
 }
 
-.add-provider-button {
+.add-button {
   min-height: 3.5rem;
 }
 
@@ -386,24 +407,13 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 }
 
 @media (max-width: 960px) {
-  .provider-card-header,
-  .provider-fields {
+  .item-card {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .provider-actions {
+  .item-actions {
     justify-content: flex-start;
-  }
-
-  .detail-grid,
-  .imap-grid,
-  .webhook-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .field.wide {
-    grid-column: auto;
   }
 
   .secret-field {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-vue-next";
+import { Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
+import SideDrawer from "./SideDrawer.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 import {
   createDefaultDeliveryTarget,
@@ -24,16 +25,31 @@ const { notifyError, notifySuccess, testDeliveryTarget } = useDashboardState();
 const nextTargetType = ref<DeliveryTargetType>("matrix");
 const revealedSecrets = reactive<Record<string, boolean>>({});
 const testingTargets = reactive<Record<string, boolean>>({});
+const editingIndex = ref<number | null>(null);
+
+const editingTarget = computed(() =>
+  editingIndex.value !== null ? props.modelValue[editingIndex.value] ?? null : null
+);
+
+function openEditor(index: number) {
+  editingIndex.value = index;
+}
+
+function closeEditor() {
+  editingIndex.value = null;
+}
 
 function updateTargets(nextTargets: DeliveryTarget[]) {
   emit("update:modelValue", nextTargets);
 }
 
 function addTarget() {
-  updateTargets([
+  const nextTargets = [
     createDefaultDeliveryTarget(nextTargetType.value),
     ...props.modelValue,
-  ]);
+  ];
+  updateTargets(nextTargets);
+  editingIndex.value = 0;
 }
 
 function patchTarget(index: number, patch: Partial<DeliveryTarget>) {
@@ -63,9 +79,18 @@ function duplicateTarget(index: number) {
   const nextTargets = [...props.modelValue];
   nextTargets.splice(index + 1, 0, duplicate);
   updateTargets(nextTargets);
+
+  if (editingIndex.value !== null && editingIndex.value > index) {
+    editingIndex.value++;
+  }
 }
 
 function removeTarget(index: number) {
+  if (editingIndex.value === index) {
+    closeEditor();
+  } else if (editingIndex.value !== null && editingIndex.value > index) {
+    editingIndex.value--;
+  }
   updateTargets(props.modelValue.filter((_, currentIndex) => currentIndex !== index));
 }
 
@@ -100,7 +125,7 @@ async function runTargetTest(target: DeliveryTarget) {
         </select>
       </label>
 
-      <button class="primary action-button add-target-button" type="button" @click="addTarget">
+      <button class="primary action-button add-button" type="button" @click="addTarget">
         <Plus :size="16" aria-hidden="true" />
         <span>Add target</span>
       </button>
@@ -108,112 +133,132 @@ async function runTargetTest(target: DeliveryTarget) {
 
     <div v-if="modelValue.length === 0" class="empty">No delivery targets configured.</div>
 
-    <div v-else class="targets">
-      <article v-for="(target, index) in modelValue" :key="target.id" class="target-card">
-        <div class="target-card-header">
-          <div class="target-heading">
-            <strong>{{ target.name || `${getDeliveryTargetLabel(target.type)} ${index + 1}` }}</strong>
-            <span class="target-chip">{{ getDeliveryTargetLabel(target.type) }}</span>
-          </div>
-
-          <div class="target-actions">
-            <button class="ghost action-button" type="button" :disabled="testingTargets[target.id]" @click="runTargetTest(target)">
-              <span>{{ testingTargets[target.id] ? "Testing..." : "Test" }}</span>
-            </button>
-            <button class="ghost action-button" type="button" @click="duplicateTarget(index)">
-              <Copy :size="16" aria-hidden="true" />
-              <span>Duplicate</span>
-            </button>
-            <button class="danger action-button" type="button" @click="removeTarget(index)">
-              <Trash2 :size="16" aria-hidden="true" />
-              <span>Remove</span>
-            </button>
-          </div>
+    <div v-else class="items">
+      <article
+        v-for="(target, index) in modelValue"
+        :key="target.id"
+        class="item-card"
+        :class="{ dimmed: !target.enabled }"
+      >
+        <div class="item-info">
+          <strong>{{ target.name || `${getDeliveryTargetLabel(target.type)} ${index + 1}` }}</strong>
+          <span class="item-chip">{{ getDeliveryTargetLabel(target.type) }}</span>
+          <span v-if="!target.enabled" class="item-chip item-chip--off">Off</span>
         </div>
 
+        <div class="item-actions">
+          <button class="ghost action-button" type="button" @click="openEditor(index)">
+            <Pencil :size="16" aria-hidden="true" />
+            <span>Edit</span>
+          </button>
+          <button class="ghost action-button" type="button" @click="duplicateTarget(index)">
+            <Copy :size="16" aria-hidden="true" />
+          </button>
+          <button class="danger action-button" type="button" @click="removeTarget(index)">
+            <Trash2 :size="16" aria-hidden="true" />
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <SideDrawer
+      :open="editingTarget !== null"
+      :title="`Edit ${editingTarget ? (editingTarget.name || getDeliveryTargetLabel(editingTarget.type)) : 'target'}`"
+      @close="closeEditor"
+    >
+      <template v-if="editingTarget !== null && editingIndex !== null">
         <label class="toggle">
-          <input :checked="target.enabled" type="checkbox" @change="patchTarget(index, { enabled: ($event.target as HTMLInputElement).checked })">
+          <input :checked="editingTarget.enabled" type="checkbox" @change="patchTarget(editingIndex, { enabled: ($event.target as HTMLInputElement).checked })">
           <span>Enabled</span>
         </label>
 
-        <div class="target-fields">
-          <label class="field">
-            <span>Name</span>
-            <input :value="target.name" type="text" @input="patchTarget(index, { name: ($event.target as HTMLInputElement).value })">
-          </label>
-        </div>
+        <label class="field">
+          <span>Name</span>
+          <input :value="editingTarget.name" type="text" @input="patchTarget(editingIndex, { name: ($event.target as HTMLInputElement).value })">
+        </label>
 
-        <div v-if="target.type === 'matrix'" class="target-fields detail-grid">
+        <template v-if="editingTarget.type === 'matrix'">
           <label class="field">
             <span>Homeserver</span>
-            <input :value="target.homeserver" type="url" placeholder="https://matrix.example.com" @input="patchTarget(index, { homeserver: ($event.target as HTMLInputElement).value })">
+            <input :value="editingTarget.homeserver" type="url" placeholder="https://matrix.example.com" @input="patchTarget(editingIndex, { homeserver: ($event.target as HTMLInputElement).value })">
           </label>
 
           <label class="field">
             <span>Access token</span>
             <div class="secret-field">
               <input
-                :value="target.accessToken"
-                :type="revealedSecrets[target.id] ? 'text' : 'password'"
+                :value="editingTarget.accessToken"
+                :type="revealedSecrets[editingTarget.id] ? 'text' : 'password'"
                 placeholder="syt_xxx"
-                @input="patchTarget(index, { accessToken: ($event.target as HTMLInputElement).value })"
+                @input="patchTarget(editingIndex, { accessToken: ($event.target as HTMLInputElement).value })"
               >
-              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(target.id)">
-                <component :is="revealedSecrets[target.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
-                <span>{{ revealedSecrets[target.id] ? "Hide" : "Show" }}</span>
+              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingTarget.id)">
+                <component :is="revealedSecrets[editingTarget.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
           </label>
 
-          <label class="field wide">
+          <label class="field">
             <span>Room IDs</span>
-            <RoomIdEditor :model-value="target.roomIds" @update:model-value="patchTarget(index, { roomIds: $event })" />
+            <RoomIdEditor :model-value="editingTarget.roomIds" @update:model-value="patchTarget(editingIndex, { roomIds: $event })" />
           </label>
-        </div>
+        </template>
 
-        <div v-else-if="target.type === 'discord'" class="target-fields detail-grid">
-          <label class="field wide">
+        <template v-else-if="editingTarget.type === 'discord'">
+          <label class="field">
             <span>Webhook URL</span>
-            <input :value="target.webhookUrl" type="url" placeholder="https://discord.com/api/webhooks/..." @input="patchTarget(index, { webhookUrl: ($event.target as HTMLInputElement).value })">
+            <input :value="editingTarget.webhookUrl" type="url" placeholder="https://discord.com/api/webhooks/..." @input="patchTarget(editingIndex, { webhookUrl: ($event.target as HTMLInputElement).value })">
           </label>
-        </div>
+        </template>
 
-        <div v-else class="target-fields detail-grid">
-          <label class="field wide">
+        <template v-else>
+          <label class="field">
             <span>Webhook URL</span>
-            <input :value="target.url" type="url" placeholder="https://example.com/hooks/nook" @input="patchTarget(index, { url: ($event.target as HTMLInputElement).value })">
+            <input :value="editingTarget.url" type="url" placeholder="https://example.com/hooks/nook" @input="patchTarget(editingIndex, { url: ($event.target as HTMLInputElement).value })">
           </label>
 
           <label class="field">
             <span>Secret header</span>
-            <input :value="target.secretHeader ?? ''" type="text" placeholder="x-nook-secret" @input="patchTarget(index, { secretHeader: ($event.target as HTMLInputElement).value })">
+            <input :value="editingTarget.secretHeader ?? ''" type="text" placeholder="x-nook-secret" @input="patchTarget(editingIndex, { secretHeader: ($event.target as HTMLInputElement).value })">
           </label>
 
-          <label class="field wide">
+          <label class="field">
             <span>Secret value</span>
             <div class="secret-field">
               <input
-                :value="target.secretValue ?? ''"
-                :type="revealedSecrets[target.id] ? 'text' : 'password'"
-                @input="patchTarget(index, { secretValue: ($event.target as HTMLInputElement).value })"
+                :value="editingTarget.secretValue ?? ''"
+                :type="revealedSecrets[editingTarget.id] ? 'text' : 'password'"
+                @input="patchTarget(editingIndex, { secretValue: ($event.target as HTMLInputElement).value })"
               >
-              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(target.id)">
-                <component :is="revealedSecrets[target.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
-                <span>{{ revealedSecrets[target.id] ? "Hide" : "Show" }}</span>
+              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingTarget.id)">
+                <component :is="revealedSecrets[editingTarget.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
           </label>
-        </div>
-      </article>
-    </div>
+        </template>
+      </template>
+
+      <template v-if="editingTarget !== null" #footer>
+        <button
+          class="secondary action-button"
+          type="button"
+          :disabled="testingTargets[editingTarget.id]"
+          @click="runTargetTest(editingTarget)"
+        >
+          <span>{{ testingTargets[editingTarget.id] ? "Testing..." : "Test" }}</span>
+        </button>
+      </template>
+    </SideDrawer>
   </div>
 </template>
 
 <style scoped>
 .delivery-list,
-.targets {
+.items {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .toolbar {
@@ -227,56 +272,51 @@ async function runTargetTest(target: DeliveryTarget) {
   min-width: 15rem;
 }
 
-.target-card {
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4);
+.item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: 1.25rem;
   border: 1px solid var(--nook-border);
   background: var(--nook-surface-strong);
-}
-
-.target-card-header,
-.target-fields {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  align-items: flex-start;
   flex-wrap: wrap;
 }
 
-.target-heading {
+.item-card.dimmed {
+  opacity: 0.5;
+}
+
+.item-info {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
+  min-width: 0;
 }
 
-.target-chip {
+.item-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 1.75rem;
-  padding: 0 0.7rem;
+  min-height: 1.5rem;
+  padding: 0 0.6rem;
   border-radius: 999px;
   border: 1px solid var(--nook-border);
   color: var(--nook-muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
-.target-actions {
+.item-chip--off {
+  border-color: rgb(186 55 55 / 0.3);
+  color: rgb(255 131 131);
+}
+
+.item-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-1);
   flex-wrap: wrap;
-}
-
-.detail-grid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.field.wide {
-  grid-column: span 2;
+  justify-content: flex-end;
 }
 
 .secret-field {
@@ -312,7 +352,7 @@ async function runTargetTest(target: DeliveryTarget) {
   gap: 0.45rem;
 }
 
-.add-target-button {
+.add-button {
   min-height: 3.5rem;
 }
 
@@ -324,18 +364,13 @@ async function runTargetTest(target: DeliveryTarget) {
 }
 
 @media (max-width: 960px) {
-  .target-card-header,
-  .target-fields {
+  .item-card {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .field.wide {
-    grid-column: auto;
+  .item-actions {
+    justify-content: flex-start;
   }
 
   .secret-field {
