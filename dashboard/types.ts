@@ -59,7 +59,6 @@ export interface ImapProviderSettings {
   secure: boolean;
   username: string;
   password: string | null;
-  mailbox: string;
   pollInterval: number;
 }
 
@@ -128,7 +127,6 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
       secure: true,
       username: "",
       password: "",
-      mailbox: "INBOX",
       pollInterval: 60,
     };
   }

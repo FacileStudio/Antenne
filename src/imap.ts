@@ -18,6 +18,8 @@ interface ImapFetchResult {
   date: string | null;
 }
 
+const defaultImapMailbox = "INBOX";
+
 class ImapSession {
   private socket: TLSSocket;
   private buffer = "";
@@ -217,7 +219,7 @@ function escapeHtml(value: string) {
 function buildMessage(provider: ImapProviderSettings, message: ImapFetchResult) {
   const parts = [
     `📨 <b>[IMAP] ${escapeHtml(provider.name)}</b> new email`,
-    `Mailbox: <code>${escapeHtml(provider.mailbox)}</code>`,
+    `Mailbox: <code>${defaultImapMailbox}</code>`,
   ];
 
   if (message.from) {
@@ -250,7 +252,7 @@ export function createImapManager(sendAlert: (message: string) => Promise<void>)
     try {
       session = await ImapSession.connect(provider);
       await session.login(provider.username, provider.password);
-      await session.selectMailbox(provider.mailbox);
+      await session.selectMailbox(defaultImapMailbox);
       const uids = await session.searchUids();
       const latestUid = uids.length > 0 ? uids[uids.length - 1] ?? null : null;
 
@@ -298,7 +300,7 @@ export function createImapManager(sendAlert: (message: string) => Promise<void>)
         lastSeenUid: null,
         initialized: false,
       });
-      console.log(`[imap] polling ${provider.name} on ${provider.host}:${provider.port}/${provider.mailbox} every ${provider.pollInterval}s`);
+      console.log(`[imap] polling ${provider.name} on ${provider.host}:${provider.port}/${defaultImapMailbox} every ${provider.pollInterval}s`);
       void pollProvider(provider);
     }
   }
@@ -307,4 +309,19 @@ export function createImapManager(sendAlert: (message: string) => Promise<void>)
     apply,
     stopAll,
   };
+}
+
+export async function testImapConnection(provider: ImapProviderSettings) {
+  if (!provider.host || !provider.username || !provider.password) {
+    throw new Error("IMAP host, username, and password are required.");
+  }
+
+  let session: ImapSession | null = null;
+  try {
+    session = await ImapSession.connect(provider);
+    await session.login(provider.username, provider.password);
+    await session.selectMailbox(defaultImapMailbox);
+  } finally {
+    await session?.close();
+  }
 }

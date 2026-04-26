@@ -28,8 +28,8 @@ function updateTargets(nextTargets: DeliveryTarget[]) {
 
 function addTarget() {
   updateTargets([
-    ...props.modelValue,
     createDefaultDeliveryTarget(nextTargetType.value),
+    ...props.modelValue,
   ]);
 }
 

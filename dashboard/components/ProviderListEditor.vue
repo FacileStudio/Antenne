@@ -27,8 +27,8 @@ function updateProviders(nextProviders: ProviderSettings[]) {
 
 function addProvider() {
   updateProviders([
-    ...props.modelValue,
     createDefaultProvider(nextProviderType.value),
+    ...props.modelValue,
   ]);
 }
 

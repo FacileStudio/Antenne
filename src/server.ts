@@ -215,6 +215,8 @@ export function createAppServer(options: {
   getSettings: () => AppSettings;
   updateSettings: (input: unknown) => Promise<AppSettings>;
   sendConfiguredAlert: (message: string) => Promise<void>;
+  sendTestAlertToTarget: (targetId: string) => Promise<void>;
+  testProviderConnection: (providerId: string) => Promise<void>;
   getRuntimeStatus: () => RuntimeStatus;
   session: DashboardSessionConfig;
 }) {
@@ -308,6 +310,34 @@ export function createAppServer(options: {
           return createJsonResponse({ ok: true });
         } catch (error) {
           return createJsonResponse({ error: error instanceof Error ? error.message : "failed to send alert" }, { status: 400 });
+        }
+      }
+
+      if (url.pathname === "/api/test-delivery-target" && req.method === "POST") {
+        try {
+          const body = await parseJson(req) as { targetId?: string };
+          if (!body.targetId) {
+            return createJsonResponse({ error: "targetId is required" }, { status: 400 });
+          }
+
+          await options.sendTestAlertToTarget(body.targetId);
+          return createJsonResponse({ ok: true });
+        } catch (error) {
+          return createJsonResponse({ error: error instanceof Error ? error.message : "failed to test target" }, { status: 400 });
+        }
+      }
+
+      if (url.pathname === "/api/test-provider-connection" && req.method === "POST") {
+        try {
+          const body = await parseJson(req) as { providerId?: string };
+          if (!body.providerId) {
+            return createJsonResponse({ error: "providerId is required" }, { status: 400 });
+          }
+
+          await options.testProviderConnection(body.providerId);
+          return createJsonResponse({ ok: true });
+        } catch (error) {
+          return createJsonResponse({ error: error instanceof Error ? error.message : "failed to test provider" }, { status: 400 });
         }
       }
 

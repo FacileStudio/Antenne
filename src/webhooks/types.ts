@@ -22,7 +22,6 @@ export interface ImapProviderSettings extends BaseProviderSettings {
   secure: boolean;
   username: string;
   password: string | null;
-  mailbox: string;
   pollInterval: number;
 }
 

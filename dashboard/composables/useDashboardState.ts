@@ -182,6 +182,20 @@ export function useDashboardState() {
     window.location.href = "/dashboard";
   }
 
+  async function testDeliveryTarget(targetId: string) {
+    await apiFetch<{ ok: boolean }>("/api/test-delivery-target", {
+      method: "POST",
+      body: JSON.stringify({ targetId }),
+    });
+  }
+
+  async function testProviderConnection(providerId: string) {
+    await apiFetch<{ ok: boolean }>("/api/test-provider-connection", {
+      method: "POST",
+      body: JSON.stringify({ providerId }),
+    });
+  }
+
   return {
     settings: settings.value,
     runtime,
@@ -197,6 +211,8 @@ export function useDashboardState() {
     loadSettings,
     saveSettings,
     sendTestAlert,
+    testDeliveryTarget,
+    testProviderConnection,
     logout,
   };
 }

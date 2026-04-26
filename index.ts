@@ -1,6 +1,6 @@
-import { createImapManager } from "./src/imap";
+import { createImapManager, testImapConnection } from "./src/imap";
 import { createMonitorManager } from "./src/monitor";
-import { hasAnyDelivery, sendAlert } from "./src/delivery";
+import { hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
 import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
 import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
@@ -28,6 +28,30 @@ async function sendConfiguredAlert(message: string) {
   }
 
   await sendAlert(settings.delivery, message);
+}
+
+async function sendTestAlertToTarget(targetId: string) {
+  const settings = store.getSettings();
+  const target = settings.delivery.items.find((item) => item.id === targetId);
+  if (!target) {
+    throw new Error("Delivery target not found.");
+  }
+
+  await sendAlertToTarget(target, `🧪 <b>Nook target test</b><br/>Target <b>${target.name}</b> is configured.`);
+}
+
+async function testProviderConnection(providerId: string) {
+  const settings = store.getSettings();
+  const provider = settings.providers.items.find((item) => item.id === providerId);
+  if (!provider) {
+    throw new Error("Provider not found.");
+  }
+
+  if (!isImapProviderSettings(provider)) {
+    throw new Error("Connection testing is only supported for IMAP providers.");
+  }
+
+  await testImapConnection(provider);
 }
 
 const monitorManager = createMonitorManager(async (message) => {
@@ -96,6 +120,8 @@ Bun.serve({
     getSettings: () => store.getSettings(),
     updateSettings,
     sendConfiguredAlert,
+    sendTestAlertToTarget,
+    testProviderConnection,
     getRuntimeStatus: () => ({ ...runtimeStatus }),
     session,
   }),

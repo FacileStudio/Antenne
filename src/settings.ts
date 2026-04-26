@@ -213,7 +213,6 @@ function normalizeImapProvider(
     secure: typeof candidate.secure === "boolean" ? candidate.secure : seed.secure,
     username: normalizeString(candidate.username) || seed.username,
     password: "password" in candidate ? (normalizeString(candidate.password) || null) : seed.password,
-    mailbox: normalizeString(candidate.mailbox) || seed.mailbox,
     pollInterval: normalizeInteger(candidate.pollInterval, seed.pollInterval, `Provider \`${seed.name}\` poll interval`),
   };
 }
@@ -364,7 +363,7 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
   }
 
   return {
-    delivery: normalizeDeliveryConfig(candidate.delivery, fallback.delivery),
+    delivery: normalizeDeliveryConfig(input, fallback.delivery),
     timeout,
     providers: normalizeProvidersConfig(input, fallback),
   };

@@ -140,6 +140,18 @@ export function hasConfiguredMatrixDelivery(config: DeliveryConfig): boolean {
   return config.items.some((target) => isMatrixDeliveryTarget(target) && hasMatrixDelivery(target));
 }
 
+export function canSendToDeliveryTarget(target: DeliveryTarget): boolean {
+  if (isMatrixDeliveryTarget(target)) {
+    return hasMatrixDelivery(target);
+  }
+
+  if (isDiscordDeliveryTarget(target)) {
+    return hasDiscordDelivery(target);
+  }
+
+  return hasHttpDelivery(target);
+}
+
 export function loadDeliveryConfigFromEnv(): DeliveryConfig {
   const items: DeliveryTarget[] = [];
   const roomIdsRaw = process.env.MATRIX_ROOM_IDS ?? process.env.MATRIX_ROOM_ID;
@@ -205,4 +217,23 @@ export async function sendAlert(config: DeliveryConfig, message: string) {
   if (failures.length === tasks.length) {
     throw new Error("All configured delivery channels failed.");
   }
+}
+
+export async function sendAlertToTarget(target: DeliveryTarget, message: string) {
+  if (isMatrixDeliveryTarget(target) && hasMatrixDelivery(target)) {
+    await sendMatrixAlert(target, message);
+    return;
+  }
+
+  if (isDiscordDeliveryTarget(target) && hasDiscordDelivery(target)) {
+    await sendDiscordAlert(target, message);
+    return;
+  }
+
+  if (isHttpDeliveryTarget(target) && hasHttpDelivery(target)) {
+    await sendHttpAlert(target, message);
+    return;
+  }
+
+  throw new Error(`Target \`${target.name}\` is not fully configured.`);
 }

@@ -18,7 +18,6 @@ export interface DeliveryTargetBase {
 
 export interface MatrixDeliveryTarget extends DeliveryTargetBase {
   type: "matrix";
-  enabled: boolean;
   homeserver: string;
   accessToken: string;
   roomIds: string[];

@@ -90,7 +90,6 @@ export function createDefaultImapProvider(
     secure: overrides.secure ?? true,
     username: overrides.username?.trim() || "",
     password: overrides.password?.trim() || null,
-    mailbox: overrides.mailbox?.trim() || "INBOX",
     pollInterval: overrides.pollInterval ?? 60,
   };
 }
