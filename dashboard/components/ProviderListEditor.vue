@@ -160,15 +160,15 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           </div>
         </div>
 
+        <label class="toggle">
+          <input :checked="provider.enabled" type="checkbox" @change="patchProvider(index, { enabled: ($event.target as HTMLInputElement).checked })">
+          <span>Enabled</span>
+        </label>
+
         <div class="provider-fields">
           <label class="field">
             <span>Name</span>
             <input :value="provider.name" type="text" @input="patchProvider(index, { name: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="toggle provider-toggle">
-            <input :checked="provider.enabled" type="checkbox" @change="patchProvider(index, { enabled: ($event.target as HTMLInputElement).checked })">
-            <span>Enabled</span>
           </label>
         </div>
 
@@ -338,7 +338,6 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 }
 
 .provider-toggle {
-  min-height: 3.5rem;
   padding-top: 1.75rem;
 }
 

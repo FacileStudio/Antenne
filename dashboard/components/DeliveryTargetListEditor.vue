@@ -131,15 +131,15 @@ async function runTargetTest(target: DeliveryTarget) {
           </div>
         </div>
 
+        <label class="toggle">
+          <input :checked="target.enabled" type="checkbox" @change="patchTarget(index, { enabled: ($event.target as HTMLInputElement).checked })">
+          <span>Enabled</span>
+        </label>
+
         <div class="target-fields">
           <label class="field">
             <span>Name</span>
             <input :value="target.name" type="text" @input="patchTarget(index, { name: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="toggle target-toggle">
-            <input :checked="target.enabled" type="checkbox" @change="patchTarget(index, { enabled: ($event.target as HTMLInputElement).checked })">
-            <span>Enabled</span>
           </label>
         </div>
 
@@ -277,11 +277,6 @@ async function runTargetTest(target: DeliveryTarget) {
 
 .field.wide {
   grid-column: span 2;
-}
-
-.target-toggle {
-  min-height: 3.5rem;
-  padding-top: 1.75rem;
 }
 
 .secret-field {

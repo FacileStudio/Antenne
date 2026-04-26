@@ -171,6 +171,55 @@ h2 {
   letter-spacing: -0.03em;
 }
 
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle input {
+  appearance: none;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface);
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.toggle input::after {
+  content: "";
+  position: absolute;
+  top: 0.19rem;
+  left: 0.19rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--nook-muted);
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.toggle input:checked {
+  background: rgb(255 255 255 / 0.15);
+  border-color: rgb(255 255 255 / 0.22);
+}
+
+.toggle input:checked::after {
+  transform: translateX(1.25rem);
+  background: var(--nook-text);
+}
+
+.toggle span {
+  color: var(--nook-muted);
+  font-size: 0.95rem;
+}
+
 .primary {
   background: var(--nook-text);
   color: var(--nook-bg);
