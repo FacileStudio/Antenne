@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
@@ -85,6 +85,24 @@ function duplicateTarget(index: number) {
   }
 }
 
+function moveTarget(index: number, direction: -1 | 1) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= props.modelValue.length) {
+    return;
+  }
+
+  const nextTargets = [...props.modelValue];
+  const [target] = nextTargets.splice(index, 1);
+  nextTargets.splice(targetIndex, 0, target);
+  updateTargets(nextTargets);
+
+  if (editingIndex.value === index) {
+    editingIndex.value = targetIndex;
+  } else if (editingIndex.value === targetIndex) {
+    editingIndex.value = index;
+  }
+}
+
 function removeTarget(index: number) {
   if (editingIndex.value === index) {
     closeEditor();
@@ -147,6 +165,12 @@ async function runTargetTest(target: DeliveryTarget) {
         </div>
 
         <div class="item-actions">
+          <button class="ghost action-button" type="button" :disabled="index === 0" @click="moveTarget(index, -1)">
+            <ArrowUp :size="16" aria-hidden="true" />
+          </button>
+          <button class="ghost action-button" type="button" :disabled="index === modelValue.length - 1" @click="moveTarget(index, 1)">
+            <ArrowDown :size="16" aria-hidden="true" />
+          </button>
           <button class="ghost action-button" type="button" @click="openEditor(index)">
             <Pencil :size="16" aria-hidden="true" />
             <span>Edit</span>
