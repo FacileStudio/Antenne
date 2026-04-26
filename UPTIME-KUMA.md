@@ -20,7 +20,7 @@ Set these in Dokploy's environment settings for the Nook service:
 | `UPTIME_KUMA_WEBHOOK_PATH` | No | Custom Uptime Kuma webhook path |
 | `UPTIME_KUMA_WEBHOOK_SECRET_HEADER` | No | Secret header name (default: `x-webhook-secret`) |
 
-No `config.yml` is needed. Nook auto-enables the webhook server when no sites are configured, and the dashboard can later persist overrides into `/data/nook.json`.
+No `config.yml` is needed. Nook can bootstrap the Uptime Kuma provider from env alone, and the dashboard can later persist overrides into `/data/nook.json`.
 
 ### Network
 

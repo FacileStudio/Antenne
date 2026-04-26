@@ -301,7 +301,7 @@ export function createAppServer(options: {
 
       if (url.pathname === "/api/test-alert" && req.method === "POST") {
         const settings = options.getSettings();
-        const label = settings.sites[0]?.name ?? "dashboard";
+        const label = settings.providers.items[0]?.name ?? "dashboard";
 
         try {
           await options.sendConfiguredAlert(`🧪 <b>Nook test alert</b><br/>Dashboard config for <b>${escapeHtml(label)}</b> is live.`);
@@ -314,7 +314,7 @@ export function createAppServer(options: {
       return createJsonResponse({ error: "not found" }, { status: 404 });
     }
 
-    if (url.pathname.startsWith("/webhook/")) {
+    if (req.method === "POST") {
       return handleWebhookRequest(req, options.getSettings(), options.sendConfiguredAlert);
     }
 

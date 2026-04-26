@@ -1,21 +1,11 @@
+import { createDefaultProvider, createDefaultWebhookProvider, createDefaultWebsiteProvider } from "./provider-config";
 import type { AppSettings, RawConfig, RawSiteConfig, RawSiteOptions } from "./types";
-import type { WebhookConfig, WebhookProviderId, WebhookProviderSettings } from "./webhooks/types";
 
 const defaultConfigPath = "/data/config.yml";
 const configPath = process.env.CONFIG_PATH ?? defaultConfigPath;
 const defaultIntervalSeconds = 60;
 const defaultTimeoutSeconds = 10;
-const defaultWebhookPort = 9090;
-const webhookProviderDefaults = {
-  "uptime-kuma": {
-    path: "/webhook/uptime-kuma",
-    secretHeader: "x-webhook-secret",
-  },
-  docuseal: {
-    path: "/webhook/docuseal",
-    secretHeader: "x-docuseal-secret",
-  },
-} satisfies Record<WebhookProviderId, { path: string; secretHeader: string }>;
+const defaultProviderPort = 9090;
 
 function isPositiveNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
@@ -198,7 +188,7 @@ function parseRawConfig(text: string, path: string): RawConfig {
   throw new Error(`Failed to parse YAML config at ${path}: ${errors.join(" | ")}`);
 }
 
-function normalizeConfig(rawConfig: RawConfig): Pick<AppSettings, "timeout" | "sites" | "webhook"> {
+function normalizeConfig(rawConfig: RawConfig): Pick<AppSettings, "timeout" | "providers"> {
   if (!rawConfig || typeof rawConfig !== "object") {
     throw new Error("Configuration file must contain a YAML object.");
   }
@@ -216,8 +206,7 @@ function normalizeConfig(rawConfig: RawConfig): Pick<AppSettings, "timeout" | "s
   }
 
   const rawSites = Array.isArray(rawConfig.sites) ? rawConfig.sites : [];
-
-  const sites = rawSites.map((site, index) => {
+  const websiteProviders = rawSites.map((site, index) => {
     const siteConfig = typeof site === "string" ? { url: site } : site;
     const url = siteConfig.url?.trim();
     const interval = siteConfig.every ?? siteConfig.interval ?? defaultInterval;
@@ -230,17 +219,15 @@ function normalizeConfig(rawConfig: RawConfig): Pick<AppSettings, "timeout" | "s
       throw new Error(`Site \`${url}\` must define a positive \`every\` value.`);
     }
 
-    const name = siteConfig.name?.trim() || deriveSiteName(url);
-
-    return {
-      name,
+    return createDefaultWebsiteProvider({
+      name: siteConfig.name?.trim() || deriveSiteName(url),
       url,
       interval,
-    };
+    });
   });
 
   const rawWebhook = rawConfig.webhook;
-  const webhookEnabledDefault = sites.length === 0;
+  const webhookEnabledDefault = websiteProviders.length === 0;
   const envWebhookEnabled = process.env.WEBHOOK_ENABLED !== undefined
     ? process.env.WEBHOOK_ENABLED === "true"
     : undefined;
@@ -252,53 +239,35 @@ function normalizeConfig(rawConfig: RawConfig): Pick<AppSettings, "timeout" | "s
   const docuSealEnabled = process.env.DOCUSEAL_WEBHOOK_ENABLED !== undefined
     ? process.env.DOCUSEAL_WEBHOOK_ENABLED === "true"
     : globalWebhookEnabled;
+  const dokployEnabled = process.env.DOKPLOY_WEBHOOK_ENABLED === "true";
 
-  const providers: Record<WebhookProviderId, WebhookProviderSettings> = {
-    "uptime-kuma": {
+  const webhookProviders = [
+    createDefaultWebhookProvider("uptime-kuma", {
       enabled: uptimeKumaEnabled,
-      path: process.env.UPTIME_KUMA_WEBHOOK_PATH ?? webhookProviderDefaults["uptime-kuma"].path,
-      secretHeader: process.env.UPTIME_KUMA_WEBHOOK_SECRET_HEADER ?? webhookProviderDefaults["uptime-kuma"].secretHeader,
+      path: process.env.UPTIME_KUMA_WEBHOOK_PATH,
+      secretHeader: process.env.UPTIME_KUMA_WEBHOOK_SECRET_HEADER,
       secretValue: process.env.UPTIME_KUMA_WEBHOOK_SECRET ?? process.env.WEBHOOK_SECRET ?? null,
-    },
-    docuseal: {
+    }),
+    createDefaultWebhookProvider("docuseal", {
       enabled: docuSealEnabled,
-      path: process.env.DOCUSEAL_WEBHOOK_PATH ?? webhookProviderDefaults.docuseal.path,
-      secretHeader: process.env.DOCUSEAL_WEBHOOK_SECRET_HEADER ?? webhookProviderDefaults.docuseal.secretHeader,
+      path: process.env.DOCUSEAL_WEBHOOK_PATH,
+      secretHeader: process.env.DOCUSEAL_WEBHOOK_SECRET_HEADER,
       secretValue: process.env.DOCUSEAL_WEBHOOK_SECRET ?? null,
-    },
-  };
-
-  const webhook: WebhookConfig = {
-    enabled: Object.values(providers).some((provider) => provider.enabled),
-    port: envWebhookPort ?? rawWebhook?.port ?? defaultWebhookPort,
-    providers,
-  };
-
-  if (!isPositiveNumber(webhook.port) || !Number.isInteger(webhook.port)) {
-    throw new Error("Configuration `webhook.port` must be a positive integer.");
-  }
-
-  const enabledPaths = new Set<string>();
-  for (const provider of Object.values(webhook.providers)) {
-    if (!provider.enabled) {
-      continue;
-    }
-
-    if (!provider.path.startsWith("/")) {
-      throw new Error("Webhook provider paths must start with `/`.");
-    }
-
-    if (enabledPaths.has(provider.path)) {
-      throw new Error(`Webhook path collision detected for \`${provider.path}\`.`);
-    }
-
-    enabledPaths.add(provider.path);
-  }
+    }),
+    createDefaultWebhookProvider("dokploy", {
+      enabled: dokployEnabled,
+      path: process.env.DOKPLOY_WEBHOOK_PATH,
+      secretHeader: process.env.DOKPLOY_WEBHOOK_SECRET_HEADER,
+      secretValue: process.env.DOKPLOY_WEBHOOK_SECRET ?? null,
+    }),
+  ].filter((provider) => provider.enabled);
 
   return {
     timeout,
-    sites,
-    webhook,
+    providers: {
+      port: envWebhookPort ?? rawWebhook?.port ?? defaultProviderPort,
+      items: [...websiteProviders, ...webhookProviders],
+    },
   };
 }
 
@@ -335,7 +304,7 @@ export async function loadConfig() {
     };
   }
 
-  console.warn("[startup] No config file found. Using defaults (webhook-only mode).");
+  console.warn("[startup] No config file found. Using defaults (provider-only mode).");
   return {
     config: normalizeConfig({}),
     resolvedPath: null,

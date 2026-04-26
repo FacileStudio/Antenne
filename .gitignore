@@ -9,6 +9,9 @@ dashboard/.output
 !dashboard/.output/
 !dashboard/.output/public/
 !dashboard/.output/public/**
+dashboard/.output/*
+!dashboard/.output/public/
+!dashboard/.output/public/**
 dashboard/.nuxt
 node_modules/.cache/nuxt
 

@@ -1,25 +1,31 @@
 import type { AppSettings } from "../types";
 import type {
   ConfiguredWebhookProvider,
-  WebhookConfig,
+  ProvidersConfigInput,
   WebhookProviderDefinition,
-  WebhookProviderId,
+  WebhookProviderSettings,
+  WebhookProviderType,
+  WebhookDispatchContext,
 } from "./types";
 import { docuSealWebhookProvider } from "./providers/docuseal";
+import { dokployWebhookProvider } from "./providers/dokploy";
 import { uptimeKumaWebhookProvider } from "./providers/uptime-kuma";
+import { isWebhookProviderSettings } from "./types";
 
 const providerDefinitions = {
   "uptime-kuma": uptimeKumaWebhookProvider,
   docuseal: docuSealWebhookProvider,
-} satisfies Record<WebhookProviderId, WebhookProviderDefinition>;
+  dokploy: dokployWebhookProvider,
+} satisfies Record<WebhookProviderType, WebhookProviderDefinition>;
 
-function getConfiguredProviders(config: WebhookConfig): ConfiguredWebhookProvider[] {
-  return Object.values(providerDefinitions)
-    .map((definition) => ({
-      definition,
-      settings: config.providers[definition.id],
-    }))
-    .filter((provider) => provider.settings.enabled);
+function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhookProvider[] {
+  return config.items
+    .filter(isWebhookProviderSettings)
+    .filter((provider) => provider.enabled)
+    .map((provider) => ({
+      definition: providerDefinitions[provider.type],
+      settings: provider,
+    }));
 }
 
 function authenticate(provider: ConfiguredWebhookProvider, req: Request): boolean {
@@ -34,9 +40,18 @@ function authenticate(provider: ConfiguredWebhookProvider, req: Request): boolea
   return req.headers.get(provider.settings.secretHeader) === provider.settings.secretValue;
 }
 
-export function describeWebhookProviders(config: WebhookConfig) {
+export function describeWebhookProviders(config: ProvidersConfigInput) {
   return getConfiguredProviders(config)
-    .map((provider) => `${provider.definition.id}=${provider.settings.path}`);
+    .map((provider) => `${provider.settings.name} (${provider.definition.type})=${provider.settings.path}`);
+}
+
+function createDispatchContext(provider: WebhookProviderSettings): WebhookDispatchContext {
+  return {
+    providerId: provider.id,
+    providerName: provider.name,
+    providerType: provider.type,
+    path: provider.path,
+  };
 }
 
 export async function handleWebhookRequest(
@@ -49,7 +64,7 @@ export async function handleWebhookRequest(
   }
 
   const providersByPath = new Map(
-    getConfiguredProviders(settings.webhook).map((provider) => [provider.settings.path, provider]),
+    getConfiguredProviders(settings.providers).map((provider) => [provider.settings.path, provider]),
   );
   const url = new URL(req.url);
   const provider = providersByPath.get(url.pathname);
@@ -69,8 +84,8 @@ export async function handleWebhookRequest(
     return new Response("bad request", { status: 400 });
   }
 
-  console.log(`[webhook] ${provider.definition.id}: ${provider.definition.describeEvent(payload)}`);
-  const message = provider.definition.formatMessage(payload);
+  console.log(`[webhook] ${provider.settings.name} (${provider.definition.type}): ${provider.definition.describeEvent(payload)}`);
+  const message = provider.definition.formatMessage(payload, createDispatchContext(provider.settings));
   if (message) {
     await sendAlert(message);
   }

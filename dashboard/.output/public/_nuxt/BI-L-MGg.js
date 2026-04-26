@@ -1,0 +1,1 @@
+import{k as o,J as a,o as s,c as n,K as r}from"./Cf_DDi8P.js";const m=o({__name:"webhooks",async setup(_){let e,t;return[e,t]=a(()=>r("/providers")),await e,t(),(c,p)=>(s(),n("div"))}});export{m as default};

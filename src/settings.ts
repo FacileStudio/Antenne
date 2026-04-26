@@ -1,13 +1,25 @@
 import { mkdir } from "node:fs/promises";
 
 import { loadConfig } from "./config";
+import { createDefaultProvider, createDefaultWebhookProvider, createDefaultWebsiteProvider } from "./provider-config";
 import { loadDeliveryConfigFromEnv } from "./delivery";
-import type { AppSettings, RuntimeStatus } from "./types";
-import type { WebhookConfig, WebhookProviderId, WebhookProviderSettings } from "./webhooks/types";
+import type { AppSettings, ProvidersConfig, RuntimeStatus } from "./types";
+import type {
+  ImapProviderSettings,
+  ProviderSettings,
+  ProviderType,
+  WebhookProviderSettings,
+  WebsiteProviderSettings,
+} from "./webhooks/types";
+import {
+  isImapProviderSettings,
+  isProviderType,
+  isWebhookProviderSettings,
+  isWebsiteProviderSettings,
+} from "./webhooks/types";
 
 const defaultSettingsPath = process.env.NOOK_SETTINGS_PATH ?? "/data/nook.json";
 const defaultServerPort = Number(process.env.PORT ?? process.env.WEBHOOK_PORT ?? 9090);
-const webhookProviderIds = ["uptime-kuma", "docuseal"] as const satisfies WebhookProviderId[];
 
 function cloneSettings(settings: AppSettings): AppSettings {
   return structuredClone(settings);
@@ -69,87 +81,204 @@ function normalizeString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function normalizeWebhookProvider(
+function normalizeBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizeInteger(value: unknown, fallback: number, fieldName: string): number {
+  const nextValue = isPositiveNumber(value) ? Math.trunc(value) : fallback;
+  if (!Number.isInteger(nextValue)) {
+    throw new Error(`${fieldName} must be an integer.`);
+  }
+
+  return nextValue;
+}
+
+function normalizeWebsiteProvider(
   input: unknown,
-  fallback: WebhookProviderSettings,
-): WebhookProviderSettings {
-  const candidate = input && typeof input === "object" ? input as Partial<WebhookProviderSettings> : {};
+  fallback?: WebsiteProviderSettings,
+): WebsiteProviderSettings {
+  const seed = fallback ?? createDefaultWebsiteProvider();
+  const candidate = input && typeof input === "object" ? input as Partial<WebsiteProviderSettings> : {};
+  const url = normalizeString(candidate.url) || seed.url;
+  const interval = normalizeInteger(candidate.interval, seed.interval, `Provider \`${seed.name}\` interval`);
+
+  if (!url) {
+    throw new Error("Website providers must define a URL.");
+  }
 
   return {
-    enabled: typeof candidate.enabled === "boolean" ? candidate.enabled : fallback.enabled,
-    path: normalizeString(candidate.path) || fallback.path,
-    secretHeader: normalizeString(candidate.secretHeader) || fallback.secretHeader,
-    secretValue: normalizeString(candidate.secretValue) || null,
+    ...seed,
+    id: normalizeString(candidate.id) || seed.id,
+    name: normalizeString(candidate.name) || seed.name,
+    enabled: normalizeBoolean(candidate.enabled, seed.enabled),
+    url,
+    interval,
   };
 }
 
-function normalizeWebhookConfig(input: unknown, fallback: WebhookConfig): WebhookConfig {
-  const candidate = input && typeof input === "object" ? input as Partial<WebhookConfig> : {};
-  const providersInput = candidate.providers && typeof candidate.providers === "object"
-    ? candidate.providers as Partial<Record<WebhookProviderId, unknown>>
-    : {};
+function normalizeImapProvider(
+  input: unknown,
+  fallback?: ImapProviderSettings,
+): ImapProviderSettings {
+  const seed = fallback ?? createDefaultProvider("imap") as ImapProviderSettings;
+  const candidate = input && typeof input === "object" ? input as Partial<ImapProviderSettings> : {};
 
-  const providers = Object.fromEntries(
-    webhookProviderIds.map((providerId) => [
-      providerId,
-      normalizeWebhookProvider(providersInput[providerId], fallback.providers[providerId]),
-    ]),
-  ) as Record<WebhookProviderId, WebhookProviderSettings>;
-
-  const webhook: WebhookConfig = {
-    enabled: Object.values(providers).some((provider) => provider.enabled),
-    port: isPositiveNumber(candidate.port) ? Math.trunc(candidate.port) : fallback.port,
-    providers,
+  return {
+    ...seed,
+    id: normalizeString(candidate.id) || seed.id,
+    name: normalizeString(candidate.name) || seed.name,
+    enabled: normalizeBoolean(candidate.enabled, seed.enabled),
+    host: normalizeString(candidate.host) || seed.host,
+    port: normalizeInteger(candidate.port, seed.port, `Provider \`${seed.name}\` port`),
+    secure: typeof candidate.secure === "boolean" ? candidate.secure : seed.secure,
+    username: normalizeString(candidate.username) || seed.username,
+    password: "password" in candidate ? (normalizeString(candidate.password) || null) : seed.password,
+    mailbox: normalizeString(candidate.mailbox) || seed.mailbox,
+    pollInterval: normalizeInteger(candidate.pollInterval, seed.pollInterval, `Provider \`${seed.name}\` poll interval`),
   };
+}
 
-  if (!Number.isInteger(webhook.port)) {
-    throw new Error("Webhook port must be an integer.");
+function normalizeWebhookProvider(
+  input: unknown,
+  fallback?: WebhookProviderSettings,
+): WebhookProviderSettings {
+  const type = input && typeof input === "object" && isProviderType((input as { type?: unknown }).type)
+    ? (input as { type: ProviderType }).type
+    : fallback?.type ?? "uptime-kuma";
+  const seed = fallback ?? createDefaultProvider(type) as WebhookProviderSettings;
+  const candidate = input && typeof input === "object" ? input as Partial<WebhookProviderSettings> : {};
+  const path = normalizeString(candidate.path) || seed.path;
+
+  if (!path.startsWith("/")) {
+    throw new Error(`Webhook path for provider \`${normalizeString(candidate.name) || seed.name}\` must start with \`/\`.`);
   }
 
+  return {
+    ...seed,
+    id: normalizeString(candidate.id) || seed.id,
+    name: normalizeString(candidate.name) || seed.name,
+    enabled: normalizeBoolean(candidate.enabled, seed.enabled),
+    path,
+    secretHeader: normalizeString(candidate.secretHeader) || seed.secretHeader,
+    secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : seed.secretValue,
+  };
+}
+
+function normalizeProvider(input: unknown, fallback?: ProviderSettings): ProviderSettings {
+  const type = input && typeof input === "object" && isProviderType((input as { type?: unknown }).type)
+    ? (input as { type: ProviderType }).type
+    : fallback?.type ?? "website";
+
+  if (type === "website") {
+    return normalizeWebsiteProvider(input, fallback && isWebsiteProviderSettings(fallback) ? fallback : undefined);
+  }
+
+  if (type === "imap") {
+    return normalizeImapProvider(input, fallback && isImapProviderSettings(fallback) ? fallback : undefined);
+  }
+
+  return normalizeWebhookProvider(input, fallback && isWebhookProviderSettings(fallback) ? fallback : undefined);
+}
+
+function extractLegacyProviders(input: unknown, fallback: AppSettings): ProviderSettings[] {
+  const candidate = input && typeof input === "object" ? input as {
+    providers?: unknown;
+    webhook?: { providers?: unknown };
+    sites?: unknown;
+  } : {};
+
+  if (candidate.providers && typeof candidate.providers === "object") {
+    const providersContainer = candidate.providers as { items?: unknown };
+    if (Array.isArray(providersContainer.items)) {
+      return providersContainer.items.map((provider) => normalizeProvider(provider));
+    }
+  }
+
+  const legacyWebhookProviders = candidate.webhook && typeof candidate.webhook === "object"
+    ? (candidate.webhook as { providers?: unknown }).providers
+    : undefined;
+
+  if (Array.isArray(legacyWebhookProviders)) {
+    return legacyWebhookProviders.map((provider) => normalizeProvider(provider));
+  }
+
+  if (legacyWebhookProviders && typeof legacyWebhookProviders === "object") {
+    const providers = Object.entries(legacyWebhookProviders as Record<string, unknown>).map(([type, provider]) => {
+      if (!isProviderType(type)) {
+        return null;
+      }
+
+      return normalizeProvider({ ...(provider as object), type });
+    }).filter(Boolean) as ProviderSettings[];
+
+    const legacySites = Array.isArray(candidate.sites) ? candidate.sites : [];
+    const websiteProviders = legacySites.map((site, index) => {
+      const parsed = site && typeof site === "object" ? site as { name?: unknown; url?: unknown; interval?: unknown } : {};
+      return normalizeProvider({
+        type: "website",
+        name: normalizeString(parsed.name) || `Website ${index + 1}`,
+        url: normalizeString(parsed.url),
+        interval: isPositiveNumber(parsed.interval) ? parsed.interval : fallback.timeout,
+      });
+    });
+
+    return [...websiteProviders, ...providers];
+  }
+
+  if (Array.isArray(candidate.sites)) {
+    return candidate.sites.map((site, index) => {
+      const parsed = site && typeof site === "object" ? site as { name?: unknown; url?: unknown; interval?: unknown } : {};
+      return normalizeProvider({
+        type: "website",
+        name: normalizeString(parsed.name) || `Website ${index + 1}`,
+        url: normalizeString(parsed.url),
+        interval: isPositiveNumber(parsed.interval) ? parsed.interval : fallback.timeout,
+      });
+    });
+  }
+
+  return fallback.providers.items.map((provider) => normalizeProvider(provider));
+}
+
+function normalizeProvidersConfig(input: unknown, fallback: AppSettings): ProvidersConfig {
+  const candidate = input && typeof input === "object" ? input as {
+    providers?: unknown;
+    webhook?: { port?: unknown };
+  } : {};
+
+  const providersContainer = candidate.providers && typeof candidate.providers === "object"
+    ? candidate.providers as { port?: unknown }
+    : {};
+
+  const items = extractLegacyProviders(input, fallback);
+  const port = normalizeInteger(
+    providersContainer.port ?? candidate.webhook?.port,
+    fallback.providers.port,
+    "Provider port",
+  );
+
   const enabledPaths = new Set<string>();
-  for (const provider of Object.values(webhook.providers)) {
-    if (!provider.enabled) {
+  for (const provider of items) {
+    if (!isWebhookProviderSettings(provider) || !provider.enabled) {
       continue;
     }
 
-    if (!provider.path.startsWith("/")) {
-      throw new Error("Webhook paths must start with `/`.");
-    }
-
     if (enabledPaths.has(provider.path)) {
-      throw new Error(`Webhook path collision detected for \`${provider.path}\`.`);
+      throw new Error(`Provider path collision detected for \`${provider.path}\`.`);
     }
 
     enabledPaths.add(provider.path);
   }
 
-  return webhook;
+  return {
+    port,
+    items,
+  };
 }
 
 export function normalizeAppSettings(input: unknown, fallback: AppSettings): AppSettings {
   const candidate = input && typeof input === "object" ? input as Partial<AppSettings> : {};
-  const rawSites = Array.isArray(candidate.sites) ? candidate.sites : fallback.sites;
-  const sites = rawSites.map((site, index) => {
-    const parsed = site && typeof site === "object" ? site as Partial<AppSettings["sites"][number]> : {};
-    const url = normalizeString(parsed.url);
-    const interval = isPositiveNumber(parsed.interval) ? parsed.interval : fallback.sites[index]?.interval ?? fallback.timeout;
-    const name = normalizeString(parsed.name) || url;
-
-    if (!url) {
-      throw new Error(`Site #${index + 1} must define a URL.`);
-    }
-
-    if (!isPositiveNumber(interval)) {
-      throw new Error(`Site \`${url}\` must define a positive interval.`);
-    }
-
-    return {
-      name,
-      url,
-      interval,
-    };
-  });
-
   const timeout = isPositiveNumber(candidate.timeout) ? candidate.timeout : fallback.timeout;
   if (!isPositiveNumber(timeout)) {
     throw new Error("Timeout must be a positive number.");
@@ -158,8 +287,7 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
   return {
     delivery: normalizeDeliveryConfig(candidate.delivery, fallback.delivery),
     timeout,
-    sites,
-    webhook: normalizeWebhookConfig(candidate.webhook, fallback.webhook),
+    providers: normalizeProvidersConfig(input, fallback),
   };
 }
 
@@ -168,8 +296,7 @@ export async function loadDefaultSettings(): Promise<AppSettings> {
   return {
     delivery: loadDeliveryConfigFromEnv(),
     timeout: config.timeout,
-    sites: config.sites,
-    webhook: config.webhook,
+    providers: config.providers,
   };
 }
 

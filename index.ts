@@ -1,6 +1,8 @@
+import { createImapManager } from "./src/imap";
 import { createMonitorManager } from "./src/monitor";
 import { hasAnyDelivery, hasMatrixDelivery, sendAlert } from "./src/delivery";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
+import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
   createInitialRuntimeStatus,
   getServerPort,
@@ -34,12 +36,20 @@ const monitorManager = createMonitorManager(async (message) => {
     console.error(`[matrix] ${error instanceof Error ? error.message : String(error)}`);
   }
 });
+const imapManager = createImapManager(async (message) => {
+  try {
+    await sendConfiguredAlert(message);
+  } catch (error) {
+    console.error(`[imap] ${error instanceof Error ? error.message : String(error)}`);
+  }
+});
 
 function applySettings() {
   const settings = store.getSettings();
   runtimeStatus.usingPersistedSettings = store.isUsingPersistedSettings();
   runtimeStatus.lastReloadedAt = new Date().toISOString();
   monitorManager.apply(settings);
+  imapManager.apply(settings);
 }
 
 async function updateSettings(input: unknown) {
@@ -62,8 +72,10 @@ console.log(`[startup] persisted settings: ${store.isUsingPersistedSettings() ? 
 console.log(`[startup] dashboard: ${runtimeStatus.dashboardBuilt ? "built" : "not built"}`);
 console.log(`[startup] server port: ${serverPort}`);
 console.log(`[startup] room(s): ${settings.delivery.matrix.roomIds.join(", ") || "none configured"}`);
-console.log(`[startup] monitoring ${settings.sites.length} site(s)`);
-console.log(`[startup] webhook: ${settings.webhook.enabled ? "enabled" : "disabled"}`);
+console.log(`[startup] providers: ${settings.providers.items.length} total`);
+console.log(`[startup] websites: ${settings.providers.items.filter(isWebsiteProviderSettings).length}`);
+console.log(`[startup] imap: ${settings.providers.items.filter(isImapProviderSettings).length}`);
+console.log(`[startup] webhooks: ${settings.providers.items.filter(isWebhookProviderSettings).length}`);
 
 if (hasAnyDelivery(settings.delivery)) {
   try {

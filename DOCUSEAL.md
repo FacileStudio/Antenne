@@ -14,13 +14,13 @@ Set these in your Nook deployment:
 | `MATRIX_HOMESERVER` | Yes | Your Matrix server URL |
 | `MATRIX_ACCESS_TOKEN` | Yes | Bot access token |
 | `MATRIX_ROOM_IDS` | Yes | Comma-separated room IDs |
-| `DOCUSEAL_WEBHOOK_ENABLED` | Recommended | `true` if you also monitor sites and want DocuSeal enabled |
+| `DOCUSEAL_WEBHOOK_ENABLED` | Recommended | `true` if you want the DocuSeal provider enabled from env bootstrap |
 | `DOCUSEAL_WEBHOOK_SECRET` | Recommended | Random shared secret value |
 | `DOCUSEAL_WEBHOOK_SECRET_HEADER` | No | Secret header name, default `x-docuseal-secret` |
 | `DOCUSEAL_WEBHOOK_PATH` | No | Custom path, default `/webhook/docuseal` |
 | `WEBHOOK_PORT` | No | Webhook listener port, default `9090` |
 
-If Nook runs without `sites`, the webhook server auto-enables and DocuSeal is enabled by default.
+If Nook runs with only webhook-style providers, the webhook listener still starts normally and the dashboard can later persist overrides into `/data/nook.json`.
 
 ## DocuSeal Setup
 

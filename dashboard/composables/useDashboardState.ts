@@ -1,6 +1,6 @@
 import { reactive } from "vue";
 
-import type { AppSettings, RuntimeStatus } from "../types";
+import { createDefaultProvider, type AppSettings, type RuntimeStatus } from "../types";
 
 type SettingsResponse = {
   settings: AppSettings;
@@ -37,24 +37,13 @@ const defaultSettings = (): AppSettings => ({
     },
   },
   timeout: 10,
-  sites: [],
-  webhook: {
-    enabled: true,
+  providers: {
     port: 9090,
-    providers: {
-      "uptime-kuma": {
-        enabled: true,
-        path: "/webhook/uptime-kuma",
-        secretHeader: "x-webhook-secret",
-        secretValue: "",
-      },
-      docuseal: {
-        enabled: true,
-        path: "/webhook/docuseal",
-        secretHeader: "x-docuseal-secret",
-        secretValue: "",
-      },
-    },
+    items: [
+      createDefaultProvider("website"),
+      createDefaultProvider("uptime-kuma"),
+      createDefaultProvider("docuseal"),
+    ],
   },
 });
 
@@ -70,11 +59,8 @@ function cloneFromPayload(target: AppSettings, next: AppSettings) {
   target.delivery.webhook.secretHeader = next.delivery.webhook.secretHeader;
   target.delivery.webhook.secretValue = next.delivery.webhook.secretValue ?? "";
   target.timeout = next.timeout;
-  target.sites = next.sites.map((site) => ({ ...site }));
-  target.webhook.enabled = next.webhook.enabled;
-  target.webhook.port = next.webhook.port;
-  target.webhook.providers["uptime-kuma"] = { ...next.webhook.providers["uptime-kuma"] };
-  target.webhook.providers.docuseal = { ...next.webhook.providers.docuseal };
+  target.providers.port = next.providers.port;
+  target.providers.items = next.providers.items.map((provider) => ({ ...provider }));
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

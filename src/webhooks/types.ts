@@ -1,16 +1,42 @@
-export type WebhookProviderId = "uptime-kuma" | "docuseal";
+export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy";
+export type ProviderType = WebhookProviderType | "imap" | "website";
 
-export interface WebhookProviderSettings {
+export interface BaseProviderSettings {
+  id: string;
+  type: ProviderType;
+  name: string;
   enabled: boolean;
+}
+
+export interface WebhookProviderSettings extends BaseProviderSettings {
+  type: WebhookProviderType;
   path: string;
   secretHeader: string | null;
   secretValue: string | null;
 }
 
-export interface WebhookConfig {
-  enabled: boolean;
+export interface ImapProviderSettings extends BaseProviderSettings {
+  type: "imap";
+  host: string;
   port: number;
-  providers: Record<WebhookProviderId, WebhookProviderSettings>;
+  secure: boolean;
+  username: string;
+  password: string | null;
+  mailbox: string;
+  pollInterval: number;
+}
+
+export interface WebsiteProviderSettings extends BaseProviderSettings {
+  type: "website";
+  url: string;
+  interval: number;
+}
+
+export type ProviderSettings = WebhookProviderSettings | ImapProviderSettings | WebsiteProviderSettings;
+
+export interface ProvidersConfigInput {
+  port: number;
+  items: ProviderSettings[];
 }
 
 export interface RawWebhookConfig {
@@ -78,21 +104,53 @@ export interface DocuSealEventPayload {
   } | null;
 }
 
+export interface DokployWebhookPayload {
+  title?: string | null;
+  message?: string | null;
+  timestamp?: string | null;
+  [key: string]: unknown;
+}
+
 export interface WebhookDispatchContext {
-  providerId: WebhookProviderId;
+  providerId: string;
+  providerName: string;
+  providerType: WebhookProviderType;
   path: string;
 }
 
 export interface WebhookProviderDefinition {
-  id: WebhookProviderId;
+  type: WebhookProviderType;
   label: string;
   defaultPath: string;
   defaultSecretHeader: string;
-  formatMessage: (payload: unknown) => string | null;
+  formatMessage: (payload: unknown, context: WebhookDispatchContext) => string | null;
   describeEvent: (payload: unknown) => string;
 }
 
 export interface ConfiguredWebhookProvider {
   definition: WebhookProviderDefinition;
   settings: WebhookProviderSettings;
+}
+
+export const webhookProviderTypes = ["uptime-kuma", "docuseal", "dokploy"] as const satisfies WebhookProviderType[];
+export const providerTypes = [...webhookProviderTypes, "imap", "website"] as const satisfies ProviderType[];
+
+export function isWebhookProviderType(value: unknown): value is WebhookProviderType {
+  return typeof value === "string" && webhookProviderTypes.includes(value as WebhookProviderType);
+}
+
+export function isProviderType(value: unknown): value is ProviderType {
+  return typeof value === "string" && providerTypes.includes(value as ProviderType);
+}
+
+export function isWebhookProviderSettings(provider: ProviderSettings): provider is WebhookProviderSettings {
+  return provider.type === "uptime-kuma" || provider.type === "docuseal" || provider.type === "dokploy";
+}
+
+export function isImapProviderSettings(provider: ProviderSettings): provider is ImapProviderSettings {
+  return provider.type === "imap";
+}
+
+export function isWebsiteProviderSettings(provider: ProviderSettings): provider is WebsiteProviderSettings {
+  return provider.type === "website";
 }

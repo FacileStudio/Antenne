@@ -1,10 +1,4 @@
-import type { WebhookConfig, RawWebhookConfig } from "./webhooks/types";
-
-export interface SiteConfig {
-  name: string;
-  url: string;
-  interval: number;
-}
+import type { ProviderSettings, RawWebhookConfig } from "./webhooks/types";
 
 export interface SiteState {
   up: boolean;
@@ -38,11 +32,15 @@ export interface DeliveryConfig {
   webhook: HttpDeliveryConfig;
 }
 
+export interface ProvidersConfig {
+  port: number;
+  items: ProviderSettings[];
+}
+
 export interface AppSettings {
   delivery: DeliveryConfig;
   timeout: number;
-  sites: SiteConfig[];
-  webhook: WebhookConfig;
+  providers: ProvidersConfig;
 }
 
 export interface RawSiteOptions {

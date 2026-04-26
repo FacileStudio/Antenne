@@ -27,7 +27,7 @@ function parsePayload(payload: unknown): UptimeKumaPayload {
 }
 
 export const uptimeKumaWebhookProvider: WebhookProviderDefinition = {
-  id: "uptime-kuma",
+  type: "uptime-kuma",
   label: "Uptime Kuma",
   defaultPath: "/webhook/uptime-kuma",
   defaultSecretHeader: "x-webhook-secret",

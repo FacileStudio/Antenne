@@ -1,14 +1,14 @@
 # Nook
 
-Nook is a Bun service that monitors HTTP endpoints, receives external webhooks, and forwards alerts to Matrix. It now ships with a Nuxt dashboard for configuring sites, Matrix delivery, and webhook providers without hand-editing config every time.
+Nook is a Bun service that watches modular providers, forwards alerts to Matrix, and ships with a Nuxt dashboard for configuring everything without hand-editing config every time.
 
 The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard/.output/public`, so container builds do not need to install npm packages.
 
 ## What It Does
 
-- monitors sites on intervals
-- forwards downtime and recovery alerts to Matrix
-- receives Uptime Kuma and DocuSeal webhooks
+- monitors websites on intervals
+- polls IMAP inboxes for newly received emails
+- receives Uptime Kuma, DocuSeal, and Dokploy webhooks
 - serves a dashboard at `/dashboard`
 - keeps env and YAML as bootstrap defaults, with dashboard-saved settings overriding them later
 
@@ -52,7 +52,7 @@ If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env plu
 | Variable | Required | Description |
 |---|---|---|
 | `TIMEOUT` | No | Default timeout in seconds |
-| `EVERY` | No | Default site interval in seconds |
+| `EVERY` | No | Default website provider interval in seconds |
 
 ### Webhook Bootstrap
 
@@ -69,6 +69,10 @@ If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env plu
 | `DOCUSEAL_WEBHOOK_PATH` | No | Default path: `/webhook/docuseal` |
 | `DOCUSEAL_WEBHOOK_SECRET` | No | DocuSeal secret value |
 | `DOCUSEAL_WEBHOOK_SECRET_HEADER` | No | Default: `x-docuseal-secret` |
+| `DOKPLOY_WEBHOOK_ENABLED` | No | Enable or disable Dokploy provider |
+| `DOKPLOY_WEBHOOK_PATH` | No | Default path: `/webhook/dokploy` |
+| `DOKPLOY_WEBHOOK_SECRET` | No | Dokploy secret value |
+| `DOKPLOY_WEBHOOK_SECRET_HEADER` | No | Default: `x-dokploy-secret` |
 
 ## Legacy `config.yml`
 
@@ -86,6 +90,8 @@ sites:
 
 After saving from the dashboard, the resulting JSON settings file becomes the active config source.
 
+Saved dashboard settings use a single provider list. Each provider can be a website, IMAP inbox, or webhook source.
+
 ## Routes
 
 - `GET /health`
@@ -95,8 +101,7 @@ After saving from the dashboard, the resulting JSON settings file becomes the ac
 - `POST /api/test-alert`
 - `POST /api/login`
 - `POST /api/logout`
-- `POST /webhook/uptime-kuma`
-- `POST /webhook/docuseal`
+- `POST <provider webhook path>`
 
 ## Local Development
 
@@ -150,6 +155,12 @@ Because the image copies the prebuilt dashboard bundle, rebuild `dashboard/.outp
 - URL: `https://<nook-host>/webhook/docuseal`
 - header: `x-docuseal-secret`
 - value: whatever you set in `DOCUSEAL_WEBHOOK_SECRET`
+
+### Dokploy
+
+- URL: `https://<nook-host>/webhook/dokploy`
+- header: `x-dokploy-secret`
+- value: whatever you set in `DOKPLOY_WEBHOOK_SECRET`
 
 DocuSeal guide: [DOCUSEAL.md](DOCUSEAL.md)
 Uptime Kuma guide: [UPTIME-KUMA.md](UPTIME-KUMA.md)

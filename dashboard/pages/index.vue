@@ -1,5 +1,5 @@
 <script setup lang="ts">
-await navigateTo("/delivery");
+await navigateTo("/providers");
 </script>
 
 <template>

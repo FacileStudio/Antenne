@@ -117,7 +117,7 @@ function parsePayload(payload: unknown): DocuSealEventPayload {
 }
 
 export const docuSealWebhookProvider: WebhookProviderDefinition = {
-  id: "docuseal",
+  type: "docuseal",
   label: "DocuSeal",
   defaultPath: "/webhook/docuseal",
   defaultSecretHeader: "x-docuseal-secret",

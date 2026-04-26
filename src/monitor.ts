@@ -1,4 +1,5 @@
-import type { AppSettings, SiteConfig, SiteState } from "./types";
+import type { AppSettings, SiteState } from "./types";
+import { isWebsiteProviderSettings, type WebsiteProviderSettings } from "./webhooks/types";
 
 interface MonitorEntry {
   timerId: Timer;
@@ -19,17 +20,17 @@ function timeSince(date: Date): string {
 export function createMonitorManager(sendAlert: (message: string) => Promise<void>) {
   const entries = new Map<string, MonitorEntry>();
 
-  async function handleFailure(site: SiteConfig, state: SiteState, reason: string) {
+  async function handleFailure(site: WebsiteProviderSettings, state: SiteState, reason: string) {
     state.consecutiveFailures += 1;
     if (state.up && state.consecutiveFailures >= 2) {
       state.up = false;
       state.lastChange = new Date();
-      await sendAlert(`🔴 <b>${site.name}</b> is DOWN — ${reason}<br/><code>${site.url}</code>`);
+      await sendAlert(`🔴 <b>[Website] ${site.name}</b> is DOWN — ${reason}<br/><code>${site.url}</code>`);
     }
   }
 
-  async function checkSite(site: SiteConfig, timeout: number) {
-    const entry = entries.get(site.url);
+  async function checkSite(site: WebsiteProviderSettings, timeout: number) {
+    const entry = entries.get(site.id);
     if (!entry || entry.state.inFlight) {
       return;
     }
@@ -49,7 +50,7 @@ export function createMonitorManager(sendAlert: (message: string) => Promise<voi
       if (res.status < 400) {
         if (!entry.state.up) {
           const downtime = timeSince(entry.state.lastChange);
-          await sendAlert(`✅ <b>${site.name}</b> is back up — was down for ${downtime}`);
+          await sendAlert(`✅ <b>[Website] ${site.name}</b> is back up — was down for ${downtime}`);
           entry.state.up = true;
           entry.state.lastChange = new Date();
         }
@@ -79,7 +80,7 @@ export function createMonitorManager(sendAlert: (message: string) => Promise<voi
   function apply(settings: AppSettings) {
     stopAll();
 
-    for (const site of settings.sites) {
+    for (const provider of settings.providers.items.filter(isWebsiteProviderSettings).filter((provider) => provider.enabled)) {
       const state: SiteState = {
         up: true,
         lastChange: new Date(),
@@ -87,10 +88,10 @@ export function createMonitorManager(sendAlert: (message: string) => Promise<voi
         inFlight: false,
       };
 
-      const timerId = setInterval(() => void checkSite(site, settings.timeout), site.interval * 1000);
-      entries.set(site.url, { timerId, state });
-      console.log(`[monitor] starting ${site.name} (${site.url}) every ${site.interval}s`);
-      void checkSite(site, settings.timeout);
+      const timerId = setInterval(() => void checkSite(provider, settings.timeout), provider.interval * 1000);
+      entries.set(provider.id, { timerId, state });
+      console.log(`[monitor] starting ${provider.name} (${provider.url}) every ${provider.interval}s`);
+      void checkSite(provider, settings.timeout);
     }
   }
 

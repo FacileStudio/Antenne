@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { LogOut, Save, Send, Truck, Webhook, Globe, Info } from "lucide-vue-next";
+import { LogOut, Save, Send, Truck, Webhook, Info } from "lucide-vue-next";
 
 import AppSidebar from "./components/AppSidebar.vue";
 import ToastStack from "./components/ToastStack.vue";
@@ -22,8 +22,7 @@ const {
 
 const sections = [
   { href: "/delivery", label: "Delivery", icon: Truck },
-  { href: "/webhooks", label: "Webhooks", icon: Webhook },
-  { href: "/sites", label: "Sites", icon: Globe },
+  { href: "/providers", label: "Providers", icon: Webhook },
   { href: "/info", label: "Info", icon: Info },
 ] as const;
 const route = useRoute();
