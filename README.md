@@ -2,6 +2,8 @@
 
 Nook is a Bun service that monitors HTTP endpoints, receives external webhooks, and forwards alerts to Matrix. It now ships with a Nuxt dashboard for configuring sites, Matrix delivery, and webhook providers without hand-editing config every time.
 
+The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard/.output/public`, so container builds do not need to install npm packages.
+
 ## What It Does
 
 - monitors sites on intervals
@@ -110,6 +112,12 @@ For dashboard-only work:
 bun run dashboard:dev
 ```
 
+Before committing dashboard changes meant for deployment, rebuild the static bundle:
+
+```sh
+bun run dashboard:build
+```
+
 ## Docker
 
 ```sh
@@ -126,6 +134,8 @@ docker run -d \
 ```
 
 Then open `http://localhost:9090/dashboard`.
+
+Because the image copies the prebuilt dashboard bundle, rebuild `dashboard/.output/public` locally before shipping dashboard UI changes.
 
 ## Webhook Setup
 
