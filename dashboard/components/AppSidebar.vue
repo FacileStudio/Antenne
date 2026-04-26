@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { Component } from "vue";
+
 const route = useRoute();
 
 defineProps<{
-  sections: ReadonlyArray<{ href: string; label: string }>;
+  sections: ReadonlyArray<{ href: string; label: string; icon: Component }>;
 }>();
 </script>
 
@@ -16,6 +18,7 @@ defineProps<{
         :class="{ active: route.path === section.href }"
         :to="section.href"
       >
+        <component :is="section.icon" :size="18" aria-hidden="true" />
         <span>{{ section.label }}</span>
       </NuxtLink>
     </nav>
@@ -46,9 +49,10 @@ defineProps<{
 .sidebar-link {
   display: flex;
   align-items: center;
+  gap: 0.6rem;
   min-height: 3rem;
-  padding: 0.85rem 1rem;
-  border-radius: 1rem;
+  padding: 0.85rem 1.15rem;
+  border-radius: 9999px;
   border: 1px solid transparent;
   color: var(--nook-muted);
   text-decoration: none;

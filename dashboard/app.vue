@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { LogOut, Save, Send } from "lucide-vue-next";
+import { LogOut, Save, Send, Truck, Webhook, Globe, Info } from "lucide-vue-next";
 
 import AppSidebar from "./components/AppSidebar.vue";
 import ToastStack from "./components/ToastStack.vue";
@@ -21,10 +21,10 @@ const {
 } = useDashboardState();
 
 const sections = [
-  { href: "/delivery", label: "Delivery" },
-  { href: "/webhooks", label: "Webhooks" },
-  { href: "/sites", label: "Sites" },
-  { href: "/info", label: "Info" },
+  { href: "/delivery", label: "Delivery", icon: Truck },
+  { href: "/webhooks", label: "Webhooks", icon: Webhook },
+  { href: "/sites", label: "Sites", icon: Globe },
+  { href: "/info", label: "Info", icon: Info },
 ] as const;
 const route = useRoute();
 
