@@ -10,6 +10,11 @@ defineProps<{
 
 <template>
   <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img class="brand-avatar" src="/nook-avatar.png" alt="Nook" />
+      <span class="brand-name">Nook</span>
+    </div>
+
     <nav class="sidebar-nav" aria-label="Settings sections">
       <NuxtLink
         v-for="section in sections"
@@ -39,6 +44,30 @@ defineProps<{
   top: 0;
   height: 100vh;
   border-right: 1px solid var(--nook-border);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 0.35rem;
+}
+
+.brand-avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--nook-border);
+  flex: none;
+}
+
+.brand-name {
+  font-family: "Poppins", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .sidebar-nav {
