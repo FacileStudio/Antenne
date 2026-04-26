@@ -364,13 +364,16 @@ export function createAppServer(options: {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Nook Login</title>
+    <link rel="icon" type="image/png" href="/dashboard/nook-avatar.png">
     <style>
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Satoshi:wght@400;500;700&display=swap");
       :root {
         color-scheme: dark;
-        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-family: "Satoshi", "Helvetica Neue", Helvetica, Arial, sans-serif;
         background: #050505;
         color: #fff;
       }
+      *, *::before, *::after { box-sizing: border-box; }
       body {
         margin: 0;
         min-height: 100vh;
@@ -381,44 +384,52 @@ export function createAppServer(options: {
         padding: 1rem;
       }
       main {
-        width: min(28rem, 100%);
-        padding: 2rem;
-        border-radius: 1.5rem;
-        background: rgb(255 255 255 / 0.03);
-        border: 1px solid rgb(255 255 255 / 0.1);
-        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.02);
+        width: min(24rem, 100%);
+        display: grid;
+        gap: 1.5rem;
+        justify-items: center;
+        text-align: center;
       }
-      h1 {
-        margin: 0;
-        font-size: 1.9rem;
-        font-family: "Gambarino", Georgia, serif;
-        font-weight: 400;
-        letter-spacing: -0.03em;
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
       }
-      *, *::before, *::after { box-sizing: border-box; }
-      .eyebrow {
-        margin: 0 0 0.85rem;
-        color: rgb(255 255 255 / 0.42);
-        font-size: 0.78rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
+      .brand img {
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgb(255 255 255 / 0.1);
+      }
+      .brand span {
+        font-family: "Poppins", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-weight: 700;
+        font-size: 2.4rem;
+        letter-spacing: -0.04em;
+        line-height: 1;
       }
       p {
         margin: 0;
-        color: rgb(255 255 255 / 0.58);
+        color: rgb(255 255 255 / 0.5);
         line-height: 1.55;
+        font-size: 0.95rem;
       }
       form {
-        margin-top: 1.5rem;
+        width: 100%;
+        display: grid;
+        gap: 0.75rem;
       }
-      label, input, button { display: block; width: 100%; }
       label {
-        margin-bottom: 0.55rem;
-        color: rgb(255 255 255 / 0.78);
+        display: block;
+        text-align: left;
+        color: rgb(255 255 255 / 0.58);
         font-size: 0.92rem;
       }
       input {
-        margin: 0 0 1rem;
+        display: block;
+        width: 100%;
+        font: inherit;
         padding: 0.9rem 1.25rem;
         border-radius: 1.4rem;
         border: 1px solid rgb(255 255 255 / 0.1);
@@ -432,6 +443,12 @@ export function createAppServer(options: {
         background: rgb(255 255 255 / 0.05);
       }
       button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        font: inherit;
         padding: 0.9rem 1rem;
         border: 1px solid rgb(255 255 255 / 0.1);
         border-radius: 999px;
@@ -439,34 +456,33 @@ export function createAppServer(options: {
         color: #050505;
         font-weight: 700;
         cursor: pointer;
+        transition: background 120ms ease, border-color 120ms ease;
       }
-      button[disabled] {
-        opacity: 0.7;
-        cursor: wait;
-      }
+      button:hover { background: rgb(255 255 255 / 0.86); }
+      button[disabled] { opacity: 0.7; cursor: wait; }
+      button svg { flex: none; }
       #error {
-        margin-top: 0.85rem;
-        color: rgb(255 255 255 / 0.72);
-      }
-      .footnote {
-        margin-top: 1rem;
-        color: rgb(255 255 255 / 0.4);
-        font-size: 0.88rem;
+        color: rgb(255 131 131);
+        font-size: 0.9rem;
       }
     </style>
   </head>
   <body>
     <main>
-      <p class="eyebrow">Dashboard login</p>
-      <h1>Nook dashboard</h1>
-      <p>Password gate enabled for <b>${escapeHtml(session.username)}</b>.</p>
+      <div class="brand">
+        <img src="/dashboard/nook-avatar.png" alt="Nook">
+        <span>Nook</span>
+      </div>
+      <p>Sign in as <b>${escapeHtml(session.username)}</b></p>
       <form method="dialog" id="login-form">
         <label for="password">Password</label>
         <input id="password" name="password" type="password" autocomplete="current-password" autofocus>
-        <button type="submit" id="submit-button">Enter dashboard</button>
+        <button type="submit" id="submit-button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Log in
+        </button>
       </form>
       <p id="error" hidden>Wrong password.</p>
-      <p class="footnote">Session stays signed in on this browser for 30 days unless you log out.</p>
       <script>
         document.getElementById("login-form").addEventListener("submit", async (event) => {
           event.preventDefault();
