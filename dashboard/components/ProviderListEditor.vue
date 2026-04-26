@@ -2,6 +2,7 @@
 import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
+import { useDashboardState } from "../composables/useDashboardState";
 import {
   createDefaultProvider,
   getProviderLabel,
@@ -18,8 +19,10 @@ const emit = defineEmits<{
   "update:modelValue": [value: ProviderSettings[]];
 }>();
 
+const { notifyError, notifySuccess, testProviderConnection } = useDashboardState();
 const revealedSecrets = reactive<Record<string, boolean>>({});
 const nextProviderType = ref<ProviderType>("website");
+const testingProviders = reactive<Record<string, boolean>>({});
 
 function updateProviders(nextProviders: ProviderSettings[]) {
   emit("update:modelValue", nextProviders);
@@ -80,6 +83,20 @@ function duplicateProvider(index: number) {
 function toggleReveal(id: string) {
   revealedSecrets[id] = !revealedSecrets[id];
 }
+
+async function runProviderConnectionTest(provider: ProviderSettings) {
+  testingProviders[provider.id] = true;
+  const label = provider.name || getProviderLabel(provider.type);
+
+  try {
+    await testProviderConnection(provider.id);
+    notifySuccess(`Connection OK for ${label}.`);
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : "Failed to test provider connection");
+  } finally {
+    testingProviders[provider.id] = false;
+  }
+}
 </script>
 
 <template>
@@ -115,6 +132,15 @@ function toggleReveal(id: string) {
           </div>
 
           <div class="provider-actions">
+            <button
+              v-if="provider.type === 'imap'"
+              class="ghost action-button"
+              type="button"
+              :disabled="testingProviders[provider.id]"
+              @click="runProviderConnectionTest(provider)"
+            >
+              <span>{{ testingProviders[provider.id] ? "Testing..." : "Test connection" }}</span>
+            </button>
             <button class="ghost action-button" type="button" :disabled="index === 0" @click="moveProvider(index, -1)">
               <ArrowUp :size="16" aria-hidden="true" />
               <span>Up</span>
@@ -138,11 +164,6 @@ function toggleReveal(id: string) {
           <label class="field">
             <span>Name</span>
             <input :value="provider.name" type="text" @input="patchProvider(index, { name: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="field">
-            <span>Type</span>
-            <input :value="getProviderLabel(provider.type)" type="text" readonly>
           </label>
 
           <label class="toggle provider-toggle">
@@ -197,11 +218,6 @@ function toggleReveal(id: string) {
                 <span>{{ revealedSecrets[provider.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
-          </label>
-
-          <label class="field">
-            <span>Mailbox</span>
-            <input :value="provider.mailbox" type="text" @input="patchProvider(index, { mailbox: ($event.target as HTMLInputElement).value })">
           </label>
 
           <label class="field">

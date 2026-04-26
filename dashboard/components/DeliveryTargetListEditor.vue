@@ -3,6 +3,7 @@ import { Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
+import { useDashboardState } from "../composables/useDashboardState";
 import {
   createDefaultDeliveryTarget,
   deliveryTargetTypes,
@@ -19,8 +20,10 @@ const emit = defineEmits<{
   "update:modelValue": [value: DeliveryTarget[]];
 }>();
 
+const { notifyError, notifySuccess, testDeliveryTarget } = useDashboardState();
 const nextTargetType = ref<DeliveryTargetType>("matrix");
 const revealedSecrets = reactive<Record<string, boolean>>({});
+const testingTargets = reactive<Record<string, boolean>>({});
 
 function updateTargets(nextTargets: DeliveryTarget[]) {
   emit("update:modelValue", nextTargets);
@@ -69,6 +72,20 @@ function removeTarget(index: number) {
 function toggleReveal(id: string) {
   revealedSecrets[id] = !revealedSecrets[id];
 }
+
+async function runTargetTest(target: DeliveryTarget) {
+  testingTargets[target.id] = true;
+  const label = target.name || getDeliveryTargetLabel(target.type);
+
+  try {
+    await testDeliveryTarget(target.id);
+    notifySuccess(`Test sent to ${label}.`);
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : "Failed to test delivery target");
+  } finally {
+    testingTargets[target.id] = false;
+  }
+}
 </script>
 
 <template>
@@ -100,6 +117,9 @@ function toggleReveal(id: string) {
           </div>
 
           <div class="target-actions">
+            <button class="ghost action-button" type="button" :disabled="testingTargets[target.id]" @click="runTargetTest(target)">
+              <span>{{ testingTargets[target.id] ? "Testing..." : "Test" }}</span>
+            </button>
             <button class="ghost action-button" type="button" @click="duplicateTarget(index)">
               <Copy :size="16" aria-hidden="true" />
               <span>Duplicate</span>
@@ -115,11 +135,6 @@ function toggleReveal(id: string) {
           <label class="field">
             <span>Name</span>
             <input :value="target.name" type="text" @input="patchTarget(index, { name: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="field">
-            <span>Type</span>
-            <input :value="getDeliveryTargetLabel(target.type)" type="text" readonly>
           </label>
 
           <label class="toggle target-toggle">
