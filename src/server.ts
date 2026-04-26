@@ -501,7 +501,7 @@ export function createAppServer(options: {
               body: JSON.stringify({ password: passwordField.value })
             });
             if (res.ok) {
-              window.location.reload();
+              window.location.href = "/dashboard/";
               return;
             }
           } finally {
