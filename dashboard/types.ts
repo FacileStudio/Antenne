@@ -1,4 +1,4 @@
-export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git";
+export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja";
 export type ProviderType = WebhookProviderType | "imap" | "website";
 export type DeliveryTargetType = "matrix" | "discord" | "webhook";
 
@@ -112,7 +112,7 @@ export interface EventLogStats {
   deliveryErrorCount: number;
 }
 
-export const providerTypes = ["website", "imap", "uptime-kuma", "docuseal", "dokploy", "git"] as const satisfies ProviderType[];
+export const providerTypes = ["website", "imap", "uptime-kuma", "docuseal", "dokploy", "git", "vikunja"] as const satisfies ProviderType[];
 export const deliveryTargetTypes = ["matrix", "discord", "webhook"] as const satisfies DeliveryTargetType[];
 
 function createId() {
@@ -125,6 +125,7 @@ export function getProviderLabel(type: ProviderType) {
   if (type === "docuseal") return "DocuSeal";
   if (type === "dokploy") return "Dokploy";
   if (type === "git") return "Git";
+  if (type === "vikunja") return "Vikunja";
   return "Uptime Kuma";
 }
 
@@ -166,8 +167,8 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
     type,
     name: getProviderLabel(type),
     enabled: true,
-    path: type === "dokploy" ? "/webhook/dokploy" : type === "docuseal" ? "/webhook/docuseal" : type === "git" ? "/webhook/git" : "/webhook/uptime-kuma",
-    secretHeader: type === "dokploy" ? "x-dokploy-secret" : type === "docuseal" ? "x-docuseal-secret" : type === "git" ? "x-hub-signature-256" : "x-webhook-secret",
+    path: type === "dokploy" ? "/webhook/dokploy" : type === "docuseal" ? "/webhook/docuseal" : type === "git" ? "/webhook/git" : type === "vikunja" ? "/webhook/vikunja" : "/webhook/uptime-kuma",
+    secretHeader: type === "dokploy" ? "x-dokploy-secret" : type === "docuseal" ? "x-docuseal-secret" : type === "git" ? "x-hub-signature-256" : type === "vikunja" ? "x-vikunja-signature" : "x-webhook-secret",
     secretValue: "",
   };
 }

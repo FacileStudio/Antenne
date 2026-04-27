@@ -39,6 +39,10 @@ export function getProviderLabel(type: ProviderType) {
     return "Git";
   }
 
+  if (type === "vikunja") {
+    return "Vikunja";
+  }
+
   return toTitleCase(type);
 }
 
@@ -55,6 +59,10 @@ export function getWebhookDefaultPath(type: WebhookProviderType) {
     return "/webhook/git";
   }
 
+  if (type === "vikunja") {
+    return "/webhook/vikunja";
+  }
+
   return "/webhook/dokploy";
 }
 
@@ -69,6 +77,10 @@ export function getWebhookDefaultSecretHeader(type: WebhookProviderType) {
 
   if (type === "git") {
     return "x-hub-signature-256";
+  }
+
+  if (type === "vikunja") {
+    return "x-vikunja-signature";
   }
 
   return "x-dokploy-secret";

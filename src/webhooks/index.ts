@@ -11,6 +11,7 @@ import { docuSealWebhookProvider } from "./providers/docuseal";
 import { dokployWebhookProvider } from "./providers/dokploy";
 import { gitWebhookProvider } from "./providers/git";
 import { uptimeKumaWebhookProvider } from "./providers/uptime-kuma";
+import { vikunjaWebhookProvider } from "./providers/vikunja";
 import { isWebhookProviderSettings } from "./types";
 
 const providerDefinitions = {
@@ -18,6 +19,7 @@ const providerDefinitions = {
   docuseal: docuSealWebhookProvider,
   dokploy: dokployWebhookProvider,
   git: gitWebhookProvider,
+  vikunja: vikunjaWebhookProvider,
 } satisfies Record<WebhookProviderType, WebhookProviderDefinition>;
 
 function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhookProvider[] {
