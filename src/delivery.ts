@@ -1,7 +1,11 @@
+import { connect as connectNet } from "node:net";
+import { connect as connectTls } from "node:tls";
+
 import {
   isDiscordDeliveryTarget,
   isHttpDeliveryTarget,
   isMatrixDeliveryTarget,
+  isSmtpDeliveryTarget,
 } from "./delivery-config";
 import { createDefaultDeliveryTarget } from "./delivery-config";
 import type { DeliveryAttempt } from "./event-log";
@@ -11,6 +15,7 @@ import type {
   DiscordDeliveryTarget,
   HttpDeliveryTarget,
   MatrixDeliveryTarget,
+  SmtpDeliveryTarget,
 } from "./types";
 
 let txnId = 0;
@@ -111,6 +116,99 @@ async function sendHttpAlert(config: HttpDeliveryTarget, message: string) {
   }
 }
 
+function smtpCommand(socket: import("node:net").Socket, command: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let response = "";
+    const onData = (chunk: Buffer) => {
+      response += chunk.toString();
+      if (/^\d{3} /m.test(response)) {
+        socket.off("data", onData);
+        const code = parseInt(response.slice(0, 3), 10);
+        if (code >= 400) {
+          reject(new Error(`SMTP error: ${response.trim()}`));
+        } else {
+          resolve(response);
+        }
+      }
+    };
+    socket.on("data", onData);
+    if (command) {
+      socket.write(`${command}\r\n`);
+    }
+  });
+}
+
+async function sendSmtpAlert(config: SmtpDeliveryTarget, message: string) {
+  const plainText = htmlToPlainText(message);
+  const subject = config.subjectPrefix ? `${config.subjectPrefix} Nook Alert` : "Nook Alert";
+  const boundary = `nook-${Date.now()}`;
+
+  const body = [
+    `From: ${config.fromAddress}`,
+    `To: ${config.toAddresses.join(", ")}`,
+    `Subject: ${subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/plain; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    plainText,
+    `--${boundary}`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    message,
+    `--${boundary}--`,
+  ].join("\r\n");
+
+  const rawSocket = config.secure
+    ? connectTls({ host: config.host, port: config.port, servername: config.host })
+    : connectNet({ host: config.host, port: config.port });
+
+  const socket = await new Promise<import("node:net").Socket>((resolve, reject) => {
+    rawSocket.once("error", reject);
+    if (config.secure) {
+      (rawSocket as import("node:tls").TLSSocket).once("secureConnect", () => resolve(rawSocket));
+    } else {
+      rawSocket.once("connect", () => resolve(rawSocket));
+    }
+  });
+
+  try {
+    await smtpCommand(socket, "");
+    await smtpCommand(socket, `EHLO nook`);
+
+    if (!config.secure) {
+      try {
+        await smtpCommand(socket, "STARTTLS");
+      } catch {}
+    }
+
+    if (config.username && config.password) {
+      const credentials = Buffer.from(`\0${config.username}\0${config.password}`).toString("base64");
+      await smtpCommand(socket, `AUTH PLAIN ${credentials}`);
+    }
+
+    await smtpCommand(socket, `MAIL FROM:<${config.fromAddress}>`);
+    for (const to of config.toAddresses) {
+      await smtpCommand(socket, `RCPT TO:<${to}>`);
+    }
+    await smtpCommand(socket, "DATA");
+    socket.write(`${body}\r\n.\r\n`);
+    await smtpCommand(socket, "");
+    await smtpCommand(socket, "QUIT").catch(() => {});
+  } finally {
+    socket.end();
+    socket.destroy();
+  }
+}
+
+export function hasSmtpDelivery(config: SmtpDeliveryTarget): boolean {
+  return Boolean(config.enabled && config.host && config.fromAddress && config.toAddresses.length > 0);
+}
+
 export function hasMatrixDelivery(config: MatrixDeliveryTarget): boolean {
   return Boolean(config.enabled && config.homeserver && config.accessToken && config.roomIds.length > 0);
 }
@@ -124,17 +222,7 @@ export function hasHttpDelivery(config: HttpDeliveryTarget): boolean {
 }
 
 export function hasAnyDelivery(config: DeliveryConfig): boolean {
-  return config.items.some((target) => {
-    if (isMatrixDeliveryTarget(target)) {
-      return hasMatrixDelivery(target);
-    }
-
-    if (isDiscordDeliveryTarget(target)) {
-      return hasDiscordDelivery(target);
-    }
-
-    return hasHttpDelivery(target);
-  });
+  return config.items.some((target) => canSendToDeliveryTarget(target));
 }
 
 export function hasConfiguredMatrixDelivery(config: DeliveryConfig): boolean {
@@ -148,6 +236,10 @@ export function canSendToDeliveryTarget(target: DeliveryTarget): boolean {
 
   if (isDiscordDeliveryTarget(target)) {
     return hasDiscordDelivery(target);
+  }
+
+  if (isSmtpDeliveryTarget(target)) {
+    return hasSmtpDelivery(target);
   }
 
   return hasHttpDelivery(target);
@@ -217,6 +309,12 @@ export async function sendAlert(config: DeliveryConfig, message: string, provide
       continue;
     }
 
+    if (isSmtpDeliveryTarget(target) && hasSmtpDelivery(target)) {
+      targets.push(target);
+      tasks.push(sendSmtpAlert(target, message));
+      continue;
+    }
+
     if (isHttpDeliveryTarget(target) && hasHttpDelivery(target)) {
       targets.push(target);
       tasks.push(sendHttpAlert(target, message));
@@ -259,6 +357,11 @@ export async function sendAlertToTarget(target: DeliveryTarget, message: string)
 
   if (isDiscordDeliveryTarget(target) && hasDiscordDelivery(target)) {
     await sendDiscordAlert(target, message);
+    return;
+  }
+
+  if (isSmtpDeliveryTarget(target) && hasSmtpDelivery(target)) {
+    await sendSmtpAlert(target, message);
     return;
   }
 

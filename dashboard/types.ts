@@ -1,6 +1,6 @@
 export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja";
 export type ProviderType = WebhookProviderType | "imap" | "website";
-export type DeliveryTargetType = "matrix" | "discord" | "webhook";
+export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp";
 
 export interface DeliveryTargetBase {
   id: string;
@@ -29,7 +29,19 @@ export interface WebhookTarget extends DeliveryTargetBase {
   secretValue: string | null;
 }
 
-export type DeliveryTarget = MatrixTarget | DiscordTarget | WebhookTarget;
+export interface SmtpTarget extends DeliveryTargetBase {
+  type: "smtp";
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string | null;
+  fromAddress: string;
+  toAddresses: string[];
+  subjectPrefix: string;
+}
+
+export type DeliveryTarget = MatrixTarget | DiscordTarget | WebhookTarget | SmtpTarget;
 
 export interface WebsiteProviderSettings {
   id: string;
@@ -113,7 +125,7 @@ export interface EventLogStats {
 }
 
 export const providerTypes = ["website", "imap", "uptime-kuma", "docuseal", "dokploy", "git", "vikunja"] as const satisfies ProviderType[];
-export const deliveryTargetTypes = ["matrix", "discord", "webhook"] as const satisfies DeliveryTargetType[];
+export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp"] as const satisfies DeliveryTargetType[];
 
 function createId() {
   return globalThis.crypto.randomUUID();
@@ -132,6 +144,7 @@ export function getProviderLabel(type: ProviderType) {
 export function getDeliveryTargetLabel(type: DeliveryTargetType) {
   if (type === "matrix") return "Matrix";
   if (type === "discord") return "Discord webhook";
+  if (type === "smtp") return "SMTP";
   return "HTTP webhook";
 }
 
@@ -195,6 +208,24 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       enabled: true,
       providerIds: [],
       webhookUrl: "",
+    };
+  }
+
+  if (type === "smtp") {
+    return {
+      id: createId(),
+      type,
+      name: "SMTP",
+      enabled: true,
+      providerIds: [],
+      host: "",
+      port: 587,
+      secure: true,
+      username: "",
+      password: null,
+      fromAddress: "",
+      toAddresses: [],
+      subjectPrefix: "[Nook]",
     };
   }
 

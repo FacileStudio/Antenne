@@ -7,6 +7,7 @@ import {
   isDiscordDeliveryTarget,
   isHttpDeliveryTarget,
   isMatrixDeliveryTarget,
+  isSmtpDeliveryTarget,
 } from "./delivery-config";
 import { loadDeliveryConfigFromEnv } from "./delivery";
 import type {
@@ -17,6 +18,7 @@ import type {
   MatrixDeliveryTarget,
   ProvidersConfig,
   RuntimeStatus,
+  SmtpDeliveryTarget,
 } from "./types";
 import type {
   ImapProviderSettings,
@@ -44,6 +46,18 @@ function isPositiveNumber(value: unknown): value is number {
 }
 
 function normalizeRoomIds(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
+}
+
+function normalizeSmtpAddresses(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
   }
@@ -99,6 +113,10 @@ function normalizeDeliveryConfig(input: unknown, fallback: AppSettings["delivery
         enabled: typeof discord.enabled === "boolean" ? discord.enabled : target.enabled,
         webhookUrl: "webhookUrl" in discord ? normalizeString(discord.webhookUrl) : target.webhookUrl,
       };
+    }
+
+    if (isSmtpDeliveryTarget(target)) {
+      return target;
     }
 
     const webhook = webhookInput && typeof webhookInput === "object" ? webhookInput as Partial<typeof target> : {};
@@ -160,6 +178,25 @@ function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
       providerIds,
       webhookUrl: "webhookUrl" in candidate ? normalizeString(candidate.webhookUrl) : fallback.webhookUrl,
+    };
+  }
+
+  if (type === "smtp") {
+    const fallback = createDefaultDeliveryTarget("smtp") as SmtpDeliveryTarget;
+    return {
+      ...fallback,
+      id: normalizeString(candidate.id) || fallback.id,
+      name: normalizeString(candidate.name) || fallback.name,
+      enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+      providerIds,
+      host: "host" in candidate ? normalizeString(candidate.host) : fallback.host,
+      port: "port" in candidate ? normalizeInteger(candidate.port, fallback.port, "SMTP port") : fallback.port,
+      secure: "secure" in candidate ? normalizeBoolean(candidate.secure, fallback.secure) : fallback.secure,
+      username: "username" in candidate ? normalizeString(candidate.username) : fallback.username,
+      password: "password" in candidate ? (normalizeString(candidate.password) || null) : fallback.password,
+      fromAddress: "fromAddress" in candidate ? normalizeString(candidate.fromAddress) : fallback.fromAddress,
+      toAddresses: "toAddresses" in candidate ? normalizeSmtpAddresses(candidate.toAddresses) : fallback.toAddresses,
+      subjectPrefix: "subjectPrefix" in candidate ? normalizeString(candidate.subjectPrefix) : fallback.subjectPrefix,
     };
   }
 

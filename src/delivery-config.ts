@@ -4,6 +4,7 @@ import type {
   DiscordDeliveryTarget,
   HttpDeliveryTarget,
   MatrixDeliveryTarget,
+  SmtpDeliveryTarget,
 } from "./types";
 
 function createId() {
@@ -17,6 +18,10 @@ export function getDeliveryTargetLabel(type: DeliveryTargetType) {
 
   if (type === "discord") {
     return "Discord webhook";
+  }
+
+  if (type === "smtp") {
+    return "SMTP";
   }
 
   return "HTTP webhook";
@@ -47,6 +52,24 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     };
   }
 
+  if (type === "smtp") {
+    return {
+      id: createId(),
+      type,
+      name: "SMTP",
+      enabled: true,
+      providerIds: [],
+      host: "",
+      port: 587,
+      secure: true,
+      username: "",
+      password: null,
+      fromAddress: "",
+      toAddresses: [],
+      subjectPrefix: "[Nook]",
+    };
+  }
+
   return {
     id: createId(),
     type,
@@ -69,4 +92,8 @@ export function isDiscordDeliveryTarget(target: DeliveryTarget): target is Disco
 
 export function isHttpDeliveryTarget(target: DeliveryTarget): target is HttpDeliveryTarget {
   return target.type === "webhook";
+}
+
+export function isSmtpDeliveryTarget(target: DeliveryTarget): target is SmtpDeliveryTarget {
+  return target.type === "smtp";
 }

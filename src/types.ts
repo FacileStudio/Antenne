@@ -7,7 +7,7 @@ export interface SiteState {
   inFlight: boolean;
 }
 
-export type DeliveryTargetType = "matrix" | "discord" | "webhook";
+export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp";
 
 export interface DeliveryTargetBase {
   id: string;
@@ -36,7 +36,19 @@ export interface HttpDeliveryTarget extends DeliveryTargetBase {
   secretValue: string | null;
 }
 
-export type DeliveryTarget = MatrixDeliveryTarget | DiscordDeliveryTarget | HttpDeliveryTarget;
+export interface SmtpDeliveryTarget extends DeliveryTargetBase {
+  type: "smtp";
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string | null;
+  fromAddress: string;
+  toAddresses: string[];
+  subjectPrefix: string;
+}
+
+export type DeliveryTarget = MatrixDeliveryTarget | DiscordDeliveryTarget | HttpDeliveryTarget | SmtpDeliveryTarget;
 
 export interface DeliveryConfig {
   items: DeliveryTarget[];

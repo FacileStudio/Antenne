@@ -4,6 +4,7 @@ import { reactive, ref } from "vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
 import SideDrawer from "./SideDrawer.vue";
+import SmtpAddressEditor from "./SmtpAddressEditor.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 import {
   createDefaultDeliveryTarget,
@@ -287,6 +288,58 @@ async function runTargetTest(target: DeliveryTarget) {
           <label class="field required">
             <span>Webhook URL</span>
             <input :value="editingTarget.webhookUrl" type="url" placeholder="https://discord.com/api/webhooks/..." @input="patchTarget(editingIndex, { webhookUrl: ($event.target as HTMLInputElement).value })">
+          </label>
+        </template>
+
+        <template v-else-if="editingTarget.type === 'smtp'">
+          <label class="field required">
+            <span>Host</span>
+            <input :value="editingTarget.host" type="text" placeholder="smtp.example.com" @input="patchTarget(editingIndex, { host: ($event.target as HTMLInputElement).value })">
+          </label>
+
+          <label class="field required">
+            <span>Port</span>
+            <input :value="editingTarget.port" type="number" placeholder="587" @input="patchTarget(editingIndex, { port: Number(($event.target as HTMLInputElement).value) })">
+          </label>
+
+          <label class="toggle">
+            <input :checked="editingTarget.secure" type="checkbox" @change="patchTarget(editingIndex, { secure: ($event.target as HTMLInputElement).checked })">
+            <span>Use TLS</span>
+          </label>
+
+          <label class="field">
+            <span>Username</span>
+            <input :value="editingTarget.username" type="text" placeholder="user@example.com" @input="patchTarget(editingIndex, { username: ($event.target as HTMLInputElement).value })">
+          </label>
+
+          <label class="field">
+            <span>Password</span>
+            <div class="secret-field">
+              <input
+                :value="editingTarget.password ?? ''"
+                :type="revealedSecrets[editingTarget.id] ? 'text' : 'password'"
+                @input="patchTarget(editingIndex, { password: ($event.target as HTMLInputElement).value })"
+              >
+              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingTarget.id)">
+                <component :is="revealedSecrets[editingTarget.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
+              </button>
+            </div>
+          </label>
+
+          <label class="field required">
+            <span>From address</span>
+            <input :value="editingTarget.fromAddress" type="email" placeholder="nook@example.com" @input="patchTarget(editingIndex, { fromAddress: ($event.target as HTMLInputElement).value })">
+          </label>
+
+          <div class="field required">
+            <span>To addresses</span>
+            <SmtpAddressEditor :model-value="editingTarget.toAddresses" @update:model-value="patchTarget(editingIndex, { toAddresses: $event })" />
+          </div>
+
+          <label class="field">
+            <span>Subject prefix</span>
+            <input :value="editingTarget.subjectPrefix" type="text" placeholder="[Nook]" @input="patchTarget(editingIndex, { subjectPrefix: ($event.target as HTMLInputElement).value })">
           </label>
         </template>
 
