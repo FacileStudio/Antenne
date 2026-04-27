@@ -35,9 +35,10 @@ const emit = defineEmits<{
 <style scoped>
 .toast-stack {
   position: fixed;
-  right: 1.25rem;
   top: 1.25rem;
-  z-index: 1000;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
   display: grid;
   gap: 0.75rem;
   width: min(24rem, calc(100vw - 2rem));
@@ -100,9 +101,9 @@ const emit = defineEmits<{
 
 @media (max-width: 960px) {
   .toast-stack {
-    right: 1rem;
-    left: 1rem;
-    width: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100vw - 2rem);
   }
 }
 </style>

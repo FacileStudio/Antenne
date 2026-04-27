@@ -219,7 +219,6 @@ function escapeHtml(value: string) {
 function buildMessage(provider: ImapProviderSettings, message: ImapFetchResult) {
   const parts = [
     `📨 <b>[IMAP] ${escapeHtml(provider.name)}</b> new email`,
-    `Mailbox: <code>${defaultImapMailbox}</code>`,
   ];
 
   if (message.from) {
