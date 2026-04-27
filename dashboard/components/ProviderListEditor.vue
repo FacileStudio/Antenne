@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plug, Plus, Save, Send, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import SideDrawer from "./SideDrawer.vue";
@@ -293,6 +293,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           :disabled="testingProviders[editingProvider.id]"
           @click="runProviderConnectionTest(editingProvider)"
         >
+          <Plug :size="16" aria-hidden="true" />
           <span>{{ testingProviders[editingProvider.id] ? "Testing..." : "Test connection" }}</span>
         </button>
         <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">

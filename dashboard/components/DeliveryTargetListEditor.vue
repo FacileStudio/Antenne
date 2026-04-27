@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Save, Send, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
@@ -309,6 +309,7 @@ async function runTargetTest(target: DeliveryTarget) {
           :disabled="testingTargets[editingTarget.id]"
           @click="runTargetTest(editingTarget)"
         >
+          <Send :size="16" aria-hidden="true" />
           <span>{{ testingTargets[editingTarget.id] ? "Testing..." : "Test" }}</span>
         </button>
         <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">
