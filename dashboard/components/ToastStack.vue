@@ -36,8 +36,8 @@ const emit = defineEmits<{
 .toast-stack {
   position: fixed;
   right: 1.25rem;
-  bottom: 1.25rem;
-  z-index: 50;
+  top: 1.25rem;
+  z-index: 1000;
   display: grid;
   gap: 0.75rem;
   width: min(24rem, calc(100vw - 2rem));
@@ -91,7 +91,7 @@ const emit = defineEmits<{
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(0.75rem);
+  transform: translateY(-0.75rem);
 }
 
 .toast-move {
