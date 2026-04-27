@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { ArrowLeft, RefreshCw } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 
 import EventTimeline from "../../components/EventTimeline.vue";
 import { getDeliveryTargetLabel } from "../../types";
@@ -38,7 +38,7 @@ onMounted(async () => {
 <template>
   <div class="detail-page">
     <NuxtLink to="/delivery" class="back-link">
-      <ArrowLeft :size="16" />
+      <Icon icon="solar:arrow-left-bold" width="16" />
       Back to delivery
     </NuxtLink>
 
@@ -66,7 +66,7 @@ onMounted(async () => {
       <div class="timeline-header">
         <h2>Delivery log</h2>
         <button class="ghost action-button" type="button" :disabled="loading" @click="refresh">
-          <RefreshCw :size="14" :class="{ spinning: loading }" />
+          <Icon icon="solar:refresh-bold" width="14" :class="{ spinning: loading }" />
         </button>
       </div>
       <EventTimeline :events="events" />

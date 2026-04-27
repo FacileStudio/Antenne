@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { Activity, LogOut, Save, Send, Truck, Webhook, Info } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 
 import AppSidebar from "./components/AppSidebar.vue";
 import ToastStack from "./components/ToastStack.vue";
@@ -21,10 +21,10 @@ const {
 } = useDashboardState();
 
 const sections = [
-  { href: "/delivery", label: "Delivery", icon: Truck },
-  { href: "/providers", label: "Providers", icon: Webhook },
-  { href: "/activity", label: "Activity", icon: Activity },
-  { href: "/info", label: "Info", icon: Info },
+  { href: "/delivery", label: "Delivery", icon: "solar:delivery-bold" },
+  { href: "/providers", label: "Providers", icon: "solar:link-circle-bold" },
+  { href: "/activity", label: "Activity", icon: "solar:pulse-bold" },
+  { href: "/info", label: "Info", icon: "solar:info-circle-bold" },
 ] as const;
 const route = useRoute();
 
@@ -45,7 +45,7 @@ onMounted(() => {
       <AppSidebar :sections="sections">
         <template #footer>
           <button class="danger action-button sidebar-logout" type="button" @click="logout">
-              <LogOut :size="16" aria-hidden="true" />
+              <Icon icon="solar:logout-bold" width="16" aria-hidden="true" />
               <span>Logout</span>
           </button>
         </template>
@@ -59,11 +59,11 @@ onMounted(() => {
 
           <div class="topbar-actions">
             <button class="secondary action-button" type="button" :disabled="testing || loading" @click="sendTestAlert">
-              <Send :size="16" aria-hidden="true" />
+              <Icon icon="solar:plain-bold" width="16" aria-hidden="true" />
               <span>{{ testing ? "Sending..." : "Send test alert" }}</span>
             </button>
             <button class="primary action-button" type="button" :disabled="saving || loading" @click="saveSettings">
-              <Save :size="16" aria-hidden="true" />
+              <Icon icon="solar:diskette-bold" width="16" aria-hidden="true" />
               <span>{{ saving ? "Saving..." : "Save settings" }}</span>
             </button>
           </div>

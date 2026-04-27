@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckCircle, XCircle, Clock } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 import type { EventLogEntry } from "../types";
 
 defineProps<{
@@ -34,7 +34,7 @@ function sourceIcon(source: string) {
         <div class="event-header">
           <span class="event-name">{{ entry.event }}</span>
           <span class="event-time">
-            <Clock :size="12" />
+            <Icon icon="solar:clock-circle-bold" width="12" />
             {{ formatTime(entry.timestamp) }}
           </span>
         </div>
@@ -47,8 +47,8 @@ function sourceIcon(source: string) {
             :class="d.status"
             :title="d.error ?? `${d.durationMs}ms`"
           >
-            <CheckCircle v-if="d.status === 'success'" :size="12" />
-            <XCircle v-else :size="12" />
+            <Icon v-if="d.status === 'success'" icon="solar:check-circle-bold" width="12" />
+            <Icon v-else icon="solar:close-circle-bold" width="12" />
             {{ d.targetName }}
           </span>
         </div>

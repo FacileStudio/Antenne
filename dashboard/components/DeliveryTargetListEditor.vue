@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Copy, Eye, EyeOff, GripVertical, Pencil, Plus, Save, Send, Trash2 } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 import { reactive, ref } from "vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
@@ -175,7 +175,7 @@ async function runTargetTest(target: DeliveryTarget) {
       </label>
 
       <button class="primary action-button add-button" type="button" @click="addTarget">
-        <Plus :size="16" aria-hidden="true" />
+        <Icon icon="solar:add-circle-bold" width="16" aria-hidden="true" />
         <span>Add target</span>
       </button>
     </div>
@@ -194,7 +194,7 @@ async function runTargetTest(target: DeliveryTarget) {
         @dragend="onDragEnd"
       >
         <div class="item-info">
-          <span class="drag-handle"><GripVertical :size="16" aria-hidden="true" /></span>
+          <span class="drag-handle"><Icon icon="solar:menu-dots-bold" width="16" aria-hidden="true" /></span>
           <strong>{{ target.name || `${getDeliveryTargetLabel(target.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getDeliveryTargetLabel(target.type) }}</span>
           <span v-if="!target.enabled" class="item-chip item-chip--off">Off</span>
@@ -202,17 +202,17 @@ async function runTargetTest(target: DeliveryTarget) {
 
         <div class="item-actions">
           <button class="ghost action-button" type="button" @click="openEditor(index)">
-            <Pencil :size="16" aria-hidden="true" />
+            <Icon icon="solar:pen-2-bold" width="16" aria-hidden="true" />
             <span>Edit</span>
           </button>
           <NuxtLink class="ghost action-button" :to="`/targets/${target.id}`">
-            <BarChart3 :size="16" aria-hidden="true" />
+            <Icon icon="solar:chart-bold" width="16" aria-hidden="true" />
           </NuxtLink>
           <button class="ghost action-button" type="button" @click="duplicateTarget(index)">
-            <Copy :size="16" aria-hidden="true" />
+            <Icon icon="solar:copy-bold" width="16" aria-hidden="true" />
           </button>
           <button class="danger action-button" type="button" @click="removeTarget(index)">
-            <Trash2 :size="16" aria-hidden="true" />
+            <Icon icon="solar:trash-bin-2-bold" width="16" aria-hidden="true" />
           </button>
         </div>
       </article>
@@ -272,7 +272,7 @@ async function runTargetTest(target: DeliveryTarget) {
                 @input="patchTarget(editingIndex, { accessToken: ($event.target as HTMLInputElement).value })"
               >
               <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingTarget.id)">
-                <component :is="revealedSecrets[editingTarget.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <Icon :icon="revealedSecrets[editingTarget.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
                 <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
@@ -321,7 +321,7 @@ async function runTargetTest(target: DeliveryTarget) {
                 @input="patchTarget(editingIndex, { password: ($event.target as HTMLInputElement).value })"
               >
               <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingTarget.id)">
-                <component :is="revealedSecrets[editingTarget.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <Icon :icon="revealedSecrets[editingTarget.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
                 <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
@@ -363,7 +363,7 @@ async function runTargetTest(target: DeliveryTarget) {
                 @input="patchTarget(editingIndex, { secretValue: ($event.target as HTMLInputElement).value })"
               >
               <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingTarget.id)">
-                <component :is="revealedSecrets[editingTarget.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <Icon :icon="revealedSecrets[editingTarget.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
                 <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
@@ -378,11 +378,11 @@ async function runTargetTest(target: DeliveryTarget) {
           :disabled="testingTargets[editingTarget.id]"
           @click="runTargetTest(editingTarget)"
         >
-          <Send :size="16" aria-hidden="true" />
+          <Icon icon="solar:plain-bold" width="16" aria-hidden="true" />
           <span>{{ testingTargets[editingTarget.id] ? "Testing..." : "Test" }}</span>
         </button>
         <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">
-          <Save :size="16" aria-hidden="true" />
+          <Icon icon="solar:diskette-bold" width="16" aria-hidden="true" />
           <span>{{ saving ? "Saving..." : "Save" }}</span>
         </button>
       </template>

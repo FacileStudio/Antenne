@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { Activity, RefreshCw } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 
 import EventTimeline from "../components/EventTimeline.vue";
 import type { EventLogEntry, EventLogStats } from "../types";
@@ -47,7 +47,7 @@ onMounted(() => void refresh());
       <div class="timeline-header">
         <h2>Event log</h2>
         <button class="ghost action-button" type="button" :disabled="loading" @click="refresh">
-          <RefreshCw :size="14" :class="{ spinning: loading }" />
+          <Icon icon="solar:refresh-bold" width="14" :class="{ spinning: loading }" />
         </button>
       </div>
       <EventTimeline :events="events" />

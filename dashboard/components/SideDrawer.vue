@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { X } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 import { watch } from "vue";
 
 const props = defineProps<{
@@ -28,7 +28,7 @@ function onOverlayClick() {
           <div class="drawer-header">
             <strong v-if="title">{{ title }}</strong>
             <button class="ghost drawer-close" type="button" @click="emit('close')">
-              <X :size="18" aria-hidden="true" />
+              <Icon icon="solar:close-circle-bold" width="18" aria-hidden="true" />
             </button>
           </div>
 

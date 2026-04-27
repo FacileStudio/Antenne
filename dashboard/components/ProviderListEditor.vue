@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Copy, Eye, EyeOff, GripVertical, Pencil, Plug, Plus, Save, Send, Trash2 } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 import { reactive, ref } from "vue";
 
 import SideDrawer from "./SideDrawer.vue";
@@ -160,7 +160,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
       </label>
 
       <button class="primary action-button add-button" type="button" @click="addProvider">
-        <Plus :size="16" aria-hidden="true" />
+        <Icon icon="solar:add-circle-bold" width="16" aria-hidden="true" />
         <span>Add provider</span>
       </button>
     </div>
@@ -179,7 +179,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         @dragend="onDragEnd"
       >
         <div class="item-info">
-          <span class="drag-handle"><GripVertical :size="16" aria-hidden="true" /></span>
+          <span class="drag-handle"><Icon icon="solar:menu-dots-bold" width="16" aria-hidden="true" /></span>
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
           <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>
@@ -187,17 +187,17 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 
         <div class="item-actions">
           <button class="ghost action-button" type="button" @click="openEditor(index)">
-            <Pencil :size="16" aria-hidden="true" />
+            <Icon icon="solar:pen-2-bold" width="16" aria-hidden="true" />
             <span>Edit</span>
           </button>
           <NuxtLink class="ghost action-button" :to="`/providers/${provider.id}`">
-            <BarChart3 :size="16" aria-hidden="true" />
+            <Icon icon="solar:chart-bold" width="16" aria-hidden="true" />
           </NuxtLink>
           <button class="ghost action-button" type="button" @click="duplicateProvider(index)">
-            <Copy :size="16" aria-hidden="true" />
+            <Icon icon="solar:copy-bold" width="16" aria-hidden="true" />
           </button>
           <button class="danger action-button" type="button" @click="removeProvider(index)">
-            <Trash2 :size="16" aria-hidden="true" />
+            <Icon icon="solar:trash-bin-2-bold" width="16" aria-hidden="true" />
           </button>
         </div>
       </article>
@@ -261,7 +261,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
                 @input="patchProvider(editingIndex, { password: ($event.target as HTMLInputElement).value })"
               >
               <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingProvider.id)">
-                <component :is="revealedSecrets[editingProvider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <Icon :icon="revealedSecrets[editingProvider.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
                 <span>{{ revealedSecrets[editingProvider.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
@@ -293,7 +293,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
                 @input="patchProvider(editingIndex, { secretValue: ($event.target as HTMLInputElement).value })"
               >
               <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingProvider.id)">
-                <component :is="revealedSecrets[editingProvider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+                <Icon :icon="revealedSecrets[editingProvider.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
                 <span>{{ revealedSecrets[editingProvider.id] ? "Hide" : "Show" }}</span>
               </button>
             </div>
@@ -309,11 +309,11 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           :disabled="testingProviders[editingProvider.id]"
           @click="runProviderConnectionTest(editingProvider)"
         >
-          <Plug :size="16" aria-hidden="true" />
+          <Icon icon="solar:plug-circle-bold" width="16" aria-hidden="true" />
           <span>{{ testingProviders[editingProvider.id] ? "Testing..." : "Test connection" }}</span>
         </button>
         <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">
-          <Save :size="16" aria-hidden="true" />
+          <Icon icon="solar:diskette-bold" width="16" aria-hidden="true" />
           <span>{{ saving ? "Saving..." : "Save" }}</span>
         </button>
       </template>
