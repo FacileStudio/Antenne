@@ -8,6 +8,6 @@ const { settings } = useDashboardState();
 
 <template>
   <SectionCard eyebrow="Delivery" title="Targets">
-    <DeliveryTargetListEditor v-model="settings.delivery.items" />
+    <DeliveryTargetListEditor v-model="settings.delivery.items" :providers="settings.providers.items" />
   </SectionCard>
 </template>

@@ -14,6 +14,7 @@ export interface DeliveryTargetBase {
   type: DeliveryTargetType;
   name: string;
   enabled: boolean;
+  providerIds: string[];
 }
 
 export interface MatrixDeliveryTarget extends DeliveryTargetBase {

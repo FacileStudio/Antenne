@@ -3,6 +3,7 @@ import { createMonitorManager } from "./src/monitor";
 import { hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
 import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
+import { pushEvent, updateEventDeliveries } from "./src/event-log";
 import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
   createInitialRuntimeStatus,
@@ -21,13 +22,26 @@ const store = new SettingsStore(defaults, initialSettings, settingsPath, Boolean
 const runtimeStatus = createInitialRuntimeStatus(settingsPath, Boolean(persistedSettings));
 const session = createDashboardSessionConfig();
 
-async function sendConfiguredAlert(message: string) {
+async function sendConfiguredAlert(message: string, context?: { providerId: string; providerName: string; providerType: string; event: string }) {
   const settings = store.getSettings();
   if (!hasAnyDelivery(settings.delivery)) {
     throw new Error("No delivery channel configured. Fill Matrix, Discord, or HTTP webhook settings first.");
   }
 
-  await sendAlert(settings.delivery, message);
+  const source = (context?.providerType === "website" ? "website" : context?.providerType === "imap" ? "imap" : context ? "webhook" : "system") as "webhook" | "website" | "imap" | "system";
+
+  const entry = pushEvent({
+    source,
+    providerId: context?.providerId ?? null,
+    providerName: context?.providerName ?? "system",
+    providerType: context?.providerType ?? "system",
+    event: context?.event ?? message.slice(0, 80),
+    message,
+    deliveries: [],
+  });
+
+  const deliveries = await sendAlert(settings.delivery, message, context?.providerId);
+  updateEventDeliveries(entry.id, deliveries);
 }
 
 async function sendTestAlertToTarget(targetId: string) {
@@ -54,16 +68,16 @@ async function testProviderConnection(providerId: string) {
   await testImapConnection(provider);
 }
 
-const monitorManager = createMonitorManager(async (message) => {
+const monitorManager = createMonitorManager(async (message, context) => {
   try {
-    await sendConfiguredAlert(message);
+    await sendConfiguredAlert(message, context);
   } catch (error) {
-    console.error(`[matrix] ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[monitor] ${error instanceof Error ? error.message : String(error)}`);
   }
 });
-const imapManager = createImapManager(async (message) => {
+const imapManager = createImapManager(async (message, context) => {
   try {
-    await sendConfiguredAlert(message);
+    await sendConfiguredAlert(message, context);
   } catch (error) {
     console.error(`[imap] ${error instanceof Error ? error.message : String(error)}`);
   }

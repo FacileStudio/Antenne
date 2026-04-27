@@ -4,6 +4,8 @@ import {
   createDefaultDeliveryTarget,
   createDefaultProvider,
   type AppSettings,
+  type EventLogEntry,
+  type EventLogStats,
   type RuntimeStatus,
 } from "../types";
 
@@ -196,6 +198,21 @@ export function useDashboardState() {
     });
   }
 
+  async function loadEvents(options?: { providerId?: string; targetId?: string; limit?: number }) {
+    let path = "/api/events";
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", String(options.limit));
+
+    if (options?.providerId) {
+      path = `/api/events/provider/${options.providerId}`;
+    } else if (options?.targetId) {
+      path = `/api/events/target/${options.targetId}`;
+    }
+
+    const query = params.toString();
+    return await apiFetch<{ events: EventLogEntry[]; stats: EventLogStats }>(`${path}${query ? `?${query}` : ""}`);
+  }
+
   return {
     settings: settings.value,
     runtime,
@@ -213,6 +230,7 @@ export function useDashboardState() {
     sendTestAlert,
     testDeliveryTarget,
     testProviderConnection,
+    loadEvents,
     logout,
   };
 }

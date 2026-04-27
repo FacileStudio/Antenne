@@ -237,7 +237,14 @@ function buildMessage(provider: ImapProviderSettings, message: ImapFetchResult) 
   return parts.join("<br/>");
 }
 
-export function createImapManager(sendAlert: (message: string) => Promise<void>) {
+export interface ImapAlertContext {
+  providerId: string;
+  providerName: string;
+  providerType: "imap";
+  event: string;
+}
+
+export function createImapManager(sendAlert: (message: string, context: ImapAlertContext) => Promise<void>) {
   const entries = new Map<string, ImapEntryState>();
 
   async function pollProvider(provider: ImapProviderSettings) {
@@ -266,7 +273,12 @@ export function createImapManager(sendAlert: (message: string) => Promise<void>)
       const newUids = uids.filter((uid) => uid > (entry.lastSeenUid ?? 0));
       for (const uid of newUids) {
         const message = await session.fetchHeaders(uid);
-        await sendAlert(buildMessage(provider, message));
+        await sendAlert(buildMessage(provider, message), {
+          providerId: provider.id,
+          providerName: provider.name,
+          providerType: "imap",
+          event: `new email: ${message.subject ?? "no subject"}`,
+        });
         entry.lastSeenUid = uid;
       }
 

@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import { hasConfiguredMatrixDelivery } from "./delivery";
+import { getEvents, getGlobalStats, getProviderStats, getTargetStats } from "./event-log";
 import type { AppSettings, DashboardSessionConfig, RuntimeStatus } from "./types";
 import { handleWebhookRequest } from "./webhooks";
 
@@ -214,7 +215,7 @@ function createSessionToken(password: string) {
 export function createAppServer(options: {
   getSettings: () => AppSettings;
   updateSettings: (input: unknown) => Promise<AppSettings>;
-  sendConfiguredAlert: (message: string) => Promise<void>;
+  sendConfiguredAlert: (message: string, context?: { providerId: string; providerName: string; providerType: string; event: string }) => Promise<void>;
   sendTestAlertToTarget: (targetId: string) => Promise<void>;
   testProviderConnection: (providerId: string) => Promise<void>;
   getRuntimeStatus: () => RuntimeStatus;
@@ -341,11 +342,28 @@ export function createAppServer(options: {
         }
       }
 
+      if (url.pathname === "/api/events" && req.method === "GET") {
+        const limit = Number(url.searchParams.get("limit")) || 50;
+        return createJsonResponse({ events: getEvents({ limit }), stats: getGlobalStats() });
+      }
+
+      if (url.pathname.startsWith("/api/events/provider/") && req.method === "GET") {
+        const providerId = url.pathname.replace("/api/events/provider/", "");
+        const limit = Number(url.searchParams.get("limit")) || 50;
+        return createJsonResponse({ events: getEvents({ providerId, limit }), stats: getProviderStats(providerId) });
+      }
+
+      if (url.pathname.startsWith("/api/events/target/") && req.method === "GET") {
+        const targetId = url.pathname.replace("/api/events/target/", "");
+        const limit = Number(url.searchParams.get("limit")) || 50;
+        return createJsonResponse({ events: getEvents({ targetId, limit }), stats: getTargetStats(targetId) });
+      }
+
       return createJsonResponse({ error: "not found" }, { status: 404 });
     }
 
     if (req.method === "POST") {
-      return handleWebhookRequest(req, options.getSettings(), options.sendConfiguredAlert);
+      return handleWebhookRequest(req, options.getSettings(), (message, context) => options.sendConfiguredAlert(message, context));
     }
 
     if (url.pathname === "/") {

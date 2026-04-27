@@ -4,6 +4,7 @@ import {
   isMatrixDeliveryTarget,
 } from "./delivery-config";
 import { createDefaultDeliveryTarget } from "./delivery-config";
+import type { DeliveryAttempt } from "./event-log";
 import type {
   DeliveryConfig,
   DeliveryTarget,
@@ -167,11 +168,13 @@ export function loadDeliveryConfigFromEnv(): DeliveryConfig {
   matrix.homeserver = process.env.MATRIX_HOMESERVER ?? "";
   matrix.accessToken = process.env.MATRIX_ACCESS_TOKEN ?? "";
   matrix.roomIds = roomIds;
+  matrix.providerIds = [];
   items.push(matrix);
 
   const discord = createDefaultDeliveryTarget("discord") as DiscordDeliveryTarget;
   discord.enabled = process.env.DISCORD_ENABLED === "true" || Boolean(process.env.DISCORD_WEBHOOK_URL);
   discord.webhookUrl = process.env.DISCORD_WEBHOOK_URL ?? "";
+  discord.providerIds = [];
   items.push(discord);
 
   const webhook = createDefaultDeliveryTarget("webhook") as HttpDeliveryTarget;
@@ -179,44 +182,73 @@ export function loadDeliveryConfigFromEnv(): DeliveryConfig {
   webhook.url = process.env.HTTP_WEBHOOK_URL ?? "";
   webhook.secretHeader = process.env.HTTP_WEBHOOK_SECRET_HEADER ?? "x-nook-secret";
   webhook.secretValue = process.env.HTTP_WEBHOOK_SECRET ?? null;
+  webhook.providerIds = [];
   items.push(webhook);
 
   return { items };
 }
 
-export async function sendAlert(config: DeliveryConfig, message: string) {
+function targetAcceptsProvider(target: DeliveryTarget, providerId: string | null): boolean {
+  if (!target.providerIds || target.providerIds.length === 0) return true;
+  if (!providerId) return true;
+  return target.providerIds.includes(providerId);
+}
+
+export async function sendAlert(config: DeliveryConfig, message: string, providerId?: string | null): Promise<DeliveryAttempt[]> {
   if (!hasAnyDelivery(config)) {
     throw new Error("No delivery channel is configured.");
   }
 
+  const targets: DeliveryTarget[] = [];
   const tasks: Promise<void>[] = [];
 
   for (const target of config.items) {
+    if (!targetAcceptsProvider(target, providerId ?? null)) continue;
+
     if (isMatrixDeliveryTarget(target) && hasMatrixDelivery(target)) {
+      targets.push(target);
       tasks.push(sendMatrixAlert(target, message));
       continue;
     }
 
     if (isDiscordDeliveryTarget(target) && hasDiscordDelivery(target)) {
+      targets.push(target);
       tasks.push(sendDiscordAlert(target, message));
       continue;
     }
 
     if (isHttpDeliveryTarget(target) && hasHttpDelivery(target)) {
+      targets.push(target);
       tasks.push(sendHttpAlert(target, message));
     }
   }
 
+  const startTimes = targets.map(() => Date.now());
   const results = await Promise.allSettled(tasks);
-  const failures = results.filter((result) => result.status === "rejected");
+  const now = Date.now();
 
+  const attempts: DeliveryAttempt[] = results.map((result, index) => {
+    const target = targets[index]!;
+    return {
+      targetId: target.id,
+      targetName: target.name,
+      targetType: target.type,
+      status: result.status === "fulfilled" ? "success" as const : "error" as const,
+      error: result.status === "rejected" ? String(result.reason) : undefined,
+      durationMs: now - startTimes[index]!,
+    };
+  });
+
+  const failures = attempts.filter((a) => a.status === "error");
   for (const failure of failures) {
-    console.error(`Failed to send alert: ${failure.reason}`);
+    console.error(`Failed to send alert: ${failure.error}`);
   }
 
   if (failures.length === tasks.length) {
     throw new Error("All configured delivery channels failed.");
   }
+
+  return attempts;
 }
 
 export async function sendAlertToTarget(target: DeliveryTarget, message: string) {

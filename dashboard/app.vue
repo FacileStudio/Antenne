@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { LogOut, Save, Send, Truck, Webhook, Info } from "lucide-vue-next";
+import { Activity, LogOut, Save, Send, Truck, Webhook, Info } from "lucide-vue-next";
 
 import AppSidebar from "./components/AppSidebar.vue";
 import ToastStack from "./components/ToastStack.vue";
@@ -23,11 +23,16 @@ const {
 const sections = [
   { href: "/delivery", label: "Delivery", icon: Truck },
   { href: "/providers", label: "Providers", icon: Webhook },
+  { href: "/activity", label: "Activity", icon: Activity },
   { href: "/info", label: "Info", icon: Info },
 ] as const;
 const route = useRoute();
 
-const currentTitle = computed(() => sections.find((section) => section.href === route.path)?.label ?? "Settings");
+const currentTitle = computed(() => {
+  if (route.path.startsWith("/providers/")) return "Provider";
+  if (route.path.startsWith("/targets/")) return "Delivery Target";
+  return sections.find((section) => section.href === route.path)?.label ?? "Settings";
+});
 
 onMounted(() => {
   void loadSettings();

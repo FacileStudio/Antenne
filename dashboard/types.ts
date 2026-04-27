@@ -7,6 +7,7 @@ export interface DeliveryTargetBase {
   type: DeliveryTargetType;
   name: string;
   enabled: boolean;
+  providerIds: string[];
 }
 
 export interface MatrixTarget extends DeliveryTargetBase {
@@ -83,6 +84,34 @@ export interface RuntimeStatus {
   lastReloadedAt: string;
 }
 
+export interface DeliveryAttempt {
+  targetId: string;
+  targetName: string;
+  targetType: string;
+  status: "success" | "error";
+  error?: string;
+  durationMs: number;
+}
+
+export interface EventLogEntry {
+  id: string;
+  timestamp: string;
+  source: "webhook" | "website" | "imap" | "test" | "system";
+  providerId: string | null;
+  providerName: string;
+  providerType: string;
+  event: string;
+  message: string | null;
+  deliveries: DeliveryAttempt[];
+}
+
+export interface EventLogStats {
+  totalEvents: number;
+  lastEventAt: string | null;
+  deliverySuccessCount: number;
+  deliveryErrorCount: number;
+}
+
 export const providerTypes = ["website", "imap", "uptime-kuma", "docuseal", "dokploy", "git"] as const satisfies ProviderType[];
 export const deliveryTargetTypes = ["matrix", "discord", "webhook"] as const satisfies DeliveryTargetType[];
 
@@ -150,6 +179,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       type,
       name: "Matrix",
       enabled: true,
+      providerIds: [],
       homeserver: "",
       accessToken: "",
       roomIds: [],
@@ -162,6 +192,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       type,
       name: "Discord webhook",
       enabled: true,
+      providerIds: [],
       webhookUrl: "",
     };
   }
@@ -171,6 +202,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     type,
     name: "HTTP webhook",
     enabled: true,
+    providerIds: [],
     url: "",
     secretHeader: "x-nook-secret",
     secretValue: "",

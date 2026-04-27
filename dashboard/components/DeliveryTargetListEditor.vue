@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
@@ -9,12 +9,15 @@ import {
   createDefaultDeliveryTarget,
   deliveryTargetTypes,
   getDeliveryTargetLabel,
+  getProviderLabel,
   type DeliveryTarget,
   type DeliveryTargetType,
+  type ProviderSettings,
 } from "../types";
 
 const props = defineProps<{
   modelValue: DeliveryTarget[];
+  providers: ProviderSettings[];
 }>();
 
 const emit = defineEmits<{
@@ -116,6 +119,16 @@ function toggleReveal(id: string) {
   revealedSecrets[id] = !revealedSecrets[id];
 }
 
+function toggleProvider(index: number, providerId: string) {
+  const target = props.modelValue[index];
+  if (!target) return;
+  const current = target.providerIds ?? [];
+  const next = current.includes(providerId)
+    ? current.filter((id) => id !== providerId)
+    : [...current, providerId];
+  patchTarget(index, { providerIds: next });
+}
+
 async function runTargetTest(target: DeliveryTarget) {
   testingTargets[target.id] = true;
   const label = target.name || getDeliveryTargetLabel(target.type);
@@ -171,6 +184,9 @@ async function runTargetTest(target: DeliveryTarget) {
           <button class="ghost action-button" type="button" :disabled="index === modelValue.length - 1" @click="moveTarget(index, 1)">
             <ArrowDown :size="16" aria-hidden="true" />
           </button>
+          <NuxtLink class="ghost action-button" :to="`/targets/${target.id}`">
+            <BarChart3 :size="16" aria-hidden="true" />
+          </NuxtLink>
           <button class="ghost action-button" type="button" @click="openEditor(index)">
             <Pencil :size="16" aria-hidden="true" />
             <span>Edit</span>
@@ -200,6 +216,28 @@ async function runTargetTest(target: DeliveryTarget) {
           <span>Name</span>
           <input :value="editingTarget.name" type="text" @input="patchTarget(editingIndex, { name: ($event.target as HTMLInputElement).value })">
         </label>
+
+        <div class="field">
+          <span>Providers</span>
+          <p class="field-hint">Select which providers send to this target. Leave empty for all.</p>
+          <div class="provider-picker">
+            <label
+              v-for="provider in providers"
+              :key="provider.id"
+              class="provider-option"
+              :class="{ selected: (editingTarget.providerIds ?? []).includes(provider.id) }"
+            >
+              <input
+                type="checkbox"
+                :checked="(editingTarget.providerIds ?? []).includes(provider.id)"
+                @change="toggleProvider(editingIndex, provider.id)"
+              >
+              <span>{{ provider.name || getProviderLabel(provider.type) }}</span>
+              <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
+            </label>
+            <p v-if="providers.length === 0" class="field-hint">No providers configured yet.</p>
+          </div>
+        </div>
 
         <template v-if="editingTarget.type === 'matrix'">
           <label class="field required">
@@ -385,6 +423,44 @@ async function runTargetTest(target: DeliveryTarget) {
   padding: var(--space-4);
   border-radius: 1.25rem;
   border: 1px dashed var(--nook-border);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--nook-muted);
+}
+
+.provider-picker {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.provider-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.provider-option:hover {
+  background: var(--nook-surface-strong);
+}
+
+.provider-option.selected {
+  border-color: rgb(28 219 129 / 0.4);
+  background: rgb(28 219 129 / 0.06);
+}
+
+.provider-option input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: #1CDB81;
 }
 
 @media (max-width: 960px) {

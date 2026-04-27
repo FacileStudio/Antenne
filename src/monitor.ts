@@ -17,7 +17,14 @@ function timeSince(date: Date): string {
   return `${days}d ${hours % 24}h`;
 }
 
-export function createMonitorManager(sendAlert: (message: string) => Promise<void>) {
+export interface MonitorAlertContext {
+  providerId: string;
+  providerName: string;
+  providerType: "website";
+  event: string;
+}
+
+export function createMonitorManager(sendAlert: (message: string, context: MonitorAlertContext) => Promise<void>) {
   const entries = new Map<string, MonitorEntry>();
 
   async function handleFailure(site: WebsiteProviderSettings, state: SiteState, reason: string) {
@@ -25,7 +32,12 @@ export function createMonitorManager(sendAlert: (message: string) => Promise<voi
     if (state.up && state.consecutiveFailures >= 2) {
       state.up = false;
       state.lastChange = new Date();
-      await sendAlert(`🔴 <b>[Website] ${site.name}</b> is DOWN — ${reason}<br/><code>${site.url}</code>`);
+      await sendAlert(`🔴 <b>[Website] ${site.name}</b> is DOWN — ${reason}<br/><code>${site.url}</code>`, {
+        providerId: site.id,
+        providerName: site.name,
+        providerType: "website",
+        event: "site DOWN",
+      });
     }
   }
 
@@ -50,7 +62,12 @@ export function createMonitorManager(sendAlert: (message: string) => Promise<voi
       if (res.status < 400) {
         if (!entry.state.up) {
           const downtime = timeSince(entry.state.lastChange);
-          await sendAlert(`✅ <b>[Website] ${site.name}</b> is back up — was down for ${downtime}`);
+          await sendAlert(`✅ <b>[Website] ${site.name}</b> is back up — was down for ${downtime}`, {
+            providerId: site.id,
+            providerName: site.name,
+            providerType: "website",
+            event: "site UP",
+          });
           entry.state.up = true;
           entry.state.lastChange = new Date();
         }

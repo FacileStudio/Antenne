@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import SideDrawer from "./SideDrawer.vue";
@@ -170,6 +170,9 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           <button class="ghost action-button" type="button" :disabled="index === modelValue.length - 1" @click="moveProvider(index, 1)">
             <ArrowDown :size="16" aria-hidden="true" />
           </button>
+          <NuxtLink class="ghost action-button" :to="`/providers/${provider.id}`">
+            <BarChart3 :size="16" aria-hidden="true" />
+          </NuxtLink>
           <button class="ghost action-button" type="button" @click="openEditor(index)">
             <Pencil :size="16" aria-hidden="true" />
             <span>Edit</span>

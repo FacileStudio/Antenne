@@ -29,6 +29,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       type,
       name: "Matrix",
       enabled: true,
+      providerIds: [],
       homeserver: "",
       accessToken: "",
       roomIds: [],
@@ -41,6 +42,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       type,
       name: "Discord webhook",
       enabled: true,
+      providerIds: [],
       webhookUrl: "",
     };
   }
@@ -50,6 +52,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     type,
     name: "HTTP webhook",
     enabled: true,
+    providerIds: [],
     url: "",
     secretHeader: "x-nook-secret",
     secretValue: null,

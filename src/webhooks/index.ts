@@ -56,10 +56,17 @@ function createDispatchContext(provider: WebhookProviderSettings): WebhookDispat
   };
 }
 
+export interface WebhookAlertContext {
+  providerId: string;
+  providerName: string;
+  providerType: WebhookProviderType;
+  event: string;
+}
+
 export async function handleWebhookRequest(
   req: Request,
   settings: AppSettings,
-  sendAlert: (message: string) => Promise<void>,
+  sendAlert: (message: string, context: WebhookAlertContext) => Promise<void>,
 ): Promise<Response> {
   if (req.method !== "POST") {
     return new Response("not found", { status: 404 });
@@ -86,10 +93,16 @@ export async function handleWebhookRequest(
     return new Response("bad request", { status: 400 });
   }
 
-  console.log(`[webhook] ${provider.settings.name} (${provider.definition.type}): ${provider.definition.describeEvent(payload)}`);
+  const eventDescription = provider.definition.describeEvent(payload);
+  console.log(`[webhook] ${provider.settings.name} (${provider.definition.type}): ${eventDescription}`);
   const message = provider.definition.formatMessage(payload, createDispatchContext(provider.settings));
   if (message) {
-    await sendAlert(message);
+    await sendAlert(message, {
+      providerId: provider.settings.id,
+      providerName: provider.settings.name,
+      providerType: provider.settings.type,
+      event: eventDescription,
+    });
   }
 
   return new Response("ok", { status: 200 });
