@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plug, Plus, Save, Send, Trash2 } from "lucide-vue-next";
+import { BarChart3, Copy, Eye, EyeOff, GripVertical, Pencil, Plug, Plus, Save, Send, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import SideDrawer from "./SideDrawer.vue";
@@ -73,22 +73,39 @@ function removeProvider(index: number) {
   updateProviders(props.modelValue.filter((_, currentIndex) => currentIndex !== index));
 }
 
-function moveProvider(index: number, direction: -1 | 1) {
-  const targetIndex = index + direction;
-  if (targetIndex < 0 || targetIndex >= props.modelValue.length) {
-    return;
-  }
+const dragIndex = ref<number | null>(null);
+const dragOverIndex = ref<number | null>(null);
 
-  const nextProviders = [...props.modelValue];
-  const [provider] = nextProviders.splice(index, 1);
-  nextProviders.splice(targetIndex, 0, provider);
-  updateProviders(nextProviders);
+function onDragStart(index: number) {
+  dragIndex.value = index;
+}
 
-  if (editingIndex.value === index) {
-    editingIndex.value = targetIndex;
-  } else if (editingIndex.value === targetIndex) {
-    editingIndex.value = index;
+function onDragOver(event: DragEvent, index: number) {
+  event.preventDefault();
+  dragOverIndex.value = index;
+}
+
+function onDragEnd() {
+  if (dragIndex.value !== null && dragOverIndex.value !== null && dragIndex.value !== dragOverIndex.value) {
+    const nextProviders = [...props.modelValue];
+    const [moved] = nextProviders.splice(dragIndex.value, 1);
+    nextProviders.splice(dragOverIndex.value, 0, moved);
+    updateProviders(nextProviders);
+
+    if (editingIndex.value === dragIndex.value) {
+      editingIndex.value = dragOverIndex.value;
+    } else if (editingIndex.value !== null) {
+      const from = dragIndex.value;
+      const to = dragOverIndex.value;
+      if (editingIndex.value > from && editingIndex.value <= to) {
+        editingIndex.value--;
+      } else if (editingIndex.value < from && editingIndex.value >= to) {
+        editingIndex.value++;
+      }
+    }
   }
+  dragIndex.value = null;
+  dragOverIndex.value = null;
 }
 
 function duplicateProvider(index: number) {
@@ -155,21 +172,20 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         v-for="(provider, index) in modelValue"
         :key="provider.id"
         class="item-card"
-        :class="{ dimmed: !provider.enabled }"
+        :class="{ dimmed: !provider.enabled, 'drag-over': dragOverIndex === index && dragIndex !== index }"
+        draggable="true"
+        @dragstart="onDragStart(index)"
+        @dragover="onDragOver($event, index)"
+        @dragend="onDragEnd"
       >
         <div class="item-info">
+          <span class="drag-handle"><GripVertical :size="16" aria-hidden="true" /></span>
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
           <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>
         </div>
 
         <div class="item-actions">
-          <button class="ghost action-button" type="button" :disabled="index === 0" @click="moveProvider(index, -1)">
-            <ArrowUp :size="16" aria-hidden="true" />
-          </button>
-          <button class="ghost action-button" type="button" :disabled="index === modelValue.length - 1" @click="moveProvider(index, 1)">
-            <ArrowDown :size="16" aria-hidden="true" />
-          </button>
           <button class="ghost action-button" type="button" @click="openEditor(index)">
             <Pencil :size="16" aria-hidden="true" />
             <span>Edit</span>
@@ -340,6 +356,23 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   opacity: 0.5;
 }
 
+.item-card.drag-over {
+  border-color: rgb(255 255 255 / 0.3);
+  background: rgb(255 255 255 / 0.08);
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--nook-muted);
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
 .item-info {
   display: flex;
   align-items: center;
@@ -402,6 +435,20 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
+}
+
+a.action-button {
+  border: 1px solid var(--nook-border);
+  border-radius: 999px;
+  padding: 0.85rem 1.15rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+a.action-button:hover {
+  background: var(--nook-surface-strong);
+  border-color: rgb(255 255 255 / 0.14);
 }
 
 .add-button {
