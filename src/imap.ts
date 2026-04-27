@@ -20,6 +20,34 @@ interface ImapFetchResult {
 
 const defaultImapMailbox = "INBOX";
 
+function decodeQuotedPrintableBytes(input: string): Uint8Array {
+  const bytes: number[] = [];
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === "=" && i + 2 < input.length) {
+      bytes.push(parseInt(input.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else if (input[i] === "_") {
+      bytes.push(0x20);
+    } else {
+      bytes.push(input.charCodeAt(i));
+    }
+  }
+  return new Uint8Array(bytes);
+}
+
+function decodeMimeWord(encoded: string): string {
+  return encoded.replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, (_match, charset: string, encoding: string, text: string) => {
+    const decoder = new TextDecoder(charset.toLowerCase() as "utf-8");
+    if (encoding.toUpperCase() === "B") {
+      const binary = atob(text);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return decoder.decode(bytes);
+    }
+    return decoder.decode(decodeQuotedPrintableBytes(text));
+  });
+}
+
 class ImapSession {
   private socket: TLSSocket;
   private buffer = "";
@@ -189,10 +217,13 @@ class ImapSession {
       headers.set(currentKey, rawLine.slice(separatorIndex + 1).trim());
     }
 
+    const rawSubject = headers.get("subject");
+    const rawFrom = headers.get("from");
+
     return {
       uid,
-      subject: headers.get("subject") ?? null,
-      from: headers.get("from") ?? null,
+      subject: rawSubject ? decodeMimeWord(rawSubject) : null,
+      from: rawFrom ? decodeMimeWord(rawFrom) : null,
       date: headers.get("date") ?? null,
     };
   }
