@@ -37,7 +37,7 @@ defineProps<{
 <style scoped>
 .sidebar {
   display: grid;
-  align-content: start;
+  grid-template-rows: auto auto 1fr;
   gap: var(--space-5);
   padding: var(--space-6) var(--space-4);
   position: sticky;
@@ -101,7 +101,7 @@ defineProps<{
 }
 
 .sidebar-footer {
-  margin-top: auto;
+  align-self: end;
   padding-top: var(--space-5);
   border-top: 1px solid var(--nook-border);
 }
