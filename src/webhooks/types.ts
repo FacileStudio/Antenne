@@ -107,6 +107,12 @@ export interface DokployWebhookPayload {
   title?: string | null;
   message?: string | null;
   timestamp?: string | null;
+  projectName?: string | null;
+  applicationName?: string | null;
+  applicationType?: string | null;
+  buildLink?: string | null;
+  status?: string | null;
+  type?: string | null;
   [key: string]: unknown;
 }
 

@@ -11,6 +11,8 @@ function formatDokployAlert(payload: DokployWebhookPayload, context: WebhookDisp
   const title = payload.title?.trim();
   const message = payload.message?.trim();
   const timestamp = payload.timestamp?.trim();
+  const projectName = payload.projectName?.trim();
+  const applicationName = payload.applicationName?.trim();
 
   if (!title && !message && !timestamp) {
     return null;
@@ -18,6 +20,13 @@ function formatDokployAlert(payload: DokployWebhookPayload, context: WebhookDisp
 
   const heading = title || context.providerName || "Dokploy";
   const parts = [`🚀 <b>[Dokploy] ${escapeHtml(heading)}</b>`];
+
+  if (projectName || applicationName) {
+    const segments: string[] = [];
+    if (projectName) segments.push(escapeHtml(projectName));
+    if (applicationName) segments.push(escapeHtml(applicationName));
+    parts.push(`Service: <b>${segments.join(" / ")}</b>`);
+  }
 
   if (message) {
     parts.push(escapeHtml(message).replaceAll("\n", "<br/>"));
@@ -44,6 +53,8 @@ export const dokployWebhookProvider: WebhookProviderDefinition = {
   },
   describeEvent(payload) {
     const parsed = parsePayload(payload);
-    return parsed.title ?? parsed.message ?? "unknown";
+    const label = parsed.applicationName?.trim() || parsed.projectName?.trim();
+    const event = parsed.title ?? parsed.message ?? "unknown";
+    return label ? `${event} (${label})` : event;
   },
 };

@@ -3,7 +3,7 @@ import { createMonitorManager } from "./src/monitor";
 import { hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
 import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
-import { pushEvent, updateEventDeliveries } from "./src/event-log";
+import { initEventLog, pushEvent, updateEventDeliveries } from "./src/event-log";
 import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
   createInitialRuntimeStatus,
@@ -15,6 +15,8 @@ import {
 } from "./src/settings";
 
 const settingsPath = getSettingsPath();
+const eventLogPath = settingsPath.replace(/\.json$/, "-events.json");
+await initEventLog(eventLogPath);
 const defaults = await loadDefaultSettings();
 const persistedSettings = await loadPersistedSettings(settingsPath);
 const initialSettings = persistedSettings ?? defaults;

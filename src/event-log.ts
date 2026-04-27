@@ -1,3 +1,5 @@
+import { mkdir } from "node:fs/promises";
+
 export interface DeliveryAttempt {
   targetId: string;
   targetName: string;
@@ -29,6 +31,46 @@ export interface EventLogStats {
 const MAX_ENTRIES = 500;
 
 let entries: EventLogEntry[] = [];
+let persistPath: string | null = null;
+let flushTimer: Timer | null = null;
+
+function scheduleFlush() {
+  if (!persistPath) return;
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    void flushToDisk();
+  }, 500);
+}
+
+async function flushToDisk() {
+  if (!persistPath) return;
+  try {
+    const directory = persistPath.includes("/") ? persistPath.slice(0, persistPath.lastIndexOf("/")) : ".";
+    await mkdir(directory, { recursive: true });
+    await Bun.write(persistPath, JSON.stringify(entries));
+  } catch (error) {
+    console.error(`[event-log] failed to persist: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+export async function initEventLog(path: string) {
+  persistPath = path;
+  try {
+    const file = Bun.file(path);
+    if (await file.exists()) {
+      const raw = await file.json();
+      if (Array.isArray(raw)) {
+        entries = raw.slice(-MAX_ENTRIES) as EventLogEntry[];
+        console.log(`[event-log] loaded ${entries.length} entries from ${path}`);
+        return;
+      }
+    }
+  } catch (error) {
+    console.error(`[event-log] failed to load: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  entries = [];
+}
 
 function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -49,6 +91,7 @@ export function pushEvent(
     entries = entries.slice(entries.length - MAX_ENTRIES);
   }
 
+  scheduleFlush();
   return entry;
 }
 
@@ -59,6 +102,7 @@ export function updateEventDeliveries(
   const entry = entries.find((e) => e.id === eventId);
   if (entry) {
     entry.deliveries = deliveries;
+    scheduleFlush();
   }
 }
 
