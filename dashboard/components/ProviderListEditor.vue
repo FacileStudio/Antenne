@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import SideDrawer from "./SideDrawer.vue";
@@ -20,7 +20,7 @@ const emit = defineEmits<{
   "update:modelValue": [value: ProviderSettings[]];
 }>();
 
-const { notifyError, notifySuccess, testProviderConnection } = useDashboardState();
+const { notifyError, notifySuccess, testProviderConnection, saveSettings, saving } = useDashboardState();
 const revealedSecrets = reactive<Record<string, boolean>>({});
 const nextProviderType = ref<ProviderType>("website");
 const testingProviders = reactive<Record<string, boolean>>({});
@@ -285,14 +285,19 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         </template>
       </template>
 
-      <template v-if="editingProvider !== null && editingProvider.type === 'imap'" #footer>
+      <template v-if="editingProvider !== null" #footer>
         <button
+          v-if="editingProvider.type === 'imap'"
           class="secondary action-button"
           type="button"
           :disabled="testingProviders[editingProvider.id]"
           @click="runProviderConnectionTest(editingProvider)"
         >
           <span>{{ testingProviders[editingProvider.id] ? "Testing..." : "Test connection" }}</span>
+        </button>
+        <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">
+          <Save :size="16" aria-hidden="true" />
+          <span>{{ saving ? "Saving..." : "Save" }}</span>
         </button>
       </template>
     </SideDrawer>

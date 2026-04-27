@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, BarChart3, Copy, Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
@@ -24,7 +24,7 @@ const emit = defineEmits<{
   "update:modelValue": [value: DeliveryTarget[]];
 }>();
 
-const { notifyError, notifySuccess, testDeliveryTarget } = useDashboardState();
+const { notifyError, notifySuccess, testDeliveryTarget, saveSettings, saving } = useDashboardState();
 const nextTargetType = ref<DeliveryTargetType>("matrix");
 const revealedSecrets = reactive<Record<string, boolean>>({});
 const testingTargets = reactive<Record<string, boolean>>({});
@@ -310,6 +310,10 @@ async function runTargetTest(target: DeliveryTarget) {
           @click="runTargetTest(editingTarget)"
         >
           <span>{{ testingTargets[editingTarget.id] ? "Testing..." : "Test" }}</span>
+        </button>
+        <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">
+          <Save :size="16" aria-hidden="true" />
+          <span>{{ saving ? "Saving..." : "Save" }}</span>
         </button>
       </template>
     </SideDrawer>
