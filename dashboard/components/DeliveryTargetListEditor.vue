@@ -184,13 +184,13 @@ async function runTargetTest(target: DeliveryTarget) {
           <button class="ghost action-button" type="button" :disabled="index === modelValue.length - 1" @click="moveTarget(index, 1)">
             <ArrowDown :size="16" aria-hidden="true" />
           </button>
-          <NuxtLink class="ghost action-button" :to="`/targets/${target.id}`">
-            <BarChart3 :size="16" aria-hidden="true" />
-          </NuxtLink>
           <button class="ghost action-button" type="button" @click="openEditor(index)">
             <Pencil :size="16" aria-hidden="true" />
             <span>Edit</span>
           </button>
+          <NuxtLink class="ghost action-button" :to="`/targets/${target.id}`">
+            <BarChart3 :size="16" aria-hidden="true" />
+          </NuxtLink>
           <button class="ghost action-button" type="button" @click="duplicateTarget(index)">
             <Copy :size="16" aria-hidden="true" />
           </button>

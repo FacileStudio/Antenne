@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import SectionCard from "../components/SectionCard.vue";
-import ProviderListEditor from "../components/ProviderListEditor.vue";
-import { useDashboardState } from "../composables/useDashboardState";
+import SectionCard from "../../components/SectionCard.vue";
+import ProviderListEditor from "../../components/ProviderListEditor.vue";
+import { useDashboardState } from "../../composables/useDashboardState";
 
 const { settings } = useDashboardState();
 </script>

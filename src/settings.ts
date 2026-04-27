@@ -124,9 +124,18 @@ function normalizeBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
+function normalizeProviderIds(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  return [];
+}
+
 function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
   const candidate = input && typeof input === "object" ? input as Partial<DeliveryTarget> : {};
   const type = candidate.type;
+  const providerIds = normalizeProviderIds(candidate.providerIds);
 
   if (type === "matrix") {
     const fallback = createDefaultDeliveryTarget("matrix") as MatrixDeliveryTarget;
@@ -135,6 +144,7 @@ function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       id: normalizeString(candidate.id) || fallback.id,
       name: normalizeString(candidate.name) || fallback.name,
       enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+      providerIds,
       homeserver: "homeserver" in candidate ? normalizeString(candidate.homeserver) : fallback.homeserver,
       accessToken: "accessToken" in candidate ? normalizeString(candidate.accessToken) : fallback.accessToken,
       roomIds: "roomIds" in candidate ? normalizeRoomIds(candidate.roomIds) : fallback.roomIds,
@@ -148,6 +158,7 @@ function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       id: normalizeString(candidate.id) || fallback.id,
       name: normalizeString(candidate.name) || fallback.name,
       enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+      providerIds,
       webhookUrl: "webhookUrl" in candidate ? normalizeString(candidate.webhookUrl) : fallback.webhookUrl,
     };
   }
@@ -158,6 +169,7 @@ function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
     id: normalizeString(candidate.id) || fallback.id,
     name: normalizeString(candidate.name) || fallback.name,
     enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+    providerIds,
     url: "url" in candidate ? normalizeString(candidate.url) : fallback.url,
     secretHeader: "secretHeader" in candidate ? (normalizeString(candidate.secretHeader) || null) : fallback.secretHeader,
     secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : fallback.secretValue,

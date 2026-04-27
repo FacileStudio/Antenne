@@ -1,0 +1,1 @@
+import{j as o,U as a,o as s,c as n,V as r}from"./CdWU1x65.js";const m=o({__name:"webhooks",async setup(_){let e,t;return[e,t]=a(()=>r("/providers")),await e,t(),(c,p)=>(s(),n("div"))}});export{m as default};
