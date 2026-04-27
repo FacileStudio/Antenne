@@ -14,6 +14,7 @@ interface VikunjaTask {
   priority?: number;
   due_date?: string | null;
   project_id?: number;
+  project?: VikunjaProject;
 }
 
 interface VikunjaProject {
@@ -67,7 +68,7 @@ function getDoerName(doer?: VikunjaDoer): string {
 }
 
 function getProjectContext(payload: VikunjaPayload): string {
-  const project = payload.data?.project;
+  const project = payload.data?.task?.project ?? payload.data?.project;
   if (project?.title) return ` in <b>${escapeHtml(project.title)}</b>`;
   return "";
 }

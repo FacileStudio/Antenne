@@ -1,6 +1,7 @@
 import { connect as connectNet } from "node:net";
 import { connect as connectTls, TLSSocket } from "node:tls";
 
+import { formatTimestamp } from "./format";
 import type { AppSettings } from "./types";
 import { isImapProviderSettings, type ImapProviderSettings } from "./webhooks/types";
 
@@ -261,7 +262,7 @@ function buildMessage(provider: ImapProviderSettings, message: ImapFetchResult) 
   }
 
   if (message.date) {
-    parts.push(`Date: <code>${escapeHtml(message.date)}</code>`);
+    parts.push(`Date: <code>${escapeHtml(formatTimestamp(message.date))}</code>`);
   }
 
   return parts.join("<br/>");

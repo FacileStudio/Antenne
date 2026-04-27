@@ -1,3 +1,4 @@
+import { formatTimestamp } from "../../format";
 import type { DokployWebhookPayload, WebhookDispatchContext, WebhookProviderDefinition } from "../types";
 
 function escapeHtml(value: string): string {
@@ -33,7 +34,7 @@ function formatDokployAlert(payload: DokployWebhookPayload, context: WebhookDisp
   }
 
   if (timestamp) {
-    parts.push(`<code>${escapeHtml(timestamp)}</code>`);
+    parts.push(`<code>${escapeHtml(formatTimestamp(timestamp))}</code>`);
   }
 
   return parts.join("<br/>");
