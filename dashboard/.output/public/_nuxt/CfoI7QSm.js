@@ -1,1 +1,0 @@
-import{j as o,Q as a,o as s,c as n,R as r}from"./C-sKS74c.js";const m=o({__name:"webhooks",async setup(_){let e,t;return[e,t]=a(()=>r("/providers")),await e,t(),(c,p)=>(s(),n("div"))}});export{m as default};

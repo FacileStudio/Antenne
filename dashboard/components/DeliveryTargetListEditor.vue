@@ -303,7 +303,7 @@ async function runTargetTest(target: DeliveryTarget) {
 
           <label class="field">
             <span>Device ID</span>
-            <p class="field-hint">Keep this stable so Matrix can reissue tokens for the same device instead of minting device confetti.</p>
+            <p class="field-hint">Optional. Keep it stable if you set it so Matrix can reissue tokens for the same device instead of minting device confetti.</p>
             <input :value="editingTarget.deviceId ?? ''" type="text" placeholder="NOOKABC123" @input="patchTarget(editingIndex, { deviceId: ($event.target as HTMLInputElement).value })">
           </label>
 

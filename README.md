@@ -48,7 +48,7 @@ If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env plu
 | `MATRIX_REFRESH_TOKEN` | No | Matrix refresh token for renewing expired access tokens |
 | `MATRIX_USER_ID` | No | Matrix user ID for password login, for example `@nook:matrix.example.com` |
 | `MATRIX_PASSWORD` | No | Matrix password used to log back in and regenerate tokens |
-| `MATRIX_DEVICE_ID` | No | Stable Matrix device ID to reuse during re-login |
+| `MATRIX_DEVICE_ID` | No | Optional stable Matrix device ID to reuse during re-login |
 | `MATRIX_ROOM_IDS` | No | Comma-separated room IDs |
 | `MATRIX_ROOM_ID` | No | Single room fallback |
 
