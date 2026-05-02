@@ -24,13 +24,14 @@ const sections = [
   { href: "/delivery", label: "Delivery", icon: "solar:delivery-bold" },
   { href: "/providers", label: "Providers", icon: "solar:link-circle-bold" },
   { href: "/activity", label: "Activity", icon: "solar:pulse-bold" },
-  { href: "/info", label: "Settings", icon: "solar:settings-bold" },
+  { href: "/settings", label: "Settings", icon: "solar:settings-bold" },
 ] as const;
 const route = useRoute();
 
 const currentTitle = computed(() => {
   if (route.path.startsWith("/providers/")) return "Provider";
   if (route.path.startsWith("/targets/")) return "Delivery Target";
+  if (route.path === "/info") return "Settings";
   return sections.find((section) => section.href === route.path)?.label ?? "Settings";
 });
 
