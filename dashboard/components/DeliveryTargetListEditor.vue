@@ -281,7 +281,7 @@ async function runTargetTest(target: DeliveryTarget) {
 
           <label class="field">
             <span>User ID</span>
-            <p class="field-hint">Set this with a password to let Nook log back in and renew tokens automatically.</p>
+            <p class="field-hint">Use with password for auto re-login.</p>
             <input :value="editingTarget.userId" type="text" placeholder="@nook:matrix.example.com" @input="patchTarget(editingIndex, { userId: ($event.target as HTMLInputElement).value })">
           </label>
 
@@ -303,13 +303,13 @@ async function runTargetTest(target: DeliveryTarget) {
 
           <label class="field">
             <span>Device ID</span>
-            <p class="field-hint">Optional. Keep it stable if you set it so Matrix can reissue tokens for the same device instead of minting device confetti.</p>
+            <p class="field-hint">Optional. Keep stable if you use it.</p>
             <input :value="editingTarget.deviceId ?? ''" type="text" placeholder="NOOKABC123" @input="patchTarget(editingIndex, { deviceId: ($event.target as HTMLInputElement).value })">
           </label>
 
           <label class="field">
             <span>Refresh token</span>
-            <p class="field-hint">Optional bootstrap. Nook will use it when the access token expires.</p>
+            <p class="field-hint">Optional. Used when access token expires.</p>
             <div class="secret-field">
               <input
                 :value="editingTarget.refreshToken ?? ''"
