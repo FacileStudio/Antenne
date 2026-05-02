@@ -113,6 +113,39 @@ button:disabled {
   opacity: 0.55;
 }
 
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.action-button > span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.action-button svg {
+  flex: none;
+}
+
+a.action-button {
+  border: 1px solid var(--nook-border);
+  border-radius: 999px;
+  padding: 0.85rem 1.15rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+a.action-button:hover {
+  background: var(--nook-surface-strong);
+  border-color: rgb(255 255 255 / 0.14);
+}
+
 input,
 select {
   width: 100%;
@@ -174,6 +207,19 @@ select {
 .field.required > span::after {
   content: " *";
   color: rgb(255 80 80);
+}
+
+.secret-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.reveal-button {
+  min-height: 3.5rem;
+  min-width: 6.75rem;
+  padding-inline: 0.95rem;
 }
 
 h1,
@@ -256,4 +302,10 @@ h2 {
 .danger {
   background: transparent;
   color: var(--nook-text);
+}
+
+@media (max-width: 960px) {
+  .secret-field {
+    grid-template-columns: 1fr;
+  }
 }
