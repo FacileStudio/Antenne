@@ -44,11 +44,7 @@ const successRate = computed(() => {
 <template>
   <section class="overview-card panel">
     <div class="overview-copy">
-      <p class="overview-eyebrow">Activity</p>
-      <h2>Signal, not spam</h2>
-      <p class="overview-text">
-        Cleaner event feed, recent pulse, and less server log sludge leaking into the UI.
-      </p>
+      <h2>Stats</h2>
     </div>
 
     <div class="overview-meta">
@@ -65,19 +61,19 @@ const successRate = computed(() => {
     <div class="stats-grid">
       <div class="stat-tile">
         <span class="stat-value">{{ stats?.totalEvents ?? events.length }}</span>
-        <span class="stat-label">Tracked events</span>
+        <span class="stat-label">Tracked</span>
       </div>
       <div class="stat-tile">
         <span class="stat-value success">{{ stats?.deliverySuccessCount ?? 0 }}</span>
-        <span class="stat-label">Successful deliveries</span>
+        <span class="stat-label">Success</span>
       </div>
       <div class="stat-tile">
         <span class="stat-value error">{{ stats?.deliveryErrorCount ?? 0 }}</span>
-        <span class="stat-label">Failed deliveries</span>
+        <span class="stat-label">Failed</span>
       </div>
       <div class="stat-tile">
         <span class="stat-value">{{ successRate }}%</span>
-        <span class="stat-label">Delivery hit rate</span>
+        <span class="stat-label">Hit rate</span>
       </div>
     </div>
   </section>
