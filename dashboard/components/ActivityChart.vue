@@ -179,7 +179,6 @@ h3 {
   min-height: 0.25rem;
   border-radius: 999px;
   background: #1cdb81;
-  box-shadow: 0 0 18px rgb(28 219 129 / 0.22);
   position: relative;
   overflow: hidden;
 }
@@ -214,7 +213,6 @@ h3 {
 
 .legend-swatch--activity {
   background: #1cdb81;
-  box-shadow: 0 0 12px rgb(28 219 129 / 0.28);
 }
 
 .legend-swatch--error {
