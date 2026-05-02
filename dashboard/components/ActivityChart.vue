@@ -124,10 +124,7 @@ function errorHeight(bucket: Bucket) {
   display: grid;
   gap: 1.2rem;
   padding: 1.5rem;
-  background:
-    radial-gradient(circle at top left, rgb(28 219 129 / 0.12), transparent 35%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 55%),
-    var(--nook-surface);
+  background: var(--nook-surface);
 }
 
 .chart-header {
@@ -181,7 +178,7 @@ h3 {
   width: 100%;
   min-height: 0.25rem;
   border-radius: 999px;
-  background: linear-gradient(180deg, #87f3bf 0%, #1cdb81 100%);
+  background: #1cdb81;
   box-shadow: 0 0 18px rgb(28 219 129 / 0.22);
   position: relative;
   overflow: hidden;
@@ -190,7 +187,7 @@ h3 {
 .chart-bar-error {
   position: absolute;
   inset: auto 0 0;
-  background: linear-gradient(180deg, rgb(255 186 186 / 0.88), rgb(255 131 131 / 0.92));
+  background: rgb(255 131 131 / 0.92);
 }
 
 .chart-footer {
