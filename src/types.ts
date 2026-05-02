@@ -101,7 +101,6 @@ export interface DashboardSessionConfig {
   username: string;
   password: string | null;
   cookieName: string;
-  token: string;
 }
 
 export interface RuntimeStatus {

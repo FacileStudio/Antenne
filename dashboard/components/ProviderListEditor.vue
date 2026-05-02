@@ -2,6 +2,7 @@
 import { Icon } from "@iconify/vue";
 import { reactive, ref } from "vue";
 
+import ProviderEditorFields from "./ProviderEditorFields.vue";
 import SideDrawer from "./SideDrawer.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 import {
@@ -209,96 +210,12 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
       @close="closeEditor"
     >
       <template v-if="editingProvider !== null && editingIndex !== null">
-        <label class="toggle">
-          <input :checked="editingProvider.enabled" type="checkbox" @change="patchProvider(editingIndex, { enabled: ($event.target as HTMLInputElement).checked })">
-          <span>Enabled</span>
-        </label>
-
-        <label class="field">
-          <span>Name</span>
-          <input :value="editingProvider.name" type="text" @input="patchProvider(editingIndex, { name: ($event.target as HTMLInputElement).value })">
-        </label>
-
-        <template v-if="editingProvider.type === 'website'">
-          <label class="field required">
-            <span>URL</span>
-            <input :value="editingProvider.url" type="url" @input="patchProvider(editingIndex, { url: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="field">
-            <span>Interval</span>
-            <input :value="editingProvider.interval" type="number" min="1" step="1" @input="patchProvider(editingIndex, { interval: Number(($event.target as HTMLInputElement).value) || 1 })">
-          </label>
-        </template>
-
-        <template v-else-if="editingProvider.type === 'imap'">
-          <label class="field required">
-            <span>Host</span>
-            <input :value="editingProvider.host" type="text" @input="patchProvider(editingIndex, { host: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="field required">
-            <span>Port</span>
-            <input :value="editingProvider.port" type="number" min="1" step="1" @input="patchProvider(editingIndex, { port: Number(($event.target as HTMLInputElement).value) || 993 })">
-          </label>
-
-          <label class="toggle">
-            <input :checked="editingProvider.secure" type="checkbox" @change="patchProvider(editingIndex, { secure: ($event.target as HTMLInputElement).checked })">
-            <span>TLS</span>
-          </label>
-
-          <label class="field required">
-            <span>Username</span>
-            <input :value="editingProvider.username" type="text" @input="patchProvider(editingIndex, { username: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="field required">
-            <span>Password</span>
-            <div class="secret-field">
-              <input
-                :value="editingProvider.password ?? ''"
-                :type="revealedSecrets[editingProvider.id] ? 'text' : 'password'"
-                @input="patchProvider(editingIndex, { password: ($event.target as HTMLInputElement).value })"
-              >
-              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingProvider.id)">
-                <Icon :icon="revealedSecrets[editingProvider.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
-                <span>{{ revealedSecrets[editingProvider.id] ? "Hide" : "Show" }}</span>
-              </button>
-            </div>
-          </label>
-
-          <label class="field">
-            <span>Poll interval</span>
-            <input :value="editingProvider.pollInterval" type="number" min="1" step="1" @input="patchProvider(editingIndex, { pollInterval: Number(($event.target as HTMLInputElement).value) || 60 })">
-          </label>
-        </template>
-
-        <template v-else>
-          <label class="field required">
-            <span>Path</span>
-            <input :value="editingProvider.path" type="text" @input="patchProvider(editingIndex, { path: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="field">
-            <span>Secret header</span>
-            <input :value="editingProvider.secretHeader ?? ''" type="text" @input="patchProvider(editingIndex, { secretHeader: ($event.target as HTMLInputElement).value })">
-          </label>
-
-          <label class="field">
-            <span>Secret value</span>
-            <div class="secret-field">
-              <input
-                :value="editingProvider.secretValue ?? ''"
-                :type="revealedSecrets[editingProvider.id] ? 'text' : 'password'"
-                @input="patchProvider(editingIndex, { secretValue: ($event.target as HTMLInputElement).value })"
-              >
-              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingProvider.id)">
-                <Icon :icon="revealedSecrets[editingProvider.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
-                <span>{{ revealedSecrets[editingProvider.id] ? "Hide" : "Show" }}</span>
-              </button>
-            </div>
-          </label>
-        </template>
+        <ProviderEditorFields
+          :editing-provider="editingProvider"
+          :revealed-secrets="revealedSecrets"
+          @patch="patchProvider(editingIndex, $event)"
+          @toggle-reveal="toggleReveal($event)"
+        />
       </template>
 
       <template v-if="editingProvider !== null" #footer>
