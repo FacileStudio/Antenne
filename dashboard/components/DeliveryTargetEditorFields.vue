@@ -44,8 +44,10 @@ const emit = defineEmits<{
           :checked="(editingTarget.providerIds ?? []).includes(provider.id)"
           @change="emit('toggle-provider', provider.id)"
         >
-        <span>{{ provider.name || getProviderLabel(provider.type) }}</span>
-        <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
+        <span class="provider-option__body">
+          <span class="provider-option__name">{{ provider.name || getProviderLabel(provider.type) }}</span>
+          <span class="provider-option__type">{{ getProviderLabel(provider.type) }}</span>
+        </span>
       </label>
       <p v-if="providers.length === 0" class="field-hint">No providers configured yet.</p>
     </div>
@@ -254,3 +256,93 @@ const emit = defineEmits<{
     </label>
   </template>
 </template>
+
+<style scoped>
+.field-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--nook-muted);
+}
+
+.provider-picker {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.provider-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.8rem 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.provider-option:hover {
+  background: var(--nook-surface-strong);
+  border-color: rgb(255 255 255 / 0.14);
+}
+
+.provider-option.selected {
+  border-color: rgb(28 219 129 / 0.42);
+  background: rgb(28 219 129 / 0.08);
+  box-shadow: inset 0 0 0 1px rgb(28 219 129 / 0.12);
+}
+
+.provider-option input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: #1cdb81;
+}
+
+.provider-option__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.provider-option__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--nook-text);
+}
+
+.provider-option__type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.7rem;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--nook-border);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--nook-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  flex: none;
+}
+
+.provider-option.selected .provider-option__type {
+  border-color: rgb(28 219 129 / 0.28);
+  background: rgb(28 219 129 / 0.12);
+  color: #7af0b6;
+}
+
+@media (max-width: 720px) {
+  .provider-option__body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+</style>
