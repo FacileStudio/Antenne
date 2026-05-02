@@ -84,10 +84,7 @@ const successRate = computed(() => {
   display: grid;
   gap: 1.4rem;
   padding: 1.5rem;
-  background:
-    radial-gradient(circle at top right, rgb(255 255 255 / 0.08), transparent 32%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 58%),
-    var(--nook-surface);
+  background: var(--nook-surface);
 }
 
 .overview-copy {

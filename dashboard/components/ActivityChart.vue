@@ -168,7 +168,7 @@ h3 {
 
 .chart-bar-track {
   border-radius: 999px;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.01));
+  background: rgb(255 255 255 / 0.01);
   display: flex;
   align-items: flex-end;
   overflow: hidden;
