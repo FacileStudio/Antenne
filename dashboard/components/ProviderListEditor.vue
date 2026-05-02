@@ -180,7 +180,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         @dragend="onDragEnd"
       >
         <div class="item-info">
-          <span class="drag-handle"><Icon icon="solar:menu-dots-bold" width="16" aria-hidden="true" /></span>
+          <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:sort-vertical-bold" width="18" aria-hidden="true" /></span>
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
           <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>

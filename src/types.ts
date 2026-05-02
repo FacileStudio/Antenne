@@ -68,6 +68,15 @@ export interface DeliveryConfig {
   items: DeliveryTarget[];
 }
 
+export interface SystemEventSettings {
+  startup: boolean;
+  providerEnabled: boolean;
+}
+
+export interface SystemSettings {
+  events: SystemEventSettings;
+}
+
 export interface ProvidersConfig {
   port: number;
   items: ProviderSettings[];
@@ -75,6 +84,7 @@ export interface ProvidersConfig {
 
 export interface AppSettings {
   delivery: DeliveryConfig;
+  system: SystemSettings;
   timeout: number;
   providers: ProvidersConfig;
 }
@@ -102,6 +112,8 @@ export interface DashboardSessionConfig {
   password: string | null;
   cookieName: string;
 }
+
+export const SYSTEM_PROVIDER_ID = "__nook_system__";
 
 export interface RuntimeStatus {
   serverPort: number;

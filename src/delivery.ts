@@ -120,7 +120,7 @@ function targetAcceptsProvider(target: DeliveryTarget, providerId: string | null
   }
 
   if (!providerId) {
-    return true;
+    return false;
   }
 
   return target.providerIds.includes(providerId);

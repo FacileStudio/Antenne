@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { Icon } from "@iconify/vue";
+import { onMounted, ref } from "vue";
 
+import ActivityChart from "../components/ActivityChart.vue";
+import ActivityOverview from "../components/ActivityOverview.vue";
 import EventTimeline from "../components/EventTimeline.vue";
 import type { EventLogEntry, EventLogStats } from "../types";
 import { useDashboardState } from "../composables/useDashboardState";
@@ -28,27 +29,17 @@ onMounted(() => void refresh());
 
 <template>
   <div class="activity-page">
-    <div v-if="stats" class="stats-row">
-      <div class="stat-card panel">
-        <span class="stat-value">{{ stats.totalEvents }}</span>
-        <span class="stat-label">Total events</span>
-      </div>
-      <div class="stat-card panel">
-        <span class="stat-value success">{{ stats.deliverySuccessCount }}</span>
-        <span class="stat-label">Delivered</span>
-      </div>
-      <div class="stat-card panel">
-        <span class="stat-value error">{{ stats.deliveryErrorCount }}</span>
-        <span class="stat-label">Failed</span>
-      </div>
+    <div class="overview-grid">
+      <ActivityOverview :events="events" :stats="stats" :loading="loading" @refresh="refresh" />
+      <ActivityChart :events="events" />
     </div>
 
     <div class="panel timeline-panel">
       <div class="timeline-header">
-        <h2>Event log</h2>
-        <button class="ghost action-button" type="button" :disabled="loading" @click="refresh">
-          <Icon icon="solar:refresh-bold" width="14" :class="{ spinning: loading }" />
-        </button>
+        <div>
+          <p class="timeline-eyebrow">Recent feed</p>
+          <h2>Activity stream</h2>
+        </div>
       </div>
       <EventTimeline :events="events" />
     </div>
@@ -61,57 +52,36 @@ onMounted(() => void refresh());
   gap: var(--space-5);
 }
 
-.stats-row {
+.overview-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(22rem, 0.9fr);
   gap: var(--space-3);
 }
 
-.stat-card {
+.timeline-panel {
   display: grid;
-  gap: 0.25rem;
-  text-align: center;
-  padding: var(--space-4);
-}
-
-.stat-value {
-  font-family: "Poppins", sans-serif;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.stat-value.success { color: #1CDB81; }
-.stat-value.error { color: rgb(255 131 131); }
-
-.stat-label {
-  font-size: 0.85rem;
-  color: var(--nook-muted);
+  gap: 1.2rem;
 }
 
 .timeline-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-3);
+  gap: var(--space-3);
+}
+
+.timeline-eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--nook-muted);
+  font-size: 0.78rem;
 }
 
 .timeline-header h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
 }
 
-.action-button {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinning { animation: spin 0.7s linear infinite; }
-
-@media (max-width: 640px) {
-  .stats-row {
+@media (max-width: 980px) {
+  .overview-grid {
     grid-template-columns: 1fr;
   }
 }

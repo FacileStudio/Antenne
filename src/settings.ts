@@ -20,6 +20,12 @@ export async function loadDefaultSettings(): Promise<AppSettings> {
   const { config } = await loadConfig();
   return {
     delivery: loadDeliveryConfigFromEnv(),
+    system: {
+      events: {
+        startup: true,
+        providerEnabled: false,
+      },
+    },
     timeout: config.timeout,
     providers: config.providers,
   };

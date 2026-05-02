@@ -95,6 +95,12 @@ export interface AppSettings {
   delivery: {
     items: DeliveryTarget[];
   };
+  system: {
+    events: {
+      startup: boolean;
+      providerEnabled: boolean;
+    };
+  };
   timeout: number;
   providers: {
     port: number;
@@ -140,6 +146,7 @@ export interface EventLogStats {
 
 export const providerTypes = ["website", "imap", "uptime-kuma", "docuseal", "dokploy", "git", "vikunja"] as const satisfies ProviderType[];
 export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp", "ntfy"] as const satisfies DeliveryTargetType[];
+export const SYSTEM_PROVIDER_ID = "__nook_system__";
 
 function createId() {
   return globalThis.crypto.randomUUID();

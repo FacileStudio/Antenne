@@ -24,7 +24,7 @@ const sections = [
   { href: "/delivery", label: "Delivery", icon: "solar:delivery-bold" },
   { href: "/providers", label: "Providers", icon: "solar:link-circle-bold" },
   { href: "/activity", label: "Activity", icon: "solar:pulse-bold" },
-  { href: "/info", label: "Info", icon: "solar:info-circle-bold" },
+  { href: "/info", label: "Settings", icon: "solar:settings-bold" },
 ] as const;
 const route = useRoute();
 

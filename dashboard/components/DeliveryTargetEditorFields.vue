@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { Icon } from "@iconify/vue";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
 import SmtpAddressEditor from "./SmtpAddressEditor.vue";
-import { getProviderLabel, type DeliveryTarget, type ProviderSettings } from "../types";
+import { getProviderLabel, SYSTEM_PROVIDER_ID, type DeliveryTarget, type ProviderSettings } from "../types";
 
-defineProps<{
+const props = defineProps<{
   editingTarget: DeliveryTarget;
   providers: ProviderSettings[];
   revealedSecrets: Record<string, boolean>;
@@ -16,6 +17,19 @@ const emit = defineEmits<{
   "toggle-provider": [providerId: string];
   "toggle-reveal": [id: string];
 }>();
+
+const providerOptions = computed(() => [
+  {
+    id: SYSTEM_PROVIDER_ID,
+    name: "Nook system",
+    typeLabel: "System",
+  },
+  ...props.providers.map((provider) => ({
+    id: provider.id,
+    name: provider.name || getProviderLabel(provider.type),
+    typeLabel: getProviderLabel(provider.type),
+  })),
+]);
 </script>
 
 <template>
@@ -34,7 +48,7 @@ const emit = defineEmits<{
     <p class="field-hint">Select which providers send to this target. Leave empty for all.</p>
     <div class="provider-picker">
       <label
-        v-for="provider in providers"
+        v-for="provider in providerOptions"
         :key="provider.id"
         class="provider-option"
         :class="{ selected: (editingTarget.providerIds ?? []).includes(provider.id) }"
@@ -45,11 +59,11 @@ const emit = defineEmits<{
           @change="emit('toggle-provider', provider.id)"
         >
         <span class="provider-option__body">
-          <span class="provider-option__name">{{ provider.name || getProviderLabel(provider.type) }}</span>
-          <span class="provider-option__type">{{ getProviderLabel(provider.type) }}</span>
+          <span class="provider-option__name">{{ provider.name }}</span>
+          <span class="provider-option__type">{{ provider.typeLabel }}</span>
         </span>
       </label>
-      <p v-if="providers.length === 0" class="field-hint">No providers configured yet.</p>
+      <p v-if="providers.length === 0" class="field-hint">No providers configured yet. System events can still be targeted.</p>
     </div>
   </div>
 

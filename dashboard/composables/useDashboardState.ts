@@ -32,6 +32,12 @@ const defaultSettings = (): AppSettings => ({
       createDefaultDeliveryTarget("webhook"),
     ],
   },
+  system: {
+    events: {
+      startup: true,
+      providerEnabled: false,
+    },
+  },
   timeout: 10,
   providers: {
     port: 9090,
@@ -45,6 +51,8 @@ const defaultSettings = (): AppSettings => ({
 
 function cloneFromPayload(target: AppSettings, next: AppSettings) {
   target.delivery.items = next.delivery.items.map((item) => ({ ...item }));
+  target.system.events.startup = next.system.events.startup;
+  target.system.events.providerEnabled = next.system.events.providerEnabled;
   target.timeout = next.timeout;
   target.providers.port = next.providers.port;
   target.providers.items = next.providers.items.map((provider) => ({ ...provider }));

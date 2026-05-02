@@ -1,7 +1,7 @@
 import type { AppSettings } from "./types";
 import { normalizeDeliveryConfig } from "./settings-normalize-delivery";
 import { normalizeProvidersConfig } from "./settings-normalize-providers";
-import { isPositiveNumber } from "./settings-normalize-shared";
+import { isPositiveNumber, normalizeBoolean } from "./settings-normalize-shared";
 
 export function normalizeAppSettings(input: unknown, fallback: AppSettings): AppSettings {
   const candidate = input && typeof input === "object" ? input as Partial<AppSettings> : {};
@@ -12,6 +12,12 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
 
   return {
     delivery: normalizeDeliveryConfig(input, fallback.delivery),
+    system: {
+      events: {
+        startup: normalizeBoolean(candidate.system?.events?.startup, fallback.system.events.startup),
+        providerEnabled: normalizeBoolean(candidate.system?.events?.providerEnabled, fallback.system.events.providerEnabled),
+      },
+    },
     timeout,
     providers: normalizeProvidersConfig(input, fallback),
   };

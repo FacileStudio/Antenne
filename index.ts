@@ -7,12 +7,12 @@ import { initEventLog, pushEvent, updateEventDeliveries } from "./src/event-log"
 import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
   createInitialRuntimeStatus,
-  getServerPort,
   getSettingsPath,
   loadDefaultSettings,
   loadPersistedSettings,
   SettingsStore,
 } from "./src/settings";
+import { SYSTEM_PROVIDER_ID, type AppSettings } from "./src/types";
 
 const settingsPath = getSettingsPath();
 const eventLogPath = settingsPath.replace(/\.json$/, "-events.json");
@@ -30,20 +30,35 @@ async function sendConfiguredAlert(message: string, context?: { providerId: stri
     throw new Error("No delivery target configured. Add and enable at least one delivery target first.");
   }
 
-  const source = (context?.providerType === "website" ? "website" : context?.providerType === "imap" ? "imap" : context ? "webhook" : "system") as "webhook" | "website" | "imap" | "system";
+  const source = (
+    context?.providerType === "website"
+      ? "website"
+      : context?.providerType === "imap"
+        ? "imap"
+        : context?.providerType === "system"
+          ? "system"
+          : context
+            ? "webhook"
+            : "system"
+  ) as "webhook" | "website" | "imap" | "system";
 
   const entry = pushEvent({
     source,
     providerId: context?.providerId ?? null,
-    providerName: context?.providerName ?? "system",
+    providerName: context?.providerName ?? "Nook",
     providerType: context?.providerType ?? "system",
     event: context?.event ?? message.slice(0, 80),
     message,
     deliveries: [],
   });
 
-  const deliveries = await sendAlert(settings.delivery, message, context?.providerId);
+  const deliveries = await sendAlert(settings.delivery, message, context?.providerId ?? SYSTEM_PROVIDER_ID);
   updateEventDeliveries(entry.id, deliveries);
+}
+
+function getNewlyEnabledProviders(previous: AppSettings, next: AppSettings) {
+  const previousEnabled = new Map(previous.providers.items.map((provider) => [provider.id, provider.enabled]));
+  return next.providers.items.filter((provider) => provider.enabled && previousEnabled.get(provider.id) === false);
 }
 
 async function sendTestAlertToTarget(targetId: string) {
@@ -94,14 +109,35 @@ function applySettings() {
 }
 
 async function updateSettings(input: unknown) {
+  const previousSettings = store.getSettings();
   const settings = await store.update(input);
   applySettings();
+
+  if (settings.system.events.providerEnabled) {
+    const newlyEnabledProviders = getNewlyEnabledProviders(previousSettings, settings);
+    for (const provider of newlyEnabledProviders) {
+      try {
+        await sendConfiguredAlert(
+          `🟢 <b>Provider enabled</b><br/><b>${provider.name}</b> is now active.`,
+          {
+            providerId: SYSTEM_PROVIDER_ID,
+            providerName: "Nook",
+            providerType: "system",
+            event: `provider enabled: ${provider.name}`,
+          },
+        );
+      } catch (error) {
+        console.error(`[settings] Failed to send provider-enabled notification: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  }
+
   return settings;
 }
 
 applySettings();
 
-const serverPort = getServerPort();
+const serverPort = store.getSettings().providers.port;
 const dashboardFile = Bun.file(new URL("./dashboard/.output/public/index.html", import.meta.url));
 runtimeStatus.dashboardBuilt = await dashboardFile.exists();
 runtimeStatus.serverPort = serverPort;
@@ -119,9 +155,17 @@ console.log(`[startup] websites: ${settings.providers.items.filter(isWebsiteProv
 console.log(`[startup] imap: ${settings.providers.items.filter(isImapProviderSettings).length}`);
 console.log(`[startup] webhooks: ${settings.providers.items.filter(isWebhookProviderSettings).length}`);
 
-if (hasAnyDelivery(settings.delivery)) {
+if (hasAnyDelivery(settings.delivery) && settings.system.events.startup) {
   try {
-    await sendConfiguredAlert("🟢 <b>Nook started</b><br/>Dashboard and API ready.");
+    await sendConfiguredAlert(
+      "🟢 <b>Nook started</b><br/>Dashboard and API ready.",
+      {
+        providerId: SYSTEM_PROVIDER_ID,
+        providerName: "Nook",
+        providerType: "system",
+        event: "nook started",
+      },
+    );
     console.log("[startup] Startup notification sent");
   } catch (error) {
     console.error(`[startup] Failed to send startup notification: ${error instanceof Error ? error.message : String(error)}`);

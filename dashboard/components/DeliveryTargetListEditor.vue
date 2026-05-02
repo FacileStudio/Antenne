@@ -192,7 +192,7 @@ async function runTargetTest(target: DeliveryTarget) {
         @dragend="onDragEnd"
       >
         <div class="item-info">
-          <span class="drag-handle"><Icon icon="solar:menu-dots-bold" width="16" aria-hidden="true" /></span>
+          <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:sort-vertical-bold" width="18" aria-hidden="true" /></span>
           <strong>{{ target.name || `${getDeliveryTargetLabel(target.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getDeliveryTargetLabel(target.type) }}</span>
           <span v-if="!target.enabled" class="item-chip item-chip--off">Off</span>
