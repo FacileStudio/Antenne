@@ -14,6 +14,10 @@ export interface MatrixTarget extends DeliveryTargetBase {
   type: "matrix";
   homeserver: string;
   accessToken: string;
+  refreshToken: string | null;
+  userId: string;
+  password: string | null;
+  deviceId: string | null;
   roomIds: string[];
 }
 
@@ -141,6 +145,10 @@ function createId() {
   return globalThis.crypto.randomUUID();
 }
 
+function createMatrixDeviceId() {
+  return `NOOK${createId().replaceAll("-", "").slice(0, 12).toUpperCase()}`;
+}
+
 export function getProviderLabel(type: ProviderType) {
   if (type === "website") return "Website";
   if (type === "imap") return "IMAP";
@@ -207,6 +215,10 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       providerIds: [],
       homeserver: "",
       accessToken: "",
+      refreshToken: "",
+      userId: "",
+      password: "",
+      deviceId: createMatrixDeviceId(),
       roomIds: [],
     };
   }

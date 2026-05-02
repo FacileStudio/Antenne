@@ -116,6 +116,10 @@ function normalizeDeliveryConfig(input: unknown, fallback: AppSettings["delivery
         enabled: typeof matrix.enabled === "boolean" ? matrix.enabled : target.enabled,
         homeserver: "homeserver" in matrix ? normalizeString(matrix.homeserver) : target.homeserver,
         accessToken: "accessToken" in matrix ? normalizeString(matrix.accessToken) : target.accessToken,
+        refreshToken: "refreshToken" in matrix ? (normalizeString(matrix.refreshToken) || null) : target.refreshToken,
+        userId: "userId" in matrix ? normalizeString(matrix.userId) : target.userId,
+        password: "password" in matrix ? (normalizeString(matrix.password) || null) : target.password,
+        deviceId: "deviceId" in matrix ? (normalizeString(matrix.deviceId) || null) : target.deviceId,
         roomIds: "roomIds" in matrix ? normalizeRoomIds(matrix.roomIds) : target.roomIds,
       };
     }
@@ -183,6 +187,10 @@ function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       providerIds,
       homeserver: "homeserver" in candidate ? normalizeString(candidate.homeserver) : fallback.homeserver,
       accessToken: "accessToken" in candidate ? normalizeString(candidate.accessToken) : fallback.accessToken,
+      refreshToken: "refreshToken" in candidate ? (normalizeString(candidate.refreshToken) || null) : fallback.refreshToken,
+      userId: "userId" in candidate ? normalizeString(candidate.userId) : fallback.userId,
+      password: "password" in candidate ? (normalizeString(candidate.password) || null) : fallback.password,
+      deviceId: "deviceId" in candidate ? (normalizeString(candidate.deviceId) || null) : fallback.deviceId,
       roomIds: "roomIds" in candidate ? normalizeRoomIds(candidate.roomIds) : fallback.roomIds,
     };
   }

@@ -262,8 +262,9 @@ async function runTargetTest(target: DeliveryTarget) {
             <input :value="editingTarget.homeserver" type="url" placeholder="https://matrix.example.com" @input="patchTarget(editingIndex, { homeserver: ($event.target as HTMLInputElement).value })">
           </label>
 
-          <label class="field required">
+          <label class="field">
             <span>Access token</span>
+            <p class="field-hint">Optional if password login is configured. Used directly until Matrix rejects it.</p>
             <div class="secret-field">
               <input
                 :value="editingTarget.accessToken"
@@ -274,6 +275,51 @@ async function runTargetTest(target: DeliveryTarget) {
               <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingTarget.id)">
                 <Icon :icon="revealedSecrets[editingTarget.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
                 <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
+              </button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>User ID</span>
+            <p class="field-hint">Set this with a password to let Nook log back in and renew tokens automatically.</p>
+            <input :value="editingTarget.userId" type="text" placeholder="@nook:matrix.example.com" @input="patchTarget(editingIndex, { userId: ($event.target as HTMLInputElement).value })">
+          </label>
+
+          <label class="field">
+            <span>Password</span>
+            <div class="secret-field">
+              <input
+                :value="editingTarget.password ?? ''"
+                :type="revealedSecrets[`${editingTarget.id}-password`] ? 'text' : 'password'"
+                placeholder="hunter2 but less cursed"
+                @input="patchTarget(editingIndex, { password: ($event.target as HTMLInputElement).value })"
+              >
+              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(`${editingTarget.id}-password`)">
+                <Icon :icon="revealedSecrets[`${editingTarget.id}-password`] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[`${editingTarget.id}-password`] ? "Hide" : "Show" }}</span>
+              </button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>Device ID</span>
+            <p class="field-hint">Keep this stable so Matrix can reissue tokens for the same device instead of minting device confetti.</p>
+            <input :value="editingTarget.deviceId ?? ''" type="text" placeholder="NOOKABC123" @input="patchTarget(editingIndex, { deviceId: ($event.target as HTMLInputElement).value })">
+          </label>
+
+          <label class="field">
+            <span>Refresh token</span>
+            <p class="field-hint">Optional bootstrap. Nook will use it when the access token expires.</p>
+            <div class="secret-field">
+              <input
+                :value="editingTarget.refreshToken ?? ''"
+                :type="revealedSecrets[`${editingTarget.id}-refresh`] ? 'text' : 'password'"
+                placeholder="syr_xxx"
+                @input="patchTarget(editingIndex, { refreshToken: ($event.target as HTMLInputElement).value })"
+              >
+              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(`${editingTarget.id}-refresh`)">
+                <Icon :icon="revealedSecrets[`${editingTarget.id}-refresh`] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[`${editingTarget.id}-refresh`] ? "Hide" : "Show" }}</span>
               </button>
             </div>
           </label>

@@ -45,8 +45,14 @@ If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env plu
 |---|---|---|
 | `MATRIX_HOMESERVER` | No | Matrix homeserver URL |
 | `MATRIX_ACCESS_TOKEN` | No | Matrix bot access token |
+| `MATRIX_REFRESH_TOKEN` | No | Matrix refresh token for renewing expired access tokens |
+| `MATRIX_USER_ID` | No | Matrix user ID for password login, for example `@nook:matrix.example.com` |
+| `MATRIX_PASSWORD` | No | Matrix password used to log back in and regenerate tokens |
+| `MATRIX_DEVICE_ID` | No | Stable Matrix device ID to reuse during re-login |
 | `MATRIX_ROOM_IDS` | No | Comma-separated room IDs |
 | `MATRIX_ROOM_ID` | No | Single room fallback |
+
+If `MATRIX_USER_ID` and `MATRIX_PASSWORD` are set, Nook will request refresh tokens on login and re-authenticate automatically when Matrix returns `M_UNKNOWN_TOKEN`.
 
 ### ntfy Bootstrap
 

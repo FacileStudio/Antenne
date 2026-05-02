@@ -21,6 +21,10 @@ export interface MatrixDeliveryTarget extends DeliveryTargetBase {
   type: "matrix";
   homeserver: string;
   accessToken: string;
+  refreshToken: string | null;
+  userId: string;
+  password: string | null;
+  deviceId: string | null;
   roomIds: string[];
 }
 

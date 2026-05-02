@@ -21,6 +21,30 @@ import type {
 } from "./types";
 
 let txnId = 0;
+const matrixSessionCache = new Map<string, MatrixSession>();
+const matrixSessionInFlight = new Map<string, Promise<MatrixSession>>();
+
+type MatrixSession = {
+  accessToken: string;
+  refreshToken: string | null;
+  userId: string | null;
+  deviceId: string | null;
+  expiresAt: number | null;
+};
+
+class MatrixApiError extends Error {
+  readonly errcode: string | null;
+  readonly softLogout: boolean;
+  readonly status: number;
+
+  constructor(message: string, options: { errcode?: string | null; softLogout?: boolean; status: number }) {
+    super(message);
+    this.name = "MatrixApiError";
+    this.errcode = options.errcode ?? null;
+    this.softLogout = options.softLogout ?? false;
+    this.status = options.status;
+  }
+}
 
 function htmlToPlainText(message: string) {
   return message
@@ -30,37 +54,282 @@ function htmlToPlainText(message: string) {
     .trim();
 }
 
-async function requestMatrix(config: MatrixDeliveryTarget, method: string, path: string, body?: unknown) {
-  const base = config.homeserver.endsWith("/") ? config.homeserver : `${config.homeserver}/`;
+function getMatrixBaseUrl(homeserver: string) {
+  return homeserver.endsWith("/") ? homeserver : `${homeserver}/`;
+}
+
+function getMatrixSessionFromConfig(config: MatrixDeliveryTarget): MatrixSession {
+  const cached = matrixSessionCache.get(config.id);
+
+  if (cached) {
+    if (config.accessToken && config.accessToken !== cached.accessToken) {
+      cached.accessToken = config.accessToken;
+    }
+
+    if (config.refreshToken && config.refreshToken !== cached.refreshToken) {
+      cached.refreshToken = config.refreshToken;
+    }
+
+    if (config.userId && config.userId !== cached.userId) {
+      cached.userId = config.userId;
+    }
+
+    if (config.deviceId && config.deviceId !== cached.deviceId) {
+      cached.deviceId = config.deviceId;
+    }
+
+    return cached;
+  }
+
+  const session = {
+    accessToken: config.accessToken,
+    refreshToken: config.refreshToken,
+    userId: config.userId || null,
+    deviceId: config.deviceId,
+    expiresAt: null,
+  };
+  matrixSessionCache.set(config.id, session);
+  return session;
+}
+
+function hasMatrixPasswordAuth(config: MatrixDeliveryTarget) {
+  return Boolean(config.userId && config.password);
+}
+
+function isMatrixUnknownTokenError(error: unknown) {
+  return error instanceof MatrixApiError && error.errcode === "M_UNKNOWN_TOKEN";
+}
+
+async function requestMatrix(
+  homeserver: string,
+  accessToken: string,
+  method: string,
+  path: string,
+  body?: unknown,
+  headers?: Record<string, string>,
+) {
+  const base = getMatrixBaseUrl(homeserver);
   const url = new URL(path, base);
 
   const res = await fetch(url, {
     method,
     headers: {
-      Authorization: `Bearer ${config.accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
       "User-Agent": "Nook/1.0 uptime-bot",
-    },
+      ...(headers ?? {}),
+    } as Record<string, string>,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Matrix API ${method} ${path} -> HTTP ${res.status}${text ? ` ${text}` : ""}`);
+    let errcode: string | null = null;
+    let softLogout = false;
+
+    try {
+      const payload = JSON.parse(text) as { errcode?: string; soft_logout?: boolean };
+      errcode = payload.errcode ?? null;
+      softLogout = payload.soft_logout ?? false;
+    } catch {}
+
+    throw new MatrixApiError(
+      `Matrix API ${method} ${path} -> HTTP ${res.status}${text ? ` ${text}` : ""}`,
+      { errcode, softLogout, status: res.status },
+    );
+  }
+
+  if (res.status === 204) {
+    return null;
+  }
+
+  const text = await res.text();
+  if (!text) {
+    return null;
+  }
+
+  return JSON.parse(text) as unknown;
+}
+
+async function loginMatrix(config: MatrixDeliveryTarget): Promise<MatrixSession> {
+  if (!config.userId || !config.password) {
+    throw new Error(`Matrix target \`${config.name}\` has no password login configured.`);
+  }
+
+  const loginUser = config.userId.startsWith("@") && config.userId.includes(":")
+    ? config.userId.slice(1, config.userId.indexOf(":"))
+    : config.userId;
+
+  const response = await fetch(new URL("/_matrix/client/v3/login", getMatrixBaseUrl(config.homeserver)), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Nook/1.0 uptime-bot",
+    },
+    body: JSON.stringify({
+      type: "m.login.password",
+      identifier: {
+        type: "m.id.user",
+        user: loginUser,
+      },
+      password: config.password,
+      device_id: config.deviceId ?? undefined,
+      initial_device_display_name: "Nook",
+      refresh_token: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Matrix login failed -> HTTP ${response.status}${text ? ` ${text}` : ""}`);
+  }
+
+  const payload = await response.json() as {
+    access_token: string;
+    refresh_token?: string;
+    user_id?: string;
+    device_id?: string;
+    expires_in_ms?: number;
+  };
+
+  const session = {
+    accessToken: payload.access_token,
+    refreshToken: payload.refresh_token ?? null,
+    userId: payload.user_id ?? config.userId,
+    deviceId: payload.device_id ?? config.deviceId,
+    expiresAt: typeof payload.expires_in_ms === "number" ? Date.now() + payload.expires_in_ms : null,
+  };
+
+  matrixSessionCache.set(config.id, session);
+  return session;
+}
+
+async function refreshMatrixSession(config: MatrixDeliveryTarget, session: MatrixSession): Promise<MatrixSession> {
+  if (!session.refreshToken) {
+    throw new Error(`Matrix target \`${config.name}\` has no refresh token to renew.`);
+  }
+
+  const payload = await fetch(new URL("/_matrix/client/v3/refresh", getMatrixBaseUrl(config.homeserver)), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Nook/1.0 uptime-bot",
+    },
+    body: JSON.stringify({
+      refresh_token: session.refreshToken,
+    }),
+  });
+
+  if (!payload.ok) {
+    const text = await payload.text();
+    let errcode: string | null = null;
+    let softLogout = false;
+
+    try {
+      const parsed = JSON.parse(text) as { errcode?: string; soft_logout?: boolean };
+      errcode = parsed.errcode ?? null;
+      softLogout = parsed.soft_logout ?? false;
+    } catch {}
+
+    throw new MatrixApiError(
+      `Matrix token refresh failed -> HTTP ${payload.status}${text ? ` ${text}` : ""}`,
+      { errcode, softLogout, status: payload.status },
+    );
+  }
+
+  const next = await payload.json() as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in_ms?: number;
+  };
+
+  const refreshed = {
+    accessToken: next.access_token,
+    refreshToken: next.refresh_token ?? session.refreshToken,
+    userId: session.userId,
+    deviceId: session.deviceId,
+    expiresAt: typeof next.expires_in_ms === "number" ? Date.now() + next.expires_in_ms : null,
+  };
+
+  matrixSessionCache.set(config.id, refreshed);
+  return refreshed;
+}
+
+async function ensureMatrixSession(config: MatrixDeliveryTarget, forceRefresh = false): Promise<MatrixSession> {
+  const current = getMatrixSessionFromConfig(config);
+
+  if (!forceRefresh && current.accessToken && (!current.expiresAt || current.expiresAt > Date.now() + 15_000)) {
+    return current;
+  }
+
+  const existing = matrixSessionInFlight.get(config.id);
+  if (existing) {
+    return await existing;
+  }
+
+  const nextPromise = (async () => {
+    const latest = getMatrixSessionFromConfig(config);
+
+    if (!forceRefresh && latest.accessToken && (!latest.expiresAt || latest.expiresAt > Date.now() + 15_000)) {
+      return latest;
+    }
+
+    if (latest.refreshToken) {
+      try {
+        return await refreshMatrixSession(config, latest);
+      } catch (error) {
+        if (!hasMatrixPasswordAuth(config)) {
+          throw error;
+        }
+      }
+    }
+
+    if (hasMatrixPasswordAuth(config)) {
+      return await loginMatrix(config);
+    }
+
+    if (latest.accessToken && !forceRefresh) {
+      return latest;
+    }
+
+    throw new Error(`Matrix target \`${config.name}\` needs either an access token or password login.`);
+  })();
+
+  matrixSessionInFlight.set(config.id, nextPromise);
+
+  try {
+    return await nextPromise;
+  } finally {
+    matrixSessionInFlight.delete(config.id);
   }
 }
 
 async function sendToMatrixRoom(config: MatrixDeliveryTarget, roomId: string, message: string) {
+  let session = await ensureMatrixSession(config);
   txnId += 1;
   const txn = `${Date.now()}-${txnId}`;
   const path = `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${encodeURIComponent(txn)}`;
 
-  await requestMatrix(config, "PUT", path, {
-    msgtype: "m.text",
-    body: htmlToPlainText(message),
-    format: "org.matrix.custom.html",
-    formatted_body: message,
-  });
+  try {
+    await requestMatrix(config.homeserver, session.accessToken, "PUT", path, {
+      msgtype: "m.text",
+      body: htmlToPlainText(message),
+      format: "org.matrix.custom.html",
+      formatted_body: message,
+    });
+  } catch (error) {
+    if (!isMatrixUnknownTokenError(error)) {
+      throw error;
+    }
+
+    session = await ensureMatrixSession(config, true);
+    await requestMatrix(config.homeserver, session.accessToken, "PUT", path, {
+      msgtype: "m.text",
+      body: htmlToPlainText(message),
+      format: "org.matrix.custom.html",
+      formatted_body: message,
+    });
+  }
 }
 
 async function sendMatrixAlert(config: MatrixDeliveryTarget, message: string) {
@@ -266,7 +535,12 @@ export function hasSmtpDelivery(config: SmtpDeliveryTarget): boolean {
 }
 
 export function hasMatrixDelivery(config: MatrixDeliveryTarget): boolean {
-  return Boolean(config.enabled && config.homeserver && config.accessToken && config.roomIds.length > 0);
+  return Boolean(
+    config.enabled
+    && config.homeserver
+    && config.roomIds.length > 0
+    && (config.accessToken || config.refreshToken || hasMatrixPasswordAuth(config)),
+  );
 }
 
 export function hasDiscordDelivery(config: DiscordDeliveryTarget): boolean {
@@ -323,6 +597,10 @@ export function loadDeliveryConfigFromEnv(): DeliveryConfig {
   matrix.enabled = process.env.MATRIX_ENABLED !== "false";
   matrix.homeserver = process.env.MATRIX_HOMESERVER ?? "";
   matrix.accessToken = process.env.MATRIX_ACCESS_TOKEN ?? "";
+  matrix.refreshToken = process.env.MATRIX_REFRESH_TOKEN ?? null;
+  matrix.userId = process.env.MATRIX_USER_ID ?? "";
+  matrix.password = process.env.MATRIX_PASSWORD ?? null;
+  matrix.deviceId = process.env.MATRIX_DEVICE_ID ?? matrix.deviceId;
   matrix.roomIds = roomIds;
   matrix.providerIds = [];
   items.push(matrix);

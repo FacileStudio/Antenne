@@ -12,6 +12,10 @@ function createId() {
   return globalThis.crypto.randomUUID();
 }
 
+function createMatrixDeviceId() {
+  return `NOOK${createId().replaceAll("-", "").slice(0, 12).toUpperCase()}`;
+}
+
 export function getDeliveryTargetLabel(type: DeliveryTargetType) {
   if (type === "matrix") {
     return "Matrix";
@@ -42,6 +46,10 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       providerIds: [],
       homeserver: "",
       accessToken: "",
+      refreshToken: null,
+      userId: "",
+      password: null,
+      deviceId: createMatrixDeviceId(),
       roomIds: [],
     };
   }
