@@ -382,7 +382,7 @@ export function createAppServer(options: {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Nook Login</title>
-    <link rel="icon" type="image/png" href="/dashboard/nook-avatar.png">
+    <link rel="icon" type="image/webp" href="/dashboard/nook-avatar.webp">
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Satoshi:wght@400;500;700&display=swap");
       :root {
@@ -405,13 +405,14 @@ export function createAppServer(options: {
         width: min(24rem, 100%);
         display: grid;
         gap: 1.5rem;
-        justify-items: center;
-        text-align: center;
+        justify-items: stretch;
+        text-align: left;
       }
       .brand {
         display: flex;
         align-items: center;
         gap: 1rem;
+        justify-self: start;
       }
       .brand img {
         width: 3.5rem;
@@ -490,7 +491,7 @@ export function createAppServer(options: {
   <body>
     <main>
       <div class="brand">
-        <img src="/dashboard/nook-avatar.png" alt="Nook">
+        <img src="/dashboard/nook-avatar.webp" alt="Nook">
         <span>Nook</span>
       </div>
       <p>Sign in as <b>${escapeHtml(session.username)}</b></p>

@@ -11,7 +11,7 @@ defineProps<{
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <img class="brand-avatar" src="/nook-avatar.png" alt="Nook" />
+      <img class="brand-avatar" src="/nook-avatar.webp" alt="Nook" />
       <span class="brand-name">Nook</span>
     </div>
 
