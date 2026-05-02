@@ -7,7 +7,7 @@ export interface SiteState {
   inFlight: boolean;
 }
 
-export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp";
+export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy";
 
 export interface DeliveryTargetBase {
   id: string;
@@ -48,7 +48,17 @@ export interface SmtpDeliveryTarget extends DeliveryTargetBase {
   subjectPrefix: string;
 }
 
-export type DeliveryTarget = MatrixDeliveryTarget | DiscordDeliveryTarget | HttpDeliveryTarget | SmtpDeliveryTarget;
+export interface NtfyDeliveryTarget extends DeliveryTargetBase {
+  type: "ntfy";
+  serverUrl: string;
+  topic: string;
+  accessToken: string | null;
+  priority: number | null;
+  tags: string[];
+  clickUrl: string | null;
+}
+
+export type DeliveryTarget = MatrixDeliveryTarget | DiscordDeliveryTarget | HttpDeliveryTarget | SmtpDeliveryTarget | NtfyDeliveryTarget;
 
 export interface DeliveryConfig {
   items: DeliveryTarget[];

@@ -1,6 +1,6 @@
 export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja";
 export type ProviderType = WebhookProviderType | "imap" | "website";
-export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp";
+export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy";
 
 export interface DeliveryTargetBase {
   id: string;
@@ -41,7 +41,17 @@ export interface SmtpTarget extends DeliveryTargetBase {
   subjectPrefix: string;
 }
 
-export type DeliveryTarget = MatrixTarget | DiscordTarget | WebhookTarget | SmtpTarget;
+export interface NtfyTarget extends DeliveryTargetBase {
+  type: "ntfy";
+  serverUrl: string;
+  topic: string;
+  accessToken: string | null;
+  priority: number | null;
+  tags: string[];
+  clickUrl: string | null;
+}
+
+export type DeliveryTarget = MatrixTarget | DiscordTarget | WebhookTarget | SmtpTarget | NtfyTarget;
 
 export interface WebsiteProviderSettings {
   id: string;
@@ -125,7 +135,7 @@ export interface EventLogStats {
 }
 
 export const providerTypes = ["website", "imap", "uptime-kuma", "docuseal", "dokploy", "git", "vikunja"] as const satisfies ProviderType[];
-export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp"] as const satisfies DeliveryTargetType[];
+export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp", "ntfy"] as const satisfies DeliveryTargetType[];
 
 function createId() {
   return globalThis.crypto.randomUUID();
@@ -145,6 +155,7 @@ export function getDeliveryTargetLabel(type: DeliveryTargetType) {
   if (type === "matrix") return "Matrix";
   if (type === "discord") return "Discord webhook";
   if (type === "smtp") return "SMTP";
+  if (type === "ntfy") return "ntfy";
   return "HTTP webhook";
 }
 
@@ -226,6 +237,22 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       fromAddress: "",
       toAddresses: [],
       subjectPrefix: "[Nook]",
+    };
+  }
+
+  if (type === "ntfy") {
+    return {
+      id: createId(),
+      type,
+      name: "ntfy",
+      enabled: true,
+      providerIds: [],
+      serverUrl: "https://ntfy.sh",
+      topic: "",
+      accessToken: "",
+      priority: 3,
+      tags: ["rotating_light"],
+      clickUrl: "",
     };
   }
 

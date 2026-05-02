@@ -27,7 +27,7 @@ const session = createDashboardSessionConfig();
 async function sendConfiguredAlert(message: string, context?: { providerId: string; providerName: string; providerType: string; event: string }) {
   const settings = store.getSettings();
   if (!hasAnyDelivery(settings.delivery)) {
-    throw new Error("No delivery channel configured. Fill Matrix, Discord, or HTTP webhook settings first.");
+    throw new Error("No delivery target configured. Add and enable at least one delivery target first.");
   }
 
   const source = (context?.providerType === "website" ? "website" : context?.providerType === "imap" ? "imap" : context ? "webhook" : "system") as "webhook" | "website" | "imap" | "system";

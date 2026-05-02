@@ -7,6 +7,7 @@ import {
   isDiscordDeliveryTarget,
   isHttpDeliveryTarget,
   isMatrixDeliveryTarget,
+  isNtfyDeliveryTarget,
   isSmtpDeliveryTarget,
 } from "./delivery-config";
 import { loadDeliveryConfigFromEnv } from "./delivery";
@@ -16,6 +17,7 @@ import type {
   DiscordDeliveryTarget,
   HttpDeliveryTarget,
   MatrixDeliveryTarget,
+  NtfyDeliveryTarget,
   ProvidersConfig,
   RuntimeStatus,
   SmtpDeliveryTarget,
@@ -58,6 +60,18 @@ function normalizeRoomIds(value: unknown): string[] {
 }
 
 function normalizeSmtpAddresses(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
+}
+
+function normalizeTags(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
   }
@@ -116,6 +130,10 @@ function normalizeDeliveryConfig(input: unknown, fallback: AppSettings["delivery
     }
 
     if (isSmtpDeliveryTarget(target)) {
+      return target;
+    }
+
+    if (isNtfyDeliveryTarget(target)) {
       return target;
     }
 
@@ -200,6 +218,23 @@ function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
     };
   }
 
+  if (type === "ntfy") {
+    const fallback = createDefaultDeliveryTarget("ntfy") as NtfyDeliveryTarget;
+    return {
+      ...fallback,
+      id: normalizeString(candidate.id) || fallback.id,
+      name: normalizeString(candidate.name) || fallback.name,
+      enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+      providerIds,
+      serverUrl: "serverUrl" in candidate ? normalizeString(candidate.serverUrl) : fallback.serverUrl,
+      topic: "topic" in candidate ? normalizeString(candidate.topic) : fallback.topic,
+      accessToken: "accessToken" in candidate ? (normalizeString(candidate.accessToken) || null) : fallback.accessToken,
+      priority: "priority" in candidate ? normalizeOptionalInteger(candidate.priority, fallback.priority, "ntfy priority") : fallback.priority,
+      tags: "tags" in candidate ? normalizeTags(candidate.tags) : fallback.tags,
+      clickUrl: "clickUrl" in candidate ? (normalizeString(candidate.clickUrl) || null) : fallback.clickUrl,
+    };
+  }
+
   const fallback = createDefaultDeliveryTarget("webhook") as HttpDeliveryTarget;
   return {
     ...fallback,
@@ -215,6 +250,24 @@ function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
 
 function normalizeInteger(value: unknown, fallback: number, fieldName: string): number {
   const nextValue = isPositiveNumber(value) ? Math.trunc(value) : fallback;
+  if (!Number.isInteger(nextValue)) {
+    throw new Error(`${fieldName} must be an integer.`);
+  }
+
+  return nextValue;
+}
+
+function normalizeOptionalInteger(value: unknown, fallback: number | null, fieldName: string): number | null {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  const parsed = typeof value === "string" ? Number(value) : value;
+  if (!isPositiveNumber(parsed)) {
+    throw new Error(`${fieldName} must be a positive number.`);
+  }
+
+  const nextValue = Math.trunc(parsed);
   if (!Number.isInteger(nextValue)) {
     throw new Error(`${fieldName} must be an integer.`);
   }

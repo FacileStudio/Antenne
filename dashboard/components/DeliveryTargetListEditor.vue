@@ -343,6 +343,49 @@ async function runTargetTest(target: DeliveryTarget) {
           </label>
         </template>
 
+        <template v-else-if="editingTarget.type === 'ntfy'">
+          <label class="field required">
+            <span>Server URL</span>
+            <input :value="editingTarget.serverUrl" type="url" placeholder="https://ntfy.sh" @input="patchTarget(editingIndex, { serverUrl: ($event.target as HTMLInputElement).value })">
+          </label>
+
+          <label class="field required">
+            <span>Topic</span>
+            <input :value="editingTarget.topic" type="text" placeholder="my-alerts" @input="patchTarget(editingIndex, { topic: ($event.target as HTMLInputElement).value })">
+          </label>
+
+          <label class="field">
+            <span>Access token</span>
+            <div class="secret-field">
+              <input
+                :value="editingTarget.accessToken ?? ''"
+                :type="revealedSecrets[editingTarget.id] ? 'text' : 'password'"
+                placeholder="tk_xxx"
+                @input="patchTarget(editingIndex, { accessToken: ($event.target as HTMLInputElement).value })"
+              >
+              <button class="ghost action-button reveal-button" type="button" @click="toggleReveal(editingTarget.id)">
+                <Icon :icon="revealedSecrets[editingTarget.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
+                <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
+              </button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>Priority</span>
+            <input :value="editingTarget.priority ?? 3" type="number" min="1" max="5" placeholder="3" @input="patchTarget(editingIndex, { priority: Number(($event.target as HTMLInputElement).value) })">
+          </label>
+
+          <label class="field">
+            <span>Tags</span>
+            <input :value="editingTarget.tags.join(', ')" type="text" placeholder="rotating_light,warning" @input="patchTarget(editingIndex, { tags: ($event.target as HTMLInputElement).value.split(',').map((tag) => tag.trim()).filter(Boolean) })">
+          </label>
+
+          <label class="field">
+            <span>Click URL</span>
+            <input :value="editingTarget.clickUrl ?? ''" type="url" placeholder="https://status.example.com" @input="patchTarget(editingIndex, { clickUrl: ($event.target as HTMLInputElement).value })">
+          </label>
+        </template>
+
         <template v-else>
           <label class="field required">
             <span>Webhook URL</span>

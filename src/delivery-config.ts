@@ -4,6 +4,7 @@ import type {
   DiscordDeliveryTarget,
   HttpDeliveryTarget,
   MatrixDeliveryTarget,
+  NtfyDeliveryTarget,
   SmtpDeliveryTarget,
 } from "./types";
 
@@ -22,6 +23,10 @@ export function getDeliveryTargetLabel(type: DeliveryTargetType) {
 
   if (type === "smtp") {
     return "SMTP";
+  }
+
+  if (type === "ntfy") {
+    return "ntfy";
   }
 
   return "HTTP webhook";
@@ -70,6 +75,22 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     };
   }
 
+  if (type === "ntfy") {
+    return {
+      id: createId(),
+      type,
+      name: "ntfy",
+      enabled: true,
+      providerIds: [],
+      serverUrl: "https://ntfy.sh",
+      topic: "",
+      accessToken: null,
+      priority: 3,
+      tags: ["rotating_light"],
+      clickUrl: null,
+    };
+  }
+
   return {
     id: createId(),
     type,
@@ -96,4 +117,8 @@ export function isHttpDeliveryTarget(target: DeliveryTarget): target is HttpDeli
 
 export function isSmtpDeliveryTarget(target: DeliveryTarget): target is SmtpDeliveryTarget {
   return target.type === "smtp";
+}
+
+export function isNtfyDeliveryTarget(target: DeliveryTarget): target is NtfyDeliveryTarget {
+  return target.type === "ntfy";
 }

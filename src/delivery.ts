@@ -5,6 +5,7 @@ import {
   isDiscordDeliveryTarget,
   isHttpDeliveryTarget,
   isMatrixDeliveryTarget,
+  isNtfyDeliveryTarget,
   isSmtpDeliveryTarget,
 } from "./delivery-config";
 import { createDefaultDeliveryTarget } from "./delivery-config";
@@ -15,6 +16,7 @@ import type {
   DiscordDeliveryTarget,
   HttpDeliveryTarget,
   MatrixDeliveryTarget,
+  NtfyDeliveryTarget,
   SmtpDeliveryTarget,
 } from "./types";
 
@@ -113,6 +115,60 @@ async function sendHttpAlert(config: HttpDeliveryTarget, message: string) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`HTTP delivery webhook -> HTTP ${res.status}${text ? ` ${text}` : ""}`);
+  }
+}
+
+function normalizeNtfyServerUrl(serverUrl: string) {
+  return serverUrl.endsWith("/") ? serverUrl : `${serverUrl}/`;
+}
+
+function normalizeNtfyPriority(value: string | undefined): number | null {
+  if (!value) {
+    return 3;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 3;
+  }
+
+  return Math.trunc(parsed);
+}
+
+async function sendNtfyAlert(config: NtfyDeliveryTarget, message: string) {
+  const topic = encodeURIComponent(config.topic);
+  const url = new URL(topic, normalizeNtfyServerUrl(config.serverUrl));
+  const headers: Record<string, string> = {
+    "Content-Type": "text/plain; charset=utf-8",
+    "User-Agent": "Nook/1.0 uptime-bot",
+    Title: "Nook Alert",
+  };
+
+  if (config.accessToken) {
+    headers.Authorization = `Bearer ${config.accessToken}`;
+  }
+
+  if (config.priority !== null) {
+    headers.Priority = String(config.priority);
+  }
+
+  if (config.tags.length > 0) {
+    headers.Tags = config.tags.join(",");
+  }
+
+  if (config.clickUrl) {
+    headers.Click = config.clickUrl;
+  }
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: htmlToPlainText(message),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ntfy -> HTTP ${res.status}${text ? ` ${text}` : ""}`);
   }
 }
 
@@ -221,6 +277,10 @@ export function hasHttpDelivery(config: HttpDeliveryTarget): boolean {
   return Boolean(config.enabled && config.url);
 }
 
+export function hasNtfyDelivery(config: NtfyDeliveryTarget): boolean {
+  return Boolean(config.enabled && config.serverUrl && config.topic);
+}
+
 export function hasAnyDelivery(config: DeliveryConfig): boolean {
   return config.items.some((target) => canSendToDeliveryTarget(target));
 }
@@ -240,6 +300,10 @@ export function canSendToDeliveryTarget(target: DeliveryTarget): boolean {
 
   if (isSmtpDeliveryTarget(target)) {
     return hasSmtpDelivery(target);
+  }
+
+  if (isNtfyDeliveryTarget(target)) {
+    return hasNtfyDelivery(target);
   }
 
   return hasHttpDelivery(target);
@@ -277,6 +341,19 @@ export function loadDeliveryConfigFromEnv(): DeliveryConfig {
   webhook.providerIds = [];
   items.push(webhook);
 
+  const ntfy = createDefaultDeliveryTarget("ntfy") as NtfyDeliveryTarget;
+  ntfy.enabled = process.env.NTFY_ENABLED === "true" || Boolean(process.env.NTFY_TOPIC);
+  ntfy.serverUrl = process.env.NTFY_SERVER_URL ?? "https://ntfy.sh";
+  ntfy.topic = process.env.NTFY_TOPIC ?? "";
+  ntfy.accessToken = process.env.NTFY_ACCESS_TOKEN ?? null;
+  ntfy.priority = normalizeNtfyPriority(process.env.NTFY_PRIORITY);
+  ntfy.tags = process.env.NTFY_TAGS
+    ? process.env.NTFY_TAGS.split(",").map((tag) => tag.trim()).filter(Boolean)
+    : ["rotating_light"];
+  ntfy.clickUrl = process.env.NTFY_CLICK_URL ?? null;
+  ntfy.providerIds = [];
+  items.push(ntfy);
+
   return { items };
 }
 
@@ -312,6 +389,12 @@ export async function sendAlert(config: DeliveryConfig, message: string, provide
     if (isSmtpDeliveryTarget(target) && hasSmtpDelivery(target)) {
       targets.push(target);
       tasks.push(sendSmtpAlert(target, message));
+      continue;
+    }
+
+    if (isNtfyDeliveryTarget(target) && hasNtfyDelivery(target)) {
+      targets.push(target);
+      tasks.push(sendNtfyAlert(target, message));
       continue;
     }
 
@@ -362,6 +445,11 @@ export async function sendAlertToTarget(target: DeliveryTarget, message: string)
 
   if (isSmtpDeliveryTarget(target) && hasSmtpDelivery(target)) {
     await sendSmtpAlert(target, message);
+    return;
+  }
+
+  if (isNtfyDeliveryTarget(target) && hasNtfyDelivery(target)) {
+    await sendNtfyAlert(target, message);
     return;
   }
 

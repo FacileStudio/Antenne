@@ -1,6 +1,6 @@
 # Nook
 
-Nook is a Bun service that watches modular providers, forwards alerts to Matrix, and ships with a Nuxt dashboard for configuring everything without hand-editing config every time.
+Nook is a Bun service that watches modular providers, forwards alerts to Matrix, Discord, HTTP webhooks, SMTP, or ntfy, and ships with a Nuxt dashboard for configuring everything without hand-editing config every time.
 
 The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard/.output/public`, so container builds do not need to install npm packages.
 
@@ -9,6 +9,7 @@ The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard
 - monitors websites on intervals
 - polls IMAP inboxes for newly received emails
 - receives Uptime Kuma, DocuSeal, and Dokploy webhooks
+- delivers alerts to Matrix, Discord webhooks, HTTP webhooks, SMTP, and ntfy
 - serves a dashboard at `/dashboard`
 - keeps env and YAML as bootstrap defaults, with dashboard-saved settings overriding them later
 
@@ -46,6 +47,18 @@ If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env plu
 | `MATRIX_ACCESS_TOKEN` | No | Matrix bot access token |
 | `MATRIX_ROOM_IDS` | No | Comma-separated room IDs |
 | `MATRIX_ROOM_ID` | No | Single room fallback |
+
+### ntfy Bootstrap
+
+| Variable | Required | Description |
+|---|---|---|
+| `NTFY_ENABLED` | No | Enable ntfy target bootstrap |
+| `NTFY_SERVER_URL` | No | ntfy base URL. Default: `https://ntfy.sh` |
+| `NTFY_TOPIC` | No | Topic name to publish to |
+| `NTFY_ACCESS_TOKEN` | No | Bearer token for protected topics |
+| `NTFY_PRIORITY` | No | Notification priority, usually `1` to `5` |
+| `NTFY_TAGS` | No | Comma-separated tags |
+| `NTFY_CLICK_URL` | No | Optional click-through URL |
 
 ### Monitoring Bootstrap
 
