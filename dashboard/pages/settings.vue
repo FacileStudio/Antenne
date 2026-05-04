@@ -39,7 +39,6 @@ const infoItems = computed(() => [
         <label class="field">
           <span>Webhook listener port</span>
           <input v-model.number="settings.providers.port" type="number" min="1" step="1">
-          <p class="field-hint">Used on next restart. Runtime keeps the current bound port until then.</p>
         </label>
       </div>
     </SectionCard>
