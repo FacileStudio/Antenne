@@ -153,7 +153,7 @@ function previewFor(entry: EventLogEntry) {
   padding: 1rem 1.05rem;
   border: 1px solid var(--nook-border);
   border-radius: 1.15rem;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.015));
+  background: rgb(255 255 255 / 0.02);
 }
 
 .timeline > .event-row + .event-row {
