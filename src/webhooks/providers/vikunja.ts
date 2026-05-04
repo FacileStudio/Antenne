@@ -68,7 +68,7 @@ function getDoerName(doer?: VikunjaDoer): string {
 }
 
 function getProjectContext(payload: VikunjaPayload): string {
-  const project = payload.data?.task?.project ?? payload.data?.project;
+  const project = payload.data?.project ?? payload.data?.task?.project;
   if (project?.title) return ` in <b>${escapeHtml(project.title)}</b>`;
   return "";
 }
