@@ -107,7 +107,12 @@ function formatVikunjaAlert(payload: VikunjaPayload): string | null {
   const actor = escapeHtml(getDoerName(doer));
 
   if (event === "task.created") return formatTaskEvent(payload, "created");
-  if (event === "task.updated") return formatTaskEvent(payload, "updated");
+  if (event === "task.updated") {
+    const done = payload.data?.task?.done;
+    if (done === true) return formatTaskEvent(payload, "completed ✅");
+    if (done === false) return formatTaskEvent(payload, "reopened");
+    return formatTaskEvent(payload, "updated");
+  }
   if (event === "task.deleted") return formatTaskEvent(payload, "deleted");
 
   if (event === "task.assignee.created") {
