@@ -43,6 +43,10 @@ export function getProviderLabel(type: ProviderType) {
     return "Vikunja";
   }
 
+  if (type === "charles") {
+    return "Charles";
+  }
+
   return toTitleCase(type);
 }
 
@@ -63,6 +67,10 @@ export function getWebhookDefaultPath(type: WebhookProviderType) {
     return "/webhook/vikunja";
   }
 
+  if (type === "charles") {
+    return "/webhook/charles";
+  }
+
   return "/webhook/dokploy";
 }
 
@@ -81,6 +89,10 @@ export function getWebhookDefaultSecretHeader(type: WebhookProviderType) {
 
   if (type === "vikunja") {
     return "x-vikunja-signature";
+  }
+
+  if (type === "charles") {
+    return "x-charles-signature-256";
   }
 
   return "x-dokploy-secret";

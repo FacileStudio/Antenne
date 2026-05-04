@@ -1,4 +1,4 @@
-export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja";
+export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles";
 export type ProviderType = WebhookProviderType | "imap" | "website";
 
 export interface BaseProviderSettings {
@@ -116,6 +116,32 @@ export interface DokployWebhookPayload {
   [key: string]: unknown;
 }
 
+export interface CharlesWebhookPayload {
+  id?: string;
+  event?: string;
+  createdAt?: string;
+  source?: string;
+  actor?: {
+    id?: string;
+    email?: string | null;
+    role?: string | null;
+  } | null;
+  data?: {
+    entity?: string;
+    entityId?: string;
+    changedFields?: string[];
+    logoUrl?: string;
+    record?: {
+      id?: string;
+      email?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      [key: string]: unknown;
+    } | null;
+    [key: string]: unknown;
+  } | null;
+}
+
 export interface WebhookDispatchContext {
   providerId: string;
   providerName: string;
@@ -128,6 +154,7 @@ export interface WebhookProviderDefinition {
   label: string;
   defaultPath: string;
   defaultSecretHeader: string;
+  authenticate?: (req: Request, rawBody: string, settings: WebhookProviderSettings) => boolean | Promise<boolean>;
   formatMessage: (payload: unknown, context: WebhookDispatchContext) => string | null;
   describeEvent: (payload: unknown) => string;
 }
@@ -137,7 +164,7 @@ export interface ConfiguredWebhookProvider {
   settings: WebhookProviderSettings;
 }
 
-export const webhookProviderTypes = ["uptime-kuma", "docuseal", "dokploy", "git", "vikunja"] as const satisfies WebhookProviderType[];
+export const webhookProviderTypes = ["uptime-kuma", "docuseal", "dokploy", "git", "vikunja", "charles"] as const satisfies WebhookProviderType[];
 export const providerTypes = [...webhookProviderTypes, "imap", "website"] as const satisfies ProviderType[];
 
 export function isWebhookProviderType(value: unknown): value is WebhookProviderType {
@@ -149,7 +176,7 @@ export function isProviderType(value: unknown): value is ProviderType {
 }
 
 export function isWebhookProviderSettings(provider: ProviderSettings): provider is WebhookProviderSettings {
-  return provider.type === "uptime-kuma" || provider.type === "docuseal" || provider.type === "dokploy" || provider.type === "git" || provider.type === "vikunja";
+  return provider.type === "uptime-kuma" || provider.type === "docuseal" || provider.type === "dokploy" || provider.type === "git" || provider.type === "vikunja" || provider.type === "charles";
 }
 
 export function isImapProviderSettings(provider: ProviderSettings): provider is ImapProviderSettings {

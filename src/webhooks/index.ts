@@ -12,6 +12,7 @@ import { dokployWebhookProvider } from "./providers/dokploy";
 import { gitWebhookProvider } from "./providers/git";
 import { uptimeKumaWebhookProvider } from "./providers/uptime-kuma";
 import { vikunjaWebhookProvider } from "./providers/vikunja";
+import { charlesWebhookProvider } from "./providers/charles";
 import { isWebhookProviderSettings } from "./types";
 
 const providerDefinitions = {
@@ -20,6 +21,7 @@ const providerDefinitions = {
   dokploy: dokployWebhookProvider,
   git: gitWebhookProvider,
   vikunja: vikunjaWebhookProvider,
+  charles: charlesWebhookProvider,
 } satisfies Record<WebhookProviderType, WebhookProviderDefinition>;
 
 function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhookProvider[] {
@@ -32,7 +34,11 @@ function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhook
     }));
 }
 
-function authenticate(provider: ConfiguredWebhookProvider, req: Request): boolean {
+function authenticate(provider: ConfiguredWebhookProvider, req: Request, rawBody: string): boolean | Promise<boolean> {
+  if (provider.definition.authenticate) {
+    return provider.definition.authenticate(req, rawBody, provider.settings);
+  }
+
   if (!provider.settings.secretValue) {
     return true;
   }
@@ -84,13 +90,15 @@ export async function handleWebhookRequest(
     return new Response("not found", { status: 404 });
   }
 
-  if (!authenticate(provider, req)) {
+  const rawBody = await req.text();
+
+  if (!(await authenticate(provider, req, rawBody))) {
     return new Response(`${provider.definition.label} unauthorized`, { status: 401 });
   }
 
   let payload: unknown;
   try {
-    payload = await req.json();
+    payload = JSON.parse(rawBody);
   } catch {
     return new Response("bad request", { status: 400 });
   }
