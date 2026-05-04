@@ -1,10 +1,10 @@
 FROM oven/bun:1.3.11 AS builder
 
-WORKDIR /app/dashboard
-COPY dashboard/package.json dashboard/bun.lock* ./
+WORKDIR /app
+COPY package.json bun.lock ./
 RUN bun install
-COPY dashboard/ ./
-RUN bunx nuxi generate
+COPY dashboard/ ./dashboard/
+RUN bunx nuxi generate dashboard
 
 FROM oven/bun:1.3.11
 
