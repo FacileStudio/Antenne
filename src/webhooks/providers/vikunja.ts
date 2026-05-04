@@ -14,7 +14,7 @@ interface VikunjaTask {
   priority?: number;
   due_date?: string | null;
   project_id?: number;
-  project?: VikunjaProject;
+  identifier?: string;
 }
 
 interface VikunjaProject {
@@ -67,20 +67,14 @@ function getDoerName(doer?: VikunjaDoer): string {
   return doer?.name ?? doer?.username ?? doer?.email ?? "someone";
 }
 
-function getProjectContext(payload: VikunjaPayload): string {
-  const project = payload.data?.project ?? payload.data?.task?.project;
-  if (project?.title) return ` in <b>${escapeHtml(project.title)}</b>`;
-  return "";
-}
 
 function formatTaskEvent(payload: VikunjaPayload, verb: string): string {
   const task = payload.data?.task;
   const doer = payload.data?.doer;
   const title = escapeHtml(task?.title ?? "untitled");
   const actor = escapeHtml(getDoerName(doer));
-  const id = task?.id ? `<code>#${task.id}</code>` : "";
-  const project = getProjectContext(payload);
-  return `📋 <b>[Vikunja]</b> ${actor} ${verb} task ${id} <b>${title}</b>${project}`;
+  const ref = task?.identifier ? `<code>${escapeHtml(task.identifier)}</code>` : (task?.id ? `<code>#${task.id}</code>` : "");
+  return `📋 <b>[Vikunja]</b> ${actor} ${verb} task ${ref} <b>${title}</b>`;
 }
 
 function formatProjectEvent(payload: VikunjaPayload, verb: string): string {
@@ -118,48 +112,48 @@ function formatVikunjaAlert(payload: VikunjaPayload): string | null {
   if (event === "task.assignee.created") {
     const assignee = escapeHtml(getDoerName(payload.data?.assignee));
     const task = payload.data?.task;
+    const ref = task?.identifier ? ` <code>${escapeHtml(task.identifier)}</code>` : "";
     const title = escapeHtml(task?.title ?? "untitled");
-    const project = getProjectContext(payload);
-    return `👤 <b>[Vikunja]</b> ${actor} assigned ${assignee} to <b>${title}</b>${project}`;
+    return `👤 <b>[Vikunja]</b> ${actor} assigned ${assignee} to${ref} <b>${title}</b>`;
   }
 
   if (event === "task.assignee.deleted") {
     const assignee = escapeHtml(getDoerName(payload.data?.assignee));
     const task = payload.data?.task;
+    const ref = task?.identifier ? ` <code>${escapeHtml(task.identifier)}</code>` : "";
     const title = escapeHtml(task?.title ?? "untitled");
-    const project = getProjectContext(payload);
-    return `👤 <b>[Vikunja]</b> ${actor} unassigned ${assignee} from <b>${title}</b>${project}`;
+    return `👤 <b>[Vikunja]</b> ${actor} unassigned ${assignee} from${ref} <b>${title}</b>`;
   }
 
   if (event === "task.comment.created" || event === "task.comment.edited") {
     const task = payload.data?.task;
+    const ref = task?.identifier ? ` <code>${escapeHtml(task.identifier)}</code>` : "";
     const title = escapeHtml(task?.title ?? "untitled");
     const verb = event === "task.comment.created" ? "commented on" : "edited a comment on";
-    const project = getProjectContext(payload);
-    return `💬 <b>[Vikunja]</b> ${actor} ${verb} <b>${title}</b>${project}`;
+    return `💬 <b>[Vikunja]</b> ${actor} ${verb}${ref} <b>${title}</b>`;
   }
 
   if (event === "task.comment.deleted") {
     const task = payload.data?.task;
+    const ref = task?.identifier ? ` <code>${escapeHtml(task.identifier)}</code>` : "";
     const title = escapeHtml(task?.title ?? "untitled");
-    const project = getProjectContext(payload);
-    return `💬 <b>[Vikunja]</b> ${actor} deleted a comment on <b>${title}</b>${project}`;
+    return `💬 <b>[Vikunja]</b> ${actor} deleted a comment on${ref} <b>${title}</b>`;
   }
 
   if (event === "task.relation.created" || event === "task.relation.deleted") {
     const task = payload.data?.task;
+    const ref = task?.identifier ? ` <code>${escapeHtml(task.identifier)}</code>` : "";
     const title = escapeHtml(task?.title ?? "untitled");
     const verb = event === "task.relation.created" ? "added a relation to" : "removed a relation from";
-    const project = getProjectContext(payload);
-    return `🔗 <b>[Vikunja]</b> ${actor} ${verb} <b>${title}</b>${project}`;
+    return `🔗 <b>[Vikunja]</b> ${actor} ${verb}${ref} <b>${title}</b>`;
   }
 
   if (event === "task.attachment.created" || event === "task.attachment.deleted") {
     const task = payload.data?.task;
+    const ref = task?.identifier ? ` <code>${escapeHtml(task.identifier)}</code>` : "";
     const title = escapeHtml(task?.title ?? "untitled");
     const verb = event === "task.attachment.created" ? "attached a file to" : "removed an attachment from";
-    const project = getProjectContext(payload);
-    return `📎 <b>[Vikunja]</b> ${actor} ${verb} <b>${title}</b>${project}`;
+    return `📎 <b>[Vikunja]</b> ${actor} ${verb}${ref} <b>${title}</b>`;
   }
 
   if (event === "task.reminder.fired") return formatTaskEvent(payload, "reminder fired for");
