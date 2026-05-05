@@ -1,4 +1,4 @@
-export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles";
+export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier";
 export type ProviderType = WebhookProviderType | "imap" | "website";
 
 export interface BaseProviderSettings {
@@ -164,7 +164,7 @@ export interface ConfiguredWebhookProvider {
   settings: WebhookProviderSettings;
 }
 
-export const webhookProviderTypes = ["uptime-kuma", "docuseal", "dokploy", "git", "vikunja", "charles"] as const satisfies WebhookProviderType[];
+export const webhookProviderTypes = ["uptime-kuma", "docuseal", "dokploy", "git", "vikunja", "charles", "sablier"] as const satisfies WebhookProviderType[];
 export const providerTypes = [...webhookProviderTypes, "imap", "website"] as const satisfies ProviderType[];
 
 export function isWebhookProviderType(value: unknown): value is WebhookProviderType {
@@ -176,7 +176,7 @@ export function isProviderType(value: unknown): value is ProviderType {
 }
 
 export function isWebhookProviderSettings(provider: ProviderSettings): provider is WebhookProviderSettings {
-  return provider.type === "uptime-kuma" || provider.type === "docuseal" || provider.type === "dokploy" || provider.type === "git" || provider.type === "vikunja" || provider.type === "charles";
+  return provider.type === "uptime-kuma" || provider.type === "docuseal" || provider.type === "dokploy" || provider.type === "git" || provider.type === "vikunja" || provider.type === "charles" || provider.type === "sablier";
 }
 
 export function isImapProviderSettings(provider: ProviderSettings): provider is ImapProviderSettings {

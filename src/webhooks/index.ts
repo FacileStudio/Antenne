@@ -13,6 +13,7 @@ import { gitWebhookProvider } from "./providers/git";
 import { uptimeKumaWebhookProvider } from "./providers/uptime-kuma";
 import { vikunjaWebhookProvider } from "./providers/vikunja";
 import { charlesWebhookProvider } from "./providers/charles";
+import { sablierWebhookProvider } from "./providers/sablier";
 import { isWebhookProviderSettings } from "./types";
 
 const providerDefinitions = {
@@ -22,6 +23,7 @@ const providerDefinitions = {
   git: gitWebhookProvider,
   vikunja: vikunjaWebhookProvider,
   charles: charlesWebhookProvider,
+  sablier: sablierWebhookProvider,
 } satisfies Record<WebhookProviderType, WebhookProviderDefinition>;
 
 function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhookProvider[] {

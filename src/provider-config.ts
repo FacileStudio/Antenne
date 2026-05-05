@@ -71,6 +71,10 @@ export function getWebhookDefaultPath(type: WebhookProviderType) {
     return "/webhook/charles";
   }
 
+  if (type === "sablier") {
+    return "/webhook/sablier";
+  }
+
   return "/webhook/dokploy";
 }
 
@@ -93,6 +97,10 @@ export function getWebhookDefaultSecretHeader(type: WebhookProviderType) {
 
   if (type === "charles") {
     return "x-charles-signature-256";
+  }
+
+  if (type === "sablier") {
+    return "x-sablier-signature";
   }
 
   return "x-dokploy-secret";
