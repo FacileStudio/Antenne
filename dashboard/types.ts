@@ -1,4 +1,4 @@
-export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles";
+export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier";
 export type ProviderType = WebhookProviderType | "imap" | "website";
 export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy";
 
@@ -144,7 +144,7 @@ export interface EventLogStats {
   deliveryErrorCount: number;
 }
 
-export const providerTypes = ["website", "imap", "uptime-kuma", "docuseal", "dokploy", "git", "vikunja", "charles"] as const satisfies ProviderType[];
+export const providerTypes = ["website", "imap", "charles", "docuseal", "dokploy", "git", "sablier", "uptime-kuma", "vikunja"] as const satisfies ProviderType[];
 export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp", "ntfy"] as const satisfies DeliveryTargetType[];
 export const SYSTEM_PROVIDER_ID = "__nook_system__";
 
@@ -164,6 +164,7 @@ export function getProviderLabel(type: ProviderType) {
   if (type === "git") return "Git";
   if (type === "vikunja") return "Vikunja";
   if (type === "charles") return "Charles";
+  if (type === "sablier") return "Sablier";
   return "Uptime Kuma";
 }
 
@@ -207,8 +208,8 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
     type,
     name: getProviderLabel(type),
     enabled: true,
-    path: type === "dokploy" ? "/webhook/dokploy" : type === "docuseal" ? "/webhook/docuseal" : type === "git" ? "/webhook/git" : type === "vikunja" ? "/webhook/vikunja" : type === "charles" ? "/webhook/charles" : "/webhook/uptime-kuma",
-    secretHeader: type === "dokploy" ? "x-dokploy-secret" : type === "docuseal" ? "x-docuseal-secret" : type === "git" ? "x-hub-signature-256" : type === "vikunja" ? "x-vikunja-signature" : type === "charles" ? "x-charles-signature-256" : "x-webhook-secret",
+    path: type === "dokploy" ? "/webhook/dokploy" : type === "docuseal" ? "/webhook/docuseal" : type === "git" ? "/webhook/git" : type === "vikunja" ? "/webhook/vikunja" : type === "charles" ? "/webhook/charles" : type === "sablier" ? "/webhook/sablier" : "/webhook/uptime-kuma",
+    secretHeader: type === "dokploy" ? "x-dokploy-secret" : type === "docuseal" ? "x-docuseal-secret" : type === "git" ? "x-hub-signature-256" : type === "vikunja" ? "x-vikunja-signature" : type === "charles" ? "x-charles-signature-256" : type === "sablier" ? "x-sablier-signature" : "x-webhook-secret",
     secretValue: "",
   };
 }
