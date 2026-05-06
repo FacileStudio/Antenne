@@ -4,6 +4,8 @@ interface SablierTimeEntry {
   id?: number;
   project_id?: number;
   project_name?: string;
+  task_id?: number;
+  task_name?: string;
   user_id?: number;
   user_email?: string;
   description?: string;
@@ -42,15 +44,16 @@ function formatSablierAlert(payload: SablierPayload): string | null {
 
   const user = data.user_email ? ` <code>${escapeHtml(data.user_email)}</code>` : "";
   const project = data.project_name ? ` on <i>${escapeHtml(data.project_name)}</i>` : "";
+  const task = data.task_name ? ` / <i>${escapeHtml(data.task_name)}</i>` : "";
   const desc = data.description ? `: ${escapeHtml(data.description)}` : "";
 
   if (event === "timer_started") {
-    return `⏱ <b>[Sablier]</b> Timer started${user}${project}${desc}`;
+    return `⏱ <b>[Sablier]</b> Timer started${user}${project}${task}${desc}`;
   }
 
   if (event === "timer_stopped") {
     const duration = formatDuration(data.started_at, data.stopped_at);
-    return `⏹ <b>[Sablier]</b> Timer stopped${user}${project}${desc}${duration}`;
+    return `⏹ <b>[Sablier]</b> Timer stopped${user}${project}${task}${desc}${duration}`;
   }
 
   return `⏱ <b>[Sablier]</b> <code>${escapeHtml(event)}</code>`;
