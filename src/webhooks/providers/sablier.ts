@@ -19,7 +19,7 @@ interface SablierPayload {
 function formatDuration(startedAt?: string | null, stoppedAt?: string | null): string {
   if (!startedAt || !stoppedAt) return "";
   const ms = new Date(stoppedAt).getTime() - new Date(startedAt).getTime();
-  const totalMinutes = Math.round(ms / 60000);
+  const totalMinutes = Math.floor(ms / 60000);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   if (hours > 0 && minutes > 0) return ` (${hours}h ${minutes}m)`;
