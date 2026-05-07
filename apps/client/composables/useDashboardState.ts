@@ -206,6 +206,46 @@ export function useDashboardState() {
     });
   }
 
+  function exportConfig() {
+    const data = JSON.stringify(settings.value, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nook-config.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importConfig(file: File) {
+    const text = await file.text();
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON file.");
+    }
+
+    saving.value = true;
+    error.value = "";
+    try {
+      const payload = await apiFetch<SettingsResponse>("/api/settings", {
+        method: "PUT",
+        body: JSON.stringify(parsed),
+      });
+      cloneFromPayload(settings.value, payload.settings);
+      runtime.value = payload.runtime;
+      matrixConfigured.value = payload.matrixConfigured;
+      notifySuccess("Config imported and saved.");
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : "Failed to import config";
+      notifyError(error.value);
+      throw cause;
+    } finally {
+      saving.value = false;
+    }
+  }
+
   async function loadEvents(options?: { providerId?: string; targetId?: string; limit?: number }) {
     let path = "/api/events";
     const params = new URLSearchParams();
@@ -235,6 +275,8 @@ export function useDashboardState() {
     dismissToast,
     loadSettings,
     saveSettings,
+    exportConfig,
+    importConfig,
     sendTestAlert,
     testDeliveryTarget,
     testProviderConnection,
