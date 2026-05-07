@@ -9,6 +9,9 @@ services:
     environment:
       NOOK_SETTINGS_PATH: ${NOOK_SETTINGS_PATH:-/data/nook.json}
       PORT: ${PORT:-9090}
+      NOOK_SESSION_SECRET: ${NOOK_SESSION_SECRET}
+      NOOK_ADMIN_PASSWORD: ${NOOK_ADMIN_PASSWORD}
+      NOOK_ADMIN_USERNAME: ${NOOK_ADMIN_USERNAME:-admin}
     volumes:
       - app_data:/data
 
