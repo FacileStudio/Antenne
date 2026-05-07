@@ -28,7 +28,7 @@ defineProps<{
   display: grid;
   gap: 0.4rem;
   padding: var(--space-5);
-  border-radius: 1.25rem;
+  border-radius: var(--radius-xl);
   border: 1px solid var(--nook-border);
   background: var(--nook-surface-strong);
 }

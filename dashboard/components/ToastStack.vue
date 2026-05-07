@@ -49,20 +49,20 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.1rem;
-  border-radius: 1.1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-xl);
   border: 1px solid var(--nook-border);
-  background: rgb(15 15 15 / 0.96);
-  box-shadow: 0 18px 40px rgb(0 0 0 / 0.35);
+  background: oklch(0.13 0 0 / 96%);
+  box-shadow: 0 18px 40px oklch(0 0 0 / 35%);
 }
 
 .toast.success {
-  border-color: rgb(58 140 84 / 0.6);
-  background: rgb(10 29 15 / 0.96);
+  border-color: oklch(60% 0.15 145 / 40%);
+  background: oklch(20% 0.05 145 / 96%);
 }
 
 .toast.error {
-  border-color: rgb(255 255 255 / 0.12);
+  border-color: oklch(1 0 0 / 12%);
 }
 
 .toast p {
@@ -77,8 +77,8 @@ const emit = defineEmits<{
 
 .toast-dismiss {
   flex: none;
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-lg);
   border: 1px solid transparent;
   background: transparent;
   color: var(--nook-muted);

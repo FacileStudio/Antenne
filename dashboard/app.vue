@@ -139,13 +139,13 @@ onMounted(() => {
 }
 
 .sidebar-logout.danger {
-  border-color: rgb(186 55 55 / 0.3);
-  color: rgb(255 131 131);
+  border-color: oklch(40% 0.15 25 / 30%);
+  color: oklch(75% 0.12 20);
 }
 
 .sidebar-logout.danger:hover {
-  background: rgb(76 18 18 / 0.45);
-  border-color: rgb(186 55 55 / 0.45);
+  background: oklch(20% 0.08 25 / 45%);
+  border-color: oklch(40% 0.15 25 / 45%);
 }
 
 .loading-card {

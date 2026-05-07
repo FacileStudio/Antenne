@@ -141,9 +141,9 @@ function previewFor(entry: EventLogEntry) {
   color: var(--nook-muted);
   text-align: center;
   padding: var(--space-6) var(--space-5);
-  border-radius: 1.2rem;
+  border-radius: var(--radius-xl);
   border: 1px dashed var(--nook-border);
-  background: rgb(255 255 255 / 0.02);
+  background: oklch(1 0 0 / 2%);
 }
 
 .event-row {
@@ -152,8 +152,8 @@ function previewFor(entry: EventLogEntry) {
   gap: 0.95rem;
   padding: 1rem 1.05rem;
   border: 1px solid var(--nook-border);
-  border-radius: 1.15rem;
-  background: rgb(255 255 255 / 0.02);
+  border-radius: var(--radius-xl);
+  background: oklch(1 0 0 / 2%);
 }
 
 .timeline > .event-row + .event-row {
@@ -163,13 +163,13 @@ function previewFor(entry: EventLogEntry) {
 .event-icon {
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.9rem;
+  border-radius: var(--radius-lg);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
   border: 1px solid var(--nook-border);
-  background: rgb(255 255 255 / 0.03);
+  background: oklch(1 0 0 / 3%);
 }
 
 .event-body {
@@ -201,11 +201,11 @@ function previewFor(entry: EventLogEntry) {
 .event-provider {
   display: inline-flex;
   align-items: center;
-  min-height: 1.55rem;
-  padding: 0.1rem 0.55rem;
-  border-radius: 999px;
+  min-height: 1.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
-  background: rgb(255 255 255 / 0.03);
+  background: oklch(1 0 0 / 3%);
   color: var(--nook-muted);
   font-size: 0.73rem;
   white-space: nowrap;
@@ -252,43 +252,43 @@ function previewFor(entry: EventLogEntry) {
 }
 
 .event-icon.tone-system {
-  background: rgb(158 196 255 / 0.1);
+  background: oklch(80% 0.06 250 / 10%);
 }
 
 .event-icon.tone-website {
-  background: rgb(122 240 182 / 0.1);
+  background: oklch(88% 0.1 165 / 10%);
 }
 
 .event-icon.tone-webhook {
-  background: rgb(255 214 124 / 0.1);
+  background: oklch(88% 0.1 80 / 10%);
 }
 
 .event-icon.tone-imap {
-  background: rgb(247 166 255 / 0.1);
+  background: oklch(80% 0.1 310 / 10%);
 }
 
 .event-icon.tone-test {
-  background: rgb(255 184 111 / 0.1);
+  background: oklch(82% 0.1 60 / 10%);
 }
 
 .event-source-pill.tone-system {
-  border-color: rgb(158 196 255 / 0.25);
+  border-color: oklch(80% 0.06 250 / 25%);
 }
 
 .event-source-pill.tone-website {
-  border-color: rgb(122 240 182 / 0.25);
+  border-color: oklch(88% 0.1 165 / 25%);
 }
 
 .event-source-pill.tone-webhook {
-  border-color: rgb(255 214 124 / 0.25);
+  border-color: oklch(88% 0.1 80 / 25%);
 }
 
 .event-source-pill.tone-imap {
-  border-color: rgb(247 166 255 / 0.25);
+  border-color: oklch(80% 0.1 310 / 25%);
 }
 
 .event-source-pill.tone-test {
-  border-color: rgb(255 184 111 / 0.25);
+  border-color: oklch(82% 0.1 60 / 25%);
 }
 
 .event-deliveries {
@@ -303,10 +303,10 @@ function previewFor(entry: EventLogEntry) {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.76rem;
-  padding: 0.22rem 0.62rem;
-  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
-  background: rgb(255 255 255 / 0.03);
+  background: oklch(1 0 0 / 3%);
 }
 
 .delivery-pill.success {

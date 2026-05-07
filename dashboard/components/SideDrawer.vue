@@ -50,8 +50,8 @@ function onOverlayClick() {
   position: fixed;
   inset: 0;
   z-index: 900;
-  background: rgb(0 0 0 / 0.62);
-  backdrop-filter: blur(10px);
+  background: oklch(0 0 0 / 20%);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: flex-end;
 }
@@ -59,14 +59,12 @@ function onOverlayClick() {
 .drawer-panel {
   width: min(32rem, 100vw);
   height: 100vh;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.045), transparent 12rem),
-    var(--nook-bg);
+  background: var(--nook-surface);
   border-left: 1px solid var(--nook-border);
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
-  box-shadow: -24px 0 60px rgb(0 0 0 / 0.32);
+  box-shadow: -8px 0 32px oklch(0 0 0 / 20%);
 }
 
 .drawer-header {
@@ -76,11 +74,11 @@ function onOverlayClick() {
   gap: var(--space-3);
   padding: 1.35rem 1.5rem;
   border-bottom: 1px solid var(--nook-border);
-  background: rgb(255 255 255 / 0.02);
+  background: var(--nook-surface);
 }
 
 .drawer-header strong {
-  font-family: "Poppins", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 1.05rem;
   line-height: 1.2;
   letter-spacing: -0.03em;
@@ -109,7 +107,7 @@ function onOverlayClick() {
   justify-content: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
-  background: rgb(255 255 255 / 0.02);
+  background: var(--nook-surface);
 }
 
 .drawer-enter-active,

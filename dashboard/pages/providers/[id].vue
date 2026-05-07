@@ -105,9 +105,9 @@ onMounted(async () => {
 }
 
 .detail-badge {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.65rem;
-  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
   background: var(--nook-surface);
   color: var(--nook-muted);
@@ -127,7 +127,7 @@ onMounted(async () => {
 }
 
 .stat-value {
-  font-family: "Poppins", sans-serif;
+  font-family: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 2rem;
   font-weight: 700;
   letter-spacing: -0.03em;

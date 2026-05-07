@@ -83,8 +83,8 @@ function removeAddress(index: number) {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0.45rem 0.55rem 0.45rem 0.9rem;
-  border-radius: 999px;
+  padding: 0.2rem 0.4rem 0.2rem 0.75rem;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
   background: var(--nook-surface-strong);
 }

@@ -84,11 +84,10 @@ const infoItems = computed(() => [
 }
 
 .event-toggle {
-  min-height: 3rem;
-  padding: 0.95rem 1rem;
+  padding: 0.75rem 1rem;
   border: 1px solid var(--nook-border);
-  border-radius: 1.1rem;
-  background: rgb(255 255 255 / 0.025);
+  border-radius: var(--radius-xl);
+  background: oklch(1 0 0 / 2.5%);
 }
 
 .field-hint {

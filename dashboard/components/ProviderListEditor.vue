@@ -263,7 +263,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-radius: 1.25rem;
+  border-radius: var(--radius-xl);
   border: 1px solid var(--nook-border);
   background: var(--nook-surface-strong);
   flex-wrap: wrap;
@@ -274,8 +274,8 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 }
 
 .item-card.drag-over {
-  border-color: rgb(255 255 255 / 0.3);
-  background: rgb(255 255 255 / 0.08);
+  border-color: oklch(1 0 0 / 30%);
+  background: oklch(1 0 0 / 8%);
 }
 
 .drag-handle {
@@ -301,17 +301,17 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 .item-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 1.5rem;
-  padding: 0 0.6rem;
-  border-radius: 999px;
+  min-height: 1.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
   color: var(--nook-muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .item-chip--off {
-  border-color: rgb(186 55 55 / 0.3);
-  color: rgb(255 131 131);
+  border-color: oklch(40% 0.15 25 / 30%);
+  color: oklch(75% 0.12 20);
 }
 
 .item-actions {
@@ -329,12 +329,12 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 }
 
 .reveal-button {
-  min-height: 3.5rem;
-  padding-inline: 0.95rem;
+  height: 2rem;
+  padding-inline: 0.625rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.375rem;
   line-height: 1;
 }
 
@@ -356,26 +356,27 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 
 a.action-button {
   border: 1px solid var(--nook-border);
-  border-radius: 999px;
-  padding: 0.85rem 1.15rem;
+  border-radius: var(--radius-lg);
+  height: 2rem;
+  padding: 0 0.625rem;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color 150ms ease, border-color 150ms ease;
+  transition: all 200ms;
 }
 
 a.action-button:hover {
   background: var(--nook-surface-strong);
-  border-color: rgb(255 255 255 / 0.14);
+  border-color: oklch(1 0 0 / 14%);
 }
 
 .add-button {
-  min-height: 3.5rem;
+  height: 2rem;
 }
 
 .empty {
   color: var(--nook-muted);
   padding: var(--space-4);
-  border-radius: 1.25rem;
+  border-radius: var(--radius-xl);
   border: 1px dashed var(--nook-border);
 }
 

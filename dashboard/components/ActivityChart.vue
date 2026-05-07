@@ -125,6 +125,7 @@ function errorHeight(bucket: Bucket) {
   gap: 1.2rem;
   padding: 1.5rem;
   background: var(--nook-surface);
+  border-radius: var(--radius-xl);
 }
 
 .chart-header {
@@ -168,7 +169,7 @@ h3 {
 
 .chart-bar-track {
   border-radius: 999px;
-  background: rgb(255 255 255 / 0.01);
+  background: oklch(1 0 0 / 1%);
   display: flex;
   align-items: flex-end;
   overflow: hidden;

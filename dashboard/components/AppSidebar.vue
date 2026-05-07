@@ -63,7 +63,7 @@ defineProps<{
 }
 
 .brand-name {
-  font-family: "Poppins", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 2.2rem;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -79,13 +79,13 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  min-height: 3rem;
-  padding: 0.85rem 1.15rem;
-  border-radius: 9999px;
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-lg);
   border: 1px solid transparent;
   color: var(--nook-muted);
   text-decoration: none;
-  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  transition: all 200ms;
 }
 
 .sidebar-link:hover {

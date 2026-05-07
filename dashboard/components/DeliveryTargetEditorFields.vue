@@ -288,8 +288,8 @@ const providerOptions = computed(() => [
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.8rem;
   align-items: center;
-  padding: 0.8rem 0.9rem;
-  border-radius: 1rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--nook-border);
   background: var(--nook-surface);
   cursor: pointer;
@@ -298,7 +298,7 @@ const providerOptions = computed(() => [
 
 .provider-option:hover {
   background: var(--nook-surface-strong);
-  border-color: rgb(255 255 255 / 0.14);
+  border-color: oklch(1 0 0 / 14%);
 }
 
 .provider-option.selected {
@@ -334,13 +334,13 @@ const providerOptions = computed(() => [
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 1.7rem;
-  padding: 0.15rem 0.7rem;
-  border-radius: 999px;
+  min-height: 1.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
-  background: rgb(255 255 255 / 0.04);
+  background: oklch(1 0 0 / 4%);
   color: var(--nook-muted);
-  font-size: 0.76rem;
+  font-size: 0.73rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;

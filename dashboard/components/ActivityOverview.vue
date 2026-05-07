@@ -85,6 +85,7 @@ const successRate = computed(() => {
   gap: 1.4rem;
   padding: 1.5rem;
   background: var(--nook-surface);
+  border-radius: var(--radius-xl);
 }
 
 .overview-copy {
@@ -122,16 +123,16 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.5rem 0.8rem;
-  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
-  background: rgb(255 255 255 / 0.03);
+  background: oklch(1 0 0 / 3%);
   color: var(--nook-muted);
   font-size: 0.84rem;
 }
 
 .refresh-button {
-  min-height: 2.8rem;
+  height: 2rem;
 }
 
 .stats-grid {
@@ -144,13 +145,13 @@ h2 {
   display: grid;
   gap: 0.3rem;
   padding: 1rem 1.05rem;
-  border-radius: 1.15rem;
+  border-radius: var(--radius-xl);
   border: 1px solid var(--nook-border);
-  background: rgb(255 255 255 / 0.025);
+  background: oklch(1 0 0 / 2.5%);
 }
 
 .stat-value {
-  font-family: "Poppins", sans-serif;
+  font-family: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 1.7rem;
   font-weight: 700;
   letter-spacing: -0.04em;
