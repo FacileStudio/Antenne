@@ -52,17 +52,17 @@ const emit = defineEmits<{
   padding: 0.75rem 1rem;
   border-radius: var(--radius-xl);
   border: 1px solid var(--nook-border);
-  background: oklch(0.13 0 0 / 96%);
-  box-shadow: 0 18px 40px oklch(0 0 0 / 35%);
+  background: oklch(1 0 0);
+  box-shadow: 0 18px 40px oklch(0 0 0 / 12%);
 }
 
 .toast.success {
   border-color: oklch(60% 0.15 145 / 40%);
-  background: oklch(20% 0.05 145 / 96%);
+  background: oklch(95% 0.04 145);
 }
 
 .toast.error {
-  border-color: oklch(1 0 0 / 12%);
+  border-color: oklch(0 0 0 / 12%);
 }
 
 .toast p {
@@ -72,7 +72,7 @@ const emit = defineEmits<{
 }
 
 .toast.success p {
-  color: rgb(185 255 199);
+  color: oklch(35% 0.12 145);
 }
 
 .toast-dismiss {

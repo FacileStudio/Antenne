@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import { XCircle, PlusCircle } from "lucide-vue-next";
 import { ref } from "vue";
 
 const props = defineProps<{
@@ -40,7 +40,7 @@ function removeRoomId(index: number) {
       >
         <span>{{ roomId }}</span>
         <button class="chip-remove" type="button" aria-label="Remove room" @click="removeRoomId(index)">
-          <Icon icon="solar:close-circle-bold" width="14" aria-hidden="true" />
+          <XCircle :size="14" aria-hidden="true" />
         </button>
       </span>
     </div>
@@ -53,7 +53,7 @@ function removeRoomId(index: number) {
         @keydown.enter.prevent="addRoomId"
       >
       <button class="secondary action-button" type="button" @click="addRoomId">
-        <Icon icon="solar:add-circle-bold" width="16" aria-hidden="true" />
+        <PlusCircle :size="16" aria-hidden="true" />
         <span>Add room</span>
       </button>
     </div>

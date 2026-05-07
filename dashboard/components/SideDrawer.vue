@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import { XCircle } from "lucide-vue-next";
 import { watch } from "vue";
 
 const props = defineProps<{
@@ -28,7 +28,7 @@ function onOverlayClick() {
           <div class="drawer-header">
             <strong v-if="title">{{ title }}</strong>
             <button class="ghost drawer-close" type="button" @click="emit('close')">
-              <Icon icon="solar:close-circle-bold" width="18" aria-hidden="true" />
+              <XCircle :size="18" aria-hidden="true" />
             </button>
           </div>
 
@@ -50,7 +50,7 @@ function onOverlayClick() {
   position: fixed;
   inset: 0;
   z-index: 900;
-  background: oklch(0 0 0 / 20%);
+  background: oklch(0 0 0 / 30%);
   backdrop-filter: blur(2px);
   display: flex;
   justify-content: flex-end;
@@ -64,7 +64,7 @@ function onOverlayClick() {
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
-  box-shadow: -8px 0 32px oklch(0 0 0 / 20%);
+  box-shadow: -8px 0 32px oklch(0 0 0 / 12%);
 }
 
 .drawer-header {

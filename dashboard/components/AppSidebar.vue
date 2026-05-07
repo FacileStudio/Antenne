@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import type { Component } from "vue";
 
 const route = useRoute();
 
 defineProps<{
-  sections: ReadonlyArray<{ href: string; label: string; icon: string }>;
+  sections: ReadonlyArray<{ href: string; label: string; icon: Component }>;
 }>();
 </script>
 
@@ -23,7 +23,7 @@ defineProps<{
         :class="{ active: route.path === section.href }"
         :to="section.href"
       >
-        <Icon :icon="section.icon" width="18" aria-hidden="true" />
+        <component :is="section.icon" :size="18" aria-hidden="true" />
         <span>{{ section.label }}</span>
       </NuxtLink>
     </nav>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { Icon } from "@iconify/vue";
+import { Send, Save, LogOut, Truck, Link, Activity, Settings } from "lucide-vue-next";
 
 import AppSidebar from "./components/AppSidebar.vue";
 import ToastStack from "./components/ToastStack.vue";
@@ -21,11 +21,11 @@ const {
 } = useDashboardState();
 
 const sections = [
-  { href: "/delivery", label: "Delivery", icon: "solar:delivery-bold" },
-  { href: "/providers", label: "Providers", icon: "solar:link-circle-bold" },
-  { href: "/activity", label: "Activity", icon: "solar:pulse-bold" },
-  { href: "/settings", label: "Settings", icon: "solar:settings-bold" },
-] as const;
+  { href: "/delivery", label: "Delivery", icon: Truck },
+  { href: "/providers", label: "Providers", icon: Link },
+  { href: "/activity", label: "Activity", icon: Activity },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
 const route = useRoute();
 
 const currentTitle = computed(() => {
@@ -46,7 +46,7 @@ onMounted(() => {
       <AppSidebar :sections="sections">
         <template #footer>
           <button class="danger action-button sidebar-logout" type="button" @click="logout">
-              <Icon icon="solar:logout-bold" width="16" aria-hidden="true" />
+              <LogOut :size="16" aria-hidden="true" />
               <span>Logout</span>
           </button>
         </template>
@@ -60,11 +60,11 @@ onMounted(() => {
 
           <div class="topbar-actions">
             <button class="secondary action-button" type="button" :disabled="testing || loading" @click="sendTestAlert">
-              <Icon icon="solar:plain-bold" width="16" aria-hidden="true" />
+              <Send :size="16" aria-hidden="true" />
               <span>{{ testing ? "Sending..." : "Send test alert" }}</span>
             </button>
             <button class="primary action-button" type="button" :disabled="saving || loading" @click="saveSettings">
-              <Icon icon="solar:diskette-bold" width="16" aria-hidden="true" />
+              <Save :size="16" aria-hidden="true" />
               <span>{{ saving ? "Saving..." : "Save settings" }}</span>
             </button>
           </div>
@@ -140,12 +140,12 @@ onMounted(() => {
 
 .sidebar-logout.danger {
   border-color: oklch(40% 0.15 25 / 30%);
-  color: oklch(75% 0.12 20);
+  color: oklch(45% 0.18 25);
 }
 
 .sidebar-logout.danger:hover {
-  background: oklch(20% 0.08 25 / 45%);
-  border-color: oklch(40% 0.15 25 / 45%);
+  background: oklch(90% 0.05 25);
+  border-color: oklch(60% 0.15 25);
 }
 
 .loading-card {

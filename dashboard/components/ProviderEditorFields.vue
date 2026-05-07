@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import { Eye, EyeOff } from "lucide-vue-next";
 
 import type { ProviderSettings } from "../types";
 
@@ -67,7 +67,7 @@ const emit = defineEmits<{
           @input="emit('patch', { password: ($event.target as HTMLInputElement).value })"
         >
         <button class="ghost action-button reveal-button" type="button" @click="emit('toggle-reveal', editingProvider.id)">
-          <Icon :icon="revealedSecrets[editingProvider.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
+          <component :is="revealedSecrets[editingProvider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
           <span>{{ revealedSecrets[editingProvider.id] ? "Hide" : "Show" }}</span>
         </button>
       </div>
@@ -99,7 +99,7 @@ const emit = defineEmits<{
           @input="emit('patch', { secretValue: ($event.target as HTMLInputElement).value })"
         >
         <button class="ghost action-button reveal-button" type="button" @click="emit('toggle-reveal', editingProvider.id)">
-          <Icon :icon="revealedSecrets[editingProvider.id] ? 'solar:eye-closed-bold' : 'solar:eye-bold'" width="16" aria-hidden="true" />
+          <component :is="revealedSecrets[editingProvider.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
           <span>{{ revealedSecrets[editingProvider.id] ? "Hide" : "Show" }}</span>
         </button>
       </div>

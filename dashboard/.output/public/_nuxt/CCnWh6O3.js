@@ -1,1 +1,0 @@
-import{j as a,M as n,o,c as s,N as r}from"./DnH3DYJO.js";const m=a({__name:"info",async setup(c){let e,t;return[e,t]=n(()=>r("/settings",{replace:!0})),await e,t(),(_,i)=>(o(),s("div"))}});export{m as default};

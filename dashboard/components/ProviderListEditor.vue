@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import { Pencil, BarChart2, Copy, Trash2, PlusCircle, GripVertical, PlugZap, Save } from "lucide-vue-next";
 import { reactive, ref } from "vue";
 
 import ProviderEditorFields from "./ProviderEditorFields.vue";
@@ -161,7 +161,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
       </label>
 
       <button class="primary action-button add-button" type="button" @click="addProvider">
-        <Icon icon="solar:add-circle-bold" width="16" aria-hidden="true" />
+        <PlusCircle :size="16" aria-hidden="true" />
         <span>Add provider</span>
       </button>
     </div>
@@ -180,7 +180,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         @dragend="onDragEnd"
       >
         <div class="item-info">
-          <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:sort-vertical-bold" width="18" aria-hidden="true" /></span>
+          <span class="drag-handle" title="Drag to reorder"><GripVertical :size="18" aria-hidden="true" /></span>
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
           <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>
@@ -188,17 +188,17 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 
         <div class="item-actions">
           <button class="ghost action-button" type="button" @click="openEditor(index)">
-            <Icon icon="solar:pen-2-bold" width="16" aria-hidden="true" />
+            <Pencil :size="16" aria-hidden="true" />
             <span>Edit</span>
           </button>
           <NuxtLink class="ghost action-button" :to="`/providers/${provider.id}`">
-            <Icon icon="solar:chart-bold" width="16" aria-hidden="true" />
+            <BarChart2 :size="16" aria-hidden="true" />
           </NuxtLink>
           <button class="ghost action-button" type="button" @click="duplicateProvider(index)">
-            <Icon icon="solar:copy-bold" width="16" aria-hidden="true" />
+            <Copy :size="16" aria-hidden="true" />
           </button>
           <button class="danger action-button" type="button" @click="removeProvider(index)">
-            <Icon icon="solar:trash-bin-2-bold" width="16" aria-hidden="true" />
+            <Trash2 :size="16" aria-hidden="true" />
           </button>
         </div>
       </article>
@@ -226,11 +226,11 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           :disabled="testingProviders[editingProvider.id]"
           @click="runProviderConnectionTest(editingProvider)"
         >
-          <Icon icon="solar:plug-circle-bold" width="16" aria-hidden="true" />
+          <PlugZap :size="16" aria-hidden="true" />
           <span>{{ testingProviders[editingProvider.id] ? "Testing..." : "Test connection" }}</span>
         </button>
         <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">
-          <Icon icon="solar:diskette-bold" width="16" aria-hidden="true" />
+          <Save :size="16" aria-hidden="true" />
           <span>{{ saving ? "Saving..." : "Save" }}</span>
         </button>
       </template>
@@ -274,8 +274,8 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 }
 
 .item-card.drag-over {
-  border-color: oklch(1 0 0 / 30%);
-  background: oklch(1 0 0 / 8%);
+  border-color: oklch(0 0 0 / 30%);
+  background: oklch(0 0 0 / 5%);
 }
 
 .drag-handle {
@@ -310,8 +310,8 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 }
 
 .item-chip--off {
-  border-color: oklch(40% 0.15 25 / 30%);
-  color: oklch(75% 0.12 20);
+  border-color: oklch(60% 0.15 25 / 60%);
+  color: oklch(45% 0.18 25);
 }
 
 .item-actions {
@@ -366,7 +366,7 @@ a.action-button {
 
 a.action-button:hover {
   background: var(--nook-surface-strong);
-  border-color: oklch(1 0 0 / 14%);
+  border-color: oklch(0.8 0 0);
 }
 
 .add-button {

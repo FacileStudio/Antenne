@@ -87,7 +87,7 @@ const infoItems = computed(() => [
   padding: 0.75rem 1rem;
   border: 1px solid var(--nook-border);
   border-radius: var(--radius-xl);
-  background: oklch(1 0 0 / 2.5%);
+  background: oklch(0 0 0 / 2.5%);
 }
 
 .field-hint {

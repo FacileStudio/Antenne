@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
+import { Globe, Cpu, Mail, TestTube2, Server, Clock, CheckCircle2, XCircle } from "lucide-vue-next";
 
 import type { EventLogEntry } from "../types";
 
@@ -18,11 +18,11 @@ function formatTime(iso: string) {
 }
 
 function sourceMeta(source: string) {
-  if (source === "website") return { icon: "solar:global-bold", label: "Website", tone: "website" };
-  if (source === "webhook") return { icon: "solar:cpu-bolt-bold", label: "Webhook", tone: "webhook" };
-  if (source === "imap") return { icon: "solar:letter-bold", label: "Inbox", tone: "imap" };
-  if (source === "test") return { icon: "solar:test-tube-bold", label: "Test", tone: "test" };
-  return { icon: "solar:server-bold", label: "System", tone: "system" };
+  if (source === "website") return { icon: Globe, label: "Website", tone: "website" };
+  if (source === "webhook") return { icon: Cpu, label: "Webhook", tone: "webhook" };
+  if (source === "imap") return { icon: Mail, label: "Inbox", tone: "imap" };
+  if (source === "test") return { icon: TestTube2, label: "Test", tone: "test" };
+  return { icon: Server, label: "System", tone: "system" };
 }
 
 function decodeHtml(value: string) {
@@ -98,13 +98,13 @@ function previewFor(entry: EventLogEntry) {
     <p v-if="events.length === 0" class="empty">No events recorded yet.</p>
     <div v-for="entry in events" :key="entry.id" class="event-row">
       <div class="event-icon" :class="`tone-${sourceMeta(entry.source).tone}`">
-        <Icon :icon="sourceMeta(entry.source).icon" width="18" />
+        <component :is="sourceMeta(entry.source).icon" :size="18" />
       </div>
       <div class="event-body">
         <div class="event-header">
           <span class="event-name">{{ titleFor(entry) }}</span>
           <span class="event-time">
-            <Icon icon="solar:clock-circle-bold" width="12" />
+            <Clock :size="12" />
             {{ formatTime(entry.timestamp) }}
           </span>
         </div>
@@ -121,8 +121,8 @@ function previewFor(entry: EventLogEntry) {
             :class="d.status"
             :title="d.error ?? `${d.durationMs}ms`"
           >
-            <Icon v-if="d.status === 'success'" icon="solar:check-circle-bold" width="12" />
-            <Icon v-else icon="solar:close-circle-bold" width="12" />
+            <CheckCircle2 v-if="d.status === 'success'" :size="12" />
+            <XCircle v-else :size="12" />
             {{ d.targetName }}
           </span>
         </div>
@@ -143,7 +143,7 @@ function previewFor(entry: EventLogEntry) {
   padding: var(--space-6) var(--space-5);
   border-radius: var(--radius-xl);
   border: 1px dashed var(--nook-border);
-  background: oklch(1 0 0 / 2%);
+  background: oklch(0 0 0 / 2%);
 }
 
 .event-row {
@@ -153,7 +153,7 @@ function previewFor(entry: EventLogEntry) {
   padding: 1rem 1.05rem;
   border: 1px solid var(--nook-border);
   border-radius: var(--radius-xl);
-  background: oklch(1 0 0 / 2%);
+  background: oklch(0 0 0 / 2%);
 }
 
 .timeline > .event-row + .event-row {
@@ -169,7 +169,7 @@ function previewFor(entry: EventLogEntry) {
   justify-content: center;
   flex: none;
   border: 1px solid var(--nook-border);
-  background: oklch(1 0 0 / 3%);
+  background: oklch(0 0 0 / 3%);
 }
 
 .event-body {
@@ -205,7 +205,7 @@ function previewFor(entry: EventLogEntry) {
   padding: 0.1rem 0.5rem;
   border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
-  background: oklch(1 0 0 / 3%);
+  background: oklch(0 0 0 / 3%);
   color: var(--nook-muted);
   font-size: 0.73rem;
   white-space: nowrap;
@@ -306,7 +306,7 @@ function previewFor(entry: EventLogEntry) {
   padding: 0.15rem 0.5rem;
   border-radius: var(--radius-pill);
   border: 1px solid var(--nook-border);
-  background: oklch(1 0 0 / 3%);
+  background: oklch(0 0 0 / 3%);
 }
 
 .delivery-pill.success {

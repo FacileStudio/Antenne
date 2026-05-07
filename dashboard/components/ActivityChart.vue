@@ -169,7 +169,7 @@ h3 {
 
 .chart-bar-track {
   border-radius: 999px;
-  background: oklch(1 0 0 / 1%);
+  background: oklch(0 0 0 / 4%);
   display: flex;
   align-items: flex-end;
   overflow: hidden;
