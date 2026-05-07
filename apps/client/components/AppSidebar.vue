@@ -4,115 +4,41 @@ import type { Component } from "vue";
 const route = useRoute();
 
 defineProps<{
-  sections: ReadonlyArray<{ href: string; label: string; icon: Component }>;
+  sections: ReadonlyArray<{ href: string; label: string; icon: Component; activePaths?: string[] }>;
 }>();
+
+function isActive(section: { href: string; activePaths?: string[] }) {
+  if (section.activePaths) {
+    return section.activePaths.some((p) => route.path === p || route.path.startsWith(p + "/"));
+  }
+  return route.path === section.href || route.path.startsWith(section.href + "/");
+}
 </script>
 
 <template>
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <img class="brand-avatar" src="/nook-avatar.webp" alt="Nook" />
-      <span class="brand-name">Nook</span>
+  <aside class="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-background">
+    <div class="flex items-center gap-3 px-5 pt-8 pb-6">
+      <img class="h-8 w-8 shrink-0 rounded-full border border-border object-cover" src="/nook-avatar.webp" alt="Nook" />
+      <span class="font-heading text-2xl font-bold tracking-tight">Nook</span>
     </div>
 
-    <nav class="sidebar-nav" aria-label="Settings sections">
+    <nav class="flex flex-1 flex-col gap-1 px-3" aria-label="Navigation">
       <NuxtLink
         v-for="section in sections"
         :key="section.href"
-        class="sidebar-link"
-        :class="{ active: route.path === section.href }"
         :to="section.href"
+        class="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors"
+        :class="isActive(section)
+          ? 'bg-foreground text-background font-medium'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
       >
-        <component :is="section.icon" :size="18" aria-hidden="true" />
-        <span>{{ section.label }}</span>
+        <component :is="section.icon" :size="16" class="shrink-0" aria-hidden="true" />
+        {{ section.label }}
       </NuxtLink>
     </nav>
 
-    <div class="sidebar-footer">
+    <div class="border-t border-border p-4">
       <slot name="footer" />
     </div>
   </aside>
 </template>
-
-<style scoped>
-.sidebar {
-  display: grid;
-  grid-template-rows: auto auto 1fr;
-  gap: var(--space-5);
-  padding: var(--space-6) var(--space-4);
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  border-right: 1px solid var(--nook-border);
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 0 0.35rem;
-}
-
-.brand-avatar {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--nook-border);
-  flex: none;
-}
-
-.brand-name {
-  font-family: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 2.2rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.sidebar-nav {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.sidebar-link {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  height: 2rem;
-  padding: 0 0.75rem;
-  border-radius: var(--radius-lg);
-  border: 1px solid transparent;
-  color: var(--nook-muted);
-  text-decoration: none;
-  transition: all 200ms;
-}
-
-.sidebar-link:hover {
-  background: var(--nook-surface-strong);
-  border-color: var(--nook-border);
-  color: var(--nook-text);
-}
-
-.sidebar-link.active {
-  background: var(--nook-text);
-  border-color: var(--nook-text);
-  color: var(--nook-bg);
-}
-
-.sidebar-footer {
-  align-self: end;
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--nook-border);
-}
-
-@media (max-width: 960px) {
-  .sidebar {
-    position: static;
-    height: auto;
-    padding: var(--space-4);
-    border-right: 0;
-    border-bottom: 1px solid var(--nook-border);
-  }
-}
-</style>

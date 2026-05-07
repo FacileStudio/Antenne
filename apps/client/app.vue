@@ -7,8 +7,6 @@ import ToastStack from "./components/ToastStack.vue";
 import { useDashboardState } from "./composables/useDashboardState";
 
 const {
-  settings,
-  runtime,
   loading,
   saving,
   testing,
@@ -21,18 +19,19 @@ const {
 } = useDashboardState();
 
 const sections = [
-  { href: "/delivery", label: "Delivery", icon: Truck },
+  { href: "/delivery", label: "Delivery", icon: Truck, activePaths: ["/delivery", "/targets"] },
   { href: "/providers", label: "Providers", icon: Link },
   { href: "/activity", label: "Activity", icon: Activity },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/settings", label: "Settings", icon: Settings, activePaths: ["/settings", "/info"] },
 ];
+
 const route = useRoute();
 
 const currentTitle = computed(() => {
   if (route.path.startsWith("/providers/")) return "Provider";
   if (route.path.startsWith("/targets/")) return "Delivery Target";
   if (route.path === "/info") return "Settings";
-  return sections.find((section) => section.href === route.path)?.label ?? "Settings";
+  return sections.find((s) => route.path === s.href || route.path.startsWith(s.href + "/"))?.label ?? "Settings";
 });
 
 onMounted(() => {
@@ -41,133 +40,56 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="shell">
-    <section class="layout">
-      <AppSidebar :sections="sections">
-        <template #footer>
-          <button class="danger action-button sidebar-logout" type="button" @click="logout">
-              <LogOut :size="16" aria-hidden="true" />
-              <span>Logout</span>
+  <div class="flex min-h-screen bg-background">
+    <AppSidebar :sections="sections">
+      <template #footer>
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          @click="logout"
+        >
+          <LogOut :size="16" class="shrink-0" aria-hidden="true" />
+          Logout
+        </button>
+      </template>
+    </AppSidebar>
+
+    <div class="flex min-w-0 flex-1 flex-col gap-8 p-10 max-lg:p-6">
+      <header class="flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-stretch">
+        <h1 class="m-0 font-heading text-3xl font-semibold tracking-tight">{{ currentTitle }}</h1>
+
+        <div class="flex flex-wrap items-center justify-end gap-3 max-sm:justify-start">
+          <button
+            type="button"
+            class="inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-transparent px-3 text-sm font-medium text-foreground transition-all hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+            :disabled="testing || loading"
+            @click="sendTestAlert"
+          >
+            <Send :size="14" class="shrink-0" aria-hidden="true" />
+            {{ testing ? "Sending..." : "Send test alert" }}
           </button>
-        </template>
-      </AppSidebar>
 
-      <div class="content-shell">
-        <header class="topbar">
-          <div class="topbar-copy">
-            <h1>{{ currentTitle }}</h1>
-          </div>
-
-          <div class="topbar-actions">
-            <button class="secondary action-button" type="button" :disabled="testing || loading" @click="sendTestAlert">
-              <Send :size="16" aria-hidden="true" />
-              <span>{{ testing ? "Sending..." : "Send test alert" }}</span>
-            </button>
-            <button class="primary action-button" type="button" :disabled="saving || loading" @click="saveSettings">
-              <Save :size="16" aria-hidden="true" />
-              <span>{{ saving ? "Saving..." : "Save settings" }}</span>
-            </button>
-          </div>
-        </header>
-
-        <section v-if="loading" class="panel loading-card">
-          Loading dashboard...
-        </section>
-
-        <div v-else class="content">
-          <NuxtPage />
+          <button
+            type="button"
+            class="inline-flex h-8 items-center gap-2 rounded-lg border border-foreground bg-foreground px-3 text-sm font-medium text-background transition-all hover:bg-foreground/85 disabled:pointer-events-none disabled:opacity-50"
+            :disabled="saving || loading"
+            @click="saveSettings"
+          >
+            <Save :size="14" class="shrink-0" aria-hidden="true" />
+            {{ saving ? "Saving..." : "Save settings" }}
+          </button>
         </div>
+      </header>
+
+      <div v-if="loading" class="panel text-foreground">
+        Loading dashboard...
       </div>
-    </section>
+
+      <div v-else class="flex flex-col gap-8 min-w-0">
+        <NuxtPage />
+      </div>
+    </div>
 
     <ToastStack :toasts="toasts" @dismiss="dismissToast" />
-  </main>
+  </div>
 </template>
-
-<style scoped>
-.shell {
-  min-height: 100vh;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  min-height: 100vh;
-}
-
-.content-shell {
-  display: grid;
-  align-content: start;
-  gap: var(--space-5);
-  min-width: 0;
-  padding: var(--space-6) var(--space-6) var(--space-7);
-}
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  align-items: flex-end;
-}
-
-.topbar-actions {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.topbar-copy h1 {
-  margin: 0;
-}
-
-.content {
-  display: grid;
-  gap: var(--space-5);
-  min-width: 0;
-}
-
-.action-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.sidebar-logout {
-  width: 100%;
-}
-
-.sidebar-logout.danger {
-  border-color: oklch(40% 0.15 25 / 30%);
-  color: oklch(45% 0.18 25);
-}
-
-.sidebar-logout.danger:hover {
-  background: oklch(90% 0.05 25);
-  border-color: oklch(60% 0.15 25);
-}
-
-.loading-card {
-  color: var(--nook-text);
-}
-
-@media (max-width: 960px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .content-shell {
-    padding: var(--space-4) var(--space-4) var(--space-6);
-  }
-
-  .topbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .topbar-actions {
-    justify-content: flex-start;
-  }
-}
-</style>

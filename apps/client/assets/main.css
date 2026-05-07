@@ -1,3 +1,17 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-heading: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --color-background: var(--nook-bg);
+  --color-foreground: var(--nook-text);
+  --color-muted: var(--nook-surface-strong);
+  --color-muted-foreground: var(--nook-muted);
+  --color-border: var(--nook-border);
+  --color-card: var(--nook-surface);
+  --color-destructive: oklch(0.577 0.245 27.325);
+}
+
 @font-face {
   font-family: "Helvetica Neue";
   src: url("./fonts/HelveticaNeue-UltraLight.ttf") format("truetype");
