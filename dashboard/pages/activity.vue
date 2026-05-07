@@ -34,7 +34,7 @@ onMounted(() => void refresh());
       <ActivityChart :events="events" />
     </div>
 
-    <div class="panel timeline-panel">
+    <div class="timeline-panel">
       <div class="timeline-header">
         <div>
           <p class="timeline-eyebrow">Recent feed</p>

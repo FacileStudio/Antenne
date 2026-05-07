@@ -151,18 +151,18 @@ h2 {
 }
 
 .stat-value {
-  font-family: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: ui-monospace, "SF Mono", "Fira Code", "Cascadia Code", monospace;
   font-size: 1.7rem;
   font-weight: 700;
   letter-spacing: -0.04em;
 }
 
 .stat-value.success {
-  color: #1cdb81;
+  color: oklch(40% 0.16 155);
 }
 
 .stat-value.error {
-  color: rgb(255 131 131);
+  color: oklch(45% 0.18 25);
 }
 
 .stat-label {

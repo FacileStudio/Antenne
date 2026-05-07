@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Globe, Cpu, Mail, TestTube2, Server, Clock, CheckCircle2, XCircle } from "lucide-vue-next";
+import { Clock, CheckCircle2, XCircle } from "lucide-vue-next";
 
 import type { EventLogEntry } from "../types";
 
@@ -18,11 +18,11 @@ function formatTime(iso: string) {
 }
 
 function sourceMeta(source: string) {
-  if (source === "website") return { icon: Globe, label: "Website", tone: "website" };
-  if (source === "webhook") return { icon: Cpu, label: "Webhook", tone: "webhook" };
-  if (source === "imap") return { icon: Mail, label: "Inbox", tone: "imap" };
-  if (source === "test") return { icon: TestTube2, label: "Test", tone: "test" };
-  return { icon: Server, label: "System", tone: "system" };
+  if (source === "website") return { label: "Website", tone: "website" };
+  if (source === "webhook") return { label: "Webhook", tone: "webhook" };
+  if (source === "imap") return { label: "Inbox", tone: "imap" };
+  if (source === "test") return { label: "Test", tone: "test" };
+  return { label: "System", tone: "system" };
 }
 
 function decodeHtml(value: string) {
@@ -97,9 +97,6 @@ function previewFor(entry: EventLogEntry) {
   <div class="timeline">
     <p v-if="events.length === 0" class="empty">No events recorded yet.</p>
     <div v-for="entry in events" :key="entry.id" class="event-row">
-      <div class="event-icon" :class="`tone-${sourceMeta(entry.source).tone}`">
-        <component :is="sourceMeta(entry.source).icon" :size="18" />
-      </div>
       <div class="event-body">
         <div class="event-header">
           <span class="event-name">{{ titleFor(entry) }}</span>
@@ -148,8 +145,7 @@ function previewFor(entry: EventLogEntry) {
 
 .event-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.95rem;
+  grid-template-columns: minmax(0, 1fr);
   padding: 1rem 1.05rem;
   border: 1px solid var(--nook-border);
   border-radius: var(--radius-xl);
@@ -158,18 +154,6 @@ function previewFor(entry: EventLogEntry) {
 
 .timeline > .event-row + .event-row {
   margin-top: 0.65rem;
-}
-
-.event-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--radius-lg);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  border: 1px solid var(--nook-border);
-  background: oklch(0 0 0 / 3%);
 }
 
 .event-body {
@@ -231,64 +215,34 @@ function previewFor(entry: EventLogEntry) {
   overflow: hidden;
 }
 
-.tone-system {
-  color: #9ec4ff;
-}
-
-.tone-website {
-  color: #7af0b6;
-}
-
-.tone-webhook {
-  color: #ffd67c;
-}
-
-.tone-imap {
-  color: #f7a6ff;
-}
-
-.tone-test {
-  color: #ffb86f;
-}
-
-.event-icon.tone-system {
-  background: oklch(80% 0.06 250 / 10%);
-}
-
-.event-icon.tone-website {
-  background: oklch(88% 0.1 165 / 10%);
-}
-
-.event-icon.tone-webhook {
-  background: oklch(88% 0.1 80 / 10%);
-}
-
-.event-icon.tone-imap {
-  background: oklch(80% 0.1 310 / 10%);
-}
-
-.event-icon.tone-test {
-  background: oklch(82% 0.1 60 / 10%);
-}
-
 .event-source-pill.tone-system {
-  border-color: oklch(80% 0.06 250 / 25%);
+  color: oklch(38% 0.14 250);
+  background: oklch(95% 0.04 250);
+  border-color: oklch(84% 0.07 250);
 }
 
 .event-source-pill.tone-website {
-  border-color: oklch(88% 0.1 165 / 25%);
+  color: oklch(37% 0.13 155);
+  background: oklch(95% 0.05 155);
+  border-color: oklch(83% 0.08 155);
 }
 
 .event-source-pill.tone-webhook {
-  border-color: oklch(88% 0.1 80 / 25%);
+  color: oklch(42% 0.11 65);
+  background: oklch(96% 0.04 65);
+  border-color: oklch(86% 0.07 65);
 }
 
 .event-source-pill.tone-imap {
-  border-color: oklch(80% 0.1 310 / 25%);
+  color: oklch(40% 0.14 310);
+  background: oklch(95% 0.04 310);
+  border-color: oklch(84% 0.07 310);
 }
 
 .event-source-pill.tone-test {
-  border-color: oklch(82% 0.1 60 / 25%);
+  color: oklch(44% 0.12 45);
+  background: oklch(96% 0.04 45);
+  border-color: oklch(86% 0.07 45);
 }
 
 .event-deliveries {
@@ -310,23 +264,18 @@ function previewFor(entry: EventLogEntry) {
 }
 
 .delivery-pill.success {
-  color: #1cdb81;
-  border-color: rgb(28 219 129 / 0.25);
-  background: rgb(28 219 129 / 0.06);
+  color: oklch(37% 0.14 155);
+  border-color: oklch(83% 0.08 155);
+  background: oklch(95% 0.05 155);
 }
 
 .delivery-pill.error {
-  color: rgb(255 131 131);
-  border-color: rgb(255 131 131 / 0.25);
-  background: rgb(255 131 131 / 0.06);
+  color: oklch(43% 0.16 25);
+  border-color: oklch(84% 0.08 25);
+  background: oklch(96% 0.04 25);
 }
 
 @media (max-width: 720px) {
-  .event-row {
-    grid-template-columns: 1fr;
-    gap: 0.85rem;
-  }
-
   .event-header {
     flex-direction: column;
     align-items: flex-start;
