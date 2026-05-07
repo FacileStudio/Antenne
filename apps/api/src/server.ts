@@ -50,7 +50,7 @@ async function handleLoginForm(req: Request, options: AppServerOptions) {
 
   clearLoginFailures(req);
 
-  return redirectTo("/dashboard/", req, {
+  return redirectTo("/dashboard/providers", req, {
     status: 303,
     headers: {
       "Set-Cookie": buildSessionCookie(req, options.session),

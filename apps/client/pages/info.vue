@@ -1,5 +1,7 @@
 <script setup lang="ts">
-await navigateTo("/settings", { replace: true });
+definePageMeta({
+  middleware: () => navigateTo("/settings", { replace: true }),
+});
 </script>
 
 <template>

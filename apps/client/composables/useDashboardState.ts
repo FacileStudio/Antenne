@@ -94,7 +94,7 @@ export function useDashboardState() {
   const runtime = useState<RuntimeStatus | null>("dashboard-runtime", () => null);
   const matrixConfigured = useState("dashboard-matrix-configured", () => false);
   const passwordRequired = useState("dashboard-password-required", () => false);
-  const loading = useState("dashboard-loading", () => false);
+  const loading = useState("dashboard-loading", () => true);
   const saving = useState("dashboard-saving", () => false);
   const testing = useState("dashboard-testing", () => false);
   const error = useState("dashboard-error", () => "");

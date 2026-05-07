@@ -1,5 +1,7 @@
 <script setup lang="ts">
-await navigateTo("/providers");
+definePageMeta({
+  middleware: () => navigateTo("/providers", { replace: true }),
+});
 </script>
 
 <template>
