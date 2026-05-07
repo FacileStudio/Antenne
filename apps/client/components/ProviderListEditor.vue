@@ -5,6 +5,7 @@ import { reactive, ref } from "vue";
 import ProviderEditorFields from "./ProviderEditorFields.vue";
 import SideDrawer from "./SideDrawer.vue";
 import { useDashboardState } from "../composables/useDashboardState";
+import { createTagToneMap, getTagTone } from "../utils/provider-tags";
 import {
   createDefaultProvider,
   getProviderLabel,
@@ -32,6 +33,7 @@ const availableTags = computed(() =>
   [...new Set(props.modelValue.flatMap((provider) => provider.tags))]
     .sort((left, right) => left.localeCompare(right))
 );
+const tagToneMap = computed(() => createTagToneMap(availableTags.value));
 
 const visibleProviders = computed(() =>
   props.modelValue
@@ -153,6 +155,10 @@ function toggleTagFilter(tag: string) {
     : [...selectedTags.value, tag];
 }
 
+function clearTagFilters() {
+  selectedTags.value = [];
+}
+
 async function runProviderConnectionTest(provider: ProviderSettings) {
   testingProviders[provider.id] = true;
   const label = provider.name || getProviderLabel(provider.type);
@@ -193,8 +199,9 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
       <button
         v-for="tag in availableTags"
         :key="tag"
-        class="tag-filter"
-        :class="{ active: selectedTags.includes(tag) }"
+        class="tag-pill tag-pill--interactive tag-filter"
+        :class="{ 'tag-pill--selected': selectedTags.includes(tag) }"
+        :data-tag-tone="getTagTone(tag, tagToneMap)"
         type="button"
         @click="toggleTagFilter(tag)"
       >
@@ -204,7 +211,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         v-if="selectedTags.length > 0"
         class="ghost action-button clear-filters"
         type="button"
-        @click="selectedTags = []"
+        @click="clearTagFilters"
       >
         Clear
       </button>
@@ -228,7 +235,14 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
           <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>
-          <span v-for="tag in provider.tags" :key="tag" class="item-chip item-chip--tag">{{ tag }}</span>
+          <span
+            v-for="tag in provider.tags"
+            :key="tag"
+            class="tag-pill tag-pill--filled item-tag"
+            :data-tag-tone="getTagTone(tag, tagToneMap)"
+          >
+            {{ tag }}
+          </span>
         </div>
 
         <div class="item-actions">
@@ -258,6 +272,8 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         <ProviderEditorFields
           :editing-provider="editingProvider"
           :revealed-secrets="revealedSecrets"
+          :available-tags="availableTags"
+          :tag-tone-map="tagToneMap"
           @patch="patchProvider(editingIndex, $event)"
           @toggle-reveal="toggleReveal($event)"
         />
@@ -315,20 +331,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 }
 
 .tag-filter {
-  border: 1px solid var(--nook-border);
-  background: var(--nook-surface);
-  color: var(--nook-muted);
-  border-radius: var(--radius-pill);
-  padding: 0.32rem 0.7rem;
-  font: inherit;
-  cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
-}
-
-.tag-filter.active {
-  color: var(--nook-text);
-  border-color: rgb(28 219 129 / 0.45);
-  background: rgb(28 219 129 / 0.08);
+  min-height: 2rem;
 }
 
 .clear-filters {
@@ -392,10 +395,8 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   color: oklch(45% 0.18 25);
 }
 
-.item-chip--tag {
-  border-color: rgb(159 221 255 / 0.22);
-  background: rgb(159 221 255 / 0.08);
-  color: rgb(159 221 255);
+.item-tag {
+  min-height: 1.5rem;
 }
 
 .item-actions {

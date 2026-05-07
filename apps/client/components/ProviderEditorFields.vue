@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { Eye, EyeOff } from "lucide-vue-next";
 
+import TagPillInput from "./TagPillInput.vue";
 import type { ProviderSettings } from "../types";
 
-defineProps<{
+const props = defineProps<{
   editingProvider: ProviderSettings;
   revealedSecrets: Record<string, boolean>;
+  availableTags?: string[];
+  tagToneMap?: Record<string, number>;
 }>();
 
 const emit = defineEmits<{
@@ -27,12 +30,13 @@ const emit = defineEmits<{
 
   <label class="field">
     <span>Tags</span>
-    <input
-      :value="editingProvider.tags.join(', ')"
-      type="text"
-      placeholder="prod, customer-facing, matrix"
-      @input="emit('patch', { tags: ($event.target as HTMLInputElement).value.split(',').map((tag) => tag.trim()).filter(Boolean) })"
-    >
+    <TagPillInput
+      :model-value="props.editingProvider.tags"
+      :suggestions="props.availableTags"
+      :tone-map="props.tagToneMap"
+      :placeholder="'Type a tag and press Enter'"
+      @update:model-value="emit('patch', { tags: $event })"
+    />
   </label>
 
   <template v-if="editingProvider.type === 'website'">

@@ -5,6 +5,7 @@ import { ArrowLeft, RotateCcw } from "lucide-vue-next";
 import EventTimeline from "../../components/EventTimeline.vue";
 import { getProviderLabel } from "../../types";
 import type { EventLogEntry, EventLogStats } from "../../types";
+import { createTagToneMap, getTagTone } from "../../utils/provider-tags";
 import { useDashboardState } from "../../composables/useDashboardState";
 
 const route = useRoute();
@@ -17,6 +18,7 @@ const stats = ref<EventLogStats | null>(null);
 const loading = ref(false);
 
 const provider = computed(() => settings.providers.items.find((p) => p.id === providerId.value));
+const tagToneMap = computed(() => createTagToneMap(settings.providers.items.flatMap((item) => item.tags)));
 
 async function refresh() {
   loading.value = true;
@@ -48,7 +50,14 @@ onMounted(async () => {
     </div>
 
     <div v-if="provider && provider.tags.length > 0" class="detail-tags">
-      <span v-for="tag in provider.tags" :key="tag" class="detail-tag">{{ tag }}</span>
+      <span
+        v-for="tag in provider.tags"
+        :key="tag"
+        class="tag-pill tag-pill--filled detail-tag"
+        :data-tag-tone="getTagTone(tag, tagToneMap)"
+      >
+        {{ tag }}
+      </span>
     </div>
 
     <div v-if="stats" class="stats-row">
@@ -124,12 +133,7 @@ onMounted(async () => {
 }
 
 .detail-tag {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgb(159 221 255 / 0.22);
-  background: rgb(159 221 255 / 0.08);
-  color: rgb(159 221 255);
+  min-height: 1.7rem;
 }
 
 .stats-row {
