@@ -26,6 +26,20 @@ const revealedSecrets = reactive<Record<string, boolean>>({});
 const nextProviderType = ref<ProviderType>("website");
 const testingProviders = reactive<Record<string, boolean>>({});
 const editingIndex = ref<number | null>(null);
+const selectedTags = ref<string[]>([]);
+
+const availableTags = computed(() =>
+  [...new Set(props.modelValue.flatMap((provider) => provider.tags))]
+    .sort((left, right) => left.localeCompare(right))
+);
+
+const visibleProviders = computed(() =>
+  props.modelValue
+    .map((provider, index) => ({ provider, index }))
+    .filter(({ provider }) =>
+      selectedTags.value.length === 0 || selectedTags.value.every((tag) => provider.tags.includes(tag))
+    )
+);
 
 const editingProvider = computed(() =>
   editingIndex.value !== null ? props.modelValue[editingIndex.value] ?? null : null
@@ -133,6 +147,12 @@ function toggleReveal(id: string) {
   revealedSecrets[id] = !revealedSecrets[id];
 }
 
+function toggleTagFilter(tag: string) {
+  selectedTags.value = selectedTags.value.includes(tag)
+    ? selectedTags.value.filter((currentTag) => currentTag !== tag)
+    : [...selectedTags.value, tag];
+}
+
 async function runProviderConnectionTest(provider: ProviderSettings) {
   testingProviders[provider.id] = true;
   const label = provider.name || getProviderLabel(provider.type);
@@ -168,9 +188,33 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 
     <div v-if="modelValue.length === 0" class="empty">No providers configured.</div>
 
-    <div v-else class="items">
+    <div v-else-if="availableTags.length > 0" class="filter-bar">
+      <span class="filter-label">Filter by tags</span>
+      <button
+        v-for="tag in availableTags"
+        :key="tag"
+        class="tag-filter"
+        :class="{ active: selectedTags.includes(tag) }"
+        type="button"
+        @click="toggleTagFilter(tag)"
+      >
+        {{ tag }}
+      </button>
+      <button
+        v-if="selectedTags.length > 0"
+        class="ghost action-button clear-filters"
+        type="button"
+        @click="selectedTags = []"
+      >
+        Clear
+      </button>
+    </div>
+
+    <div v-if="modelValue.length > 0 && visibleProviders.length === 0" class="empty">No providers match current tag filter.</div>
+
+    <div v-else-if="modelValue.length > 0" class="items">
       <article
-        v-for="(provider, index) in modelValue"
+        v-for="({ provider, index }) in visibleProviders"
         :key="provider.id"
         class="item-card"
         :class="{ dimmed: !provider.enabled, 'drag-over': dragOverIndex === index && dragIndex !== index }"
@@ -184,6 +228,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
           <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>
+          <span v-for="tag in provider.tags" :key="tag" class="item-chip item-chip--tag">{{ tag }}</span>
         </div>
 
         <div class="item-actions">
@@ -257,6 +302,39 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   min-width: 15rem;
 }
 
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-size: 0.82rem;
+  color: var(--nook-muted);
+}
+
+.tag-filter {
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface);
+  color: var(--nook-muted);
+  border-radius: var(--radius-pill);
+  padding: 0.32rem 0.7rem;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+}
+
+.tag-filter.active {
+  color: var(--nook-text);
+  border-color: rgb(28 219 129 / 0.45);
+  background: rgb(28 219 129 / 0.08);
+}
+
+.clear-filters {
+  padding: 0.32rem 0.6rem;
+}
+
 .item-card {
   display: flex;
   align-items: center;
@@ -312,6 +390,12 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 .item-chip--off {
   border-color: oklch(60% 0.15 25 / 60%);
   color: oklch(45% 0.18 25);
+}
+
+.item-chip--tag {
+  border-color: rgb(159 221 255 / 0.22);
+  background: rgb(159 221 255 / 0.08);
+  color: rgb(159 221 255);
 }
 
 .item-actions {

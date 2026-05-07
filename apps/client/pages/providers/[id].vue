@@ -47,6 +47,10 @@ onMounted(async () => {
       <span class="detail-badge">{{ getProviderLabel(provider.type) }}</span>
     </div>
 
+    <div v-if="provider && provider.tags.length > 0" class="detail-tags">
+      <span v-for="tag in provider.tags" :key="tag" class="detail-tag">{{ tag }}</span>
+    </div>
+
     <div v-if="stats" class="stats-row">
       <div class="stat-card panel">
         <span class="stat-value">{{ stats.totalEvents }}</span>
@@ -111,6 +115,21 @@ onMounted(async () => {
   border: 1px solid var(--nook-border);
   background: var(--nook-surface);
   color: var(--nook-muted);
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.detail-tag {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgb(159 221 255 / 0.22);
+  background: rgb(159 221 255 / 0.08);
+  color: rgb(159 221 255);
 }
 
 .stats-row {

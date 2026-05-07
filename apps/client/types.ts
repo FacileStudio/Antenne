@@ -62,6 +62,7 @@ export interface WebsiteProviderSettings {
   type: "website";
   name: string;
   enabled: boolean;
+  tags: string[];
   url: string;
   interval: number;
 }
@@ -71,6 +72,7 @@ export interface WebhookProviderSettings {
   type: WebhookProviderType;
   name: string;
   enabled: boolean;
+  tags: string[];
   path: string;
   secretHeader: string | null;
   secretValue: string | null;
@@ -81,6 +83,7 @@ export interface ImapProviderSettings {
   type: "imap";
   name: string;
   enabled: boolean;
+  tags: string[];
   host: string;
   port: number;
   secure: boolean;
@@ -183,6 +186,7 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
       type,
       name: "Website",
       enabled: true,
+      tags: [],
       url: "https://",
       interval: 60,
     };
@@ -194,6 +198,7 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
       type,
       name: "IMAP Inbox",
       enabled: true,
+      tags: [],
       host: "",
       port: 993,
       secure: true,
@@ -208,6 +213,7 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
     type,
     name: getProviderLabel(type),
     enabled: true,
+    tags: [],
     path: type === "dokploy" ? "/webhook/dokploy" : type === "docuseal" ? "/webhook/docuseal" : type === "git" ? "/webhook/git" : type === "vikunja" ? "/webhook/vikunja" : type === "charles" ? "/webhook/charles" : type === "sablier" ? "/webhook/sablier" : "/webhook/uptime-kuma",
     secretHeader: type === "dokploy" ? "x-dokploy-secret" : type === "docuseal" ? "x-docuseal-secret" : type === "git" ? "x-hub-signature-256" : type === "vikunja" ? "x-vikunja-signature" : type === "charles" ? "x-charles-signature-256" : type === "sablier" ? "x-sablier-signature" : "x-webhook-secret",
     secretValue: "",
@@ -222,7 +228,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       name: "Matrix",
       enabled: true,
       providerIds: [],
-      homeserver: "",
+      homeserver: "https://matrix.org",
       accessToken: "",
       refreshToken: "",
       userId: "",

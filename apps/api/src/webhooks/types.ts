@@ -6,6 +6,7 @@ export interface BaseProviderSettings {
   type: ProviderType;
   name: string;
   enabled: boolean;
+  tags: string[];
 }
 
 export interface WebhookProviderSettings extends BaseProviderSettings {

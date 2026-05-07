@@ -44,7 +44,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       name: "Matrix",
       enabled: true,
       providerIds: [],
-      homeserver: "",
+      homeserver: "https://matrix.org",
       accessToken: "",
       refreshToken: null,
       userId: "",

@@ -115,6 +115,7 @@ export function createDefaultWebhookProvider(
     type,
     name: overrides.name?.trim() || getProviderLabel(type),
     enabled: overrides.enabled ?? true,
+    tags: overrides.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [],
     path: overrides.path?.trim() || getWebhookDefaultPath(type),
     secretHeader: overrides.secretHeader?.trim() || getWebhookDefaultSecretHeader(type),
     secretValue: overrides.secretValue?.trim() || null,
@@ -129,6 +130,7 @@ export function createDefaultImapProvider(
     type: "imap",
     name: overrides.name?.trim() || "IMAP Inbox",
     enabled: overrides.enabled ?? true,
+    tags: overrides.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [],
     host: overrides.host?.trim() || "",
     port: overrides.port ?? 993,
     secure: overrides.secure ?? true,
@@ -146,6 +148,7 @@ export function createDefaultWebsiteProvider(
     type: "website",
     name: overrides.name?.trim() || "Website",
     enabled: overrides.enabled ?? true,
+    tags: overrides.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [],
     url: overrides.url?.trim() || "https://",
     interval: overrides.interval ?? 60,
   };

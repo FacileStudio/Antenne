@@ -68,9 +68,10 @@ const providerOptions = computed(() => [
   </div>
 
   <template v-if="editingTarget.type === 'matrix'">
-    <label class="field required">
+    <label class="field">
       <span>Homeserver</span>
-      <input :value="editingTarget.homeserver" type="url" placeholder="https://matrix.example.com" @input="emit('patch', { homeserver: ($event.target as HTMLInputElement).value })">
+      <p class="field-hint">Prefilled with `https://matrix.org`. Change it only if this target uses another homeserver.</p>
+      <input :value="editingTarget.homeserver" type="url" placeholder="https://matrix.org" @input="emit('patch', { homeserver: ($event.target as HTMLInputElement).value })">
     </label>
 
     <label class="field">

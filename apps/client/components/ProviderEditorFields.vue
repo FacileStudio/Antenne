@@ -25,6 +25,16 @@ const emit = defineEmits<{
     <input :value="editingProvider.name" type="text" @input="emit('patch', { name: ($event.target as HTMLInputElement).value })">
   </label>
 
+  <label class="field">
+    <span>Tags</span>
+    <input
+      :value="editingProvider.tags.join(', ')"
+      type="text"
+      placeholder="prod, customer-facing, matrix"
+      @input="emit('patch', { tags: ($event.target as HTMLInputElement).value.split(',').map((tag) => tag.trim()).filter(Boolean) })"
+    >
+  </label>
+
   <template v-if="editingProvider.type === 'website'">
     <label class="field required">
       <span>URL</span>

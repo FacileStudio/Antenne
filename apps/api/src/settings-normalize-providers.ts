@@ -17,6 +17,7 @@ import {
   isPositiveNumber,
   normalizeBoolean,
   normalizeInteger,
+  normalizeList,
   normalizeString,
 } from "./settings-normalize-shared";
 
@@ -35,6 +36,7 @@ function normalizeWebsiteProvider(input: unknown, fallback?: WebsiteProviderSett
     id: normalizeString(candidate.id) || seed.id,
     name: normalizeString(candidate.name) || seed.name,
     enabled: normalizeBoolean(candidate.enabled, seed.enabled),
+    tags: "tags" in candidate ? normalizeList(candidate.tags) : seed.tags,
     url,
     interval,
   };
@@ -49,6 +51,7 @@ function normalizeImapProvider(input: unknown, fallback?: ImapProviderSettings):
     id: normalizeString(candidate.id) || seed.id,
     name: normalizeString(candidate.name) || seed.name,
     enabled: normalizeBoolean(candidate.enabled, seed.enabled),
+    tags: "tags" in candidate ? normalizeList(candidate.tags) : seed.tags,
     host: normalizeString(candidate.host) || seed.host,
     port: normalizeInteger(candidate.port, seed.port, `Provider \`${seed.name}\` port`),
     secure: typeof candidate.secure === "boolean" ? candidate.secure : seed.secure,
@@ -75,6 +78,7 @@ function normalizeWebhookProvider(input: unknown, fallback?: WebhookProviderSett
     id: normalizeString(candidate.id) || seed.id,
     name: normalizeString(candidate.name) || seed.name,
     enabled: normalizeBoolean(candidate.enabled, seed.enabled),
+    tags: "tags" in candidate ? normalizeList(candidate.tags) : seed.tags,
     path,
     secretHeader: normalizeString(candidate.secretHeader) || seed.secretHeader,
     secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : seed.secretValue,
