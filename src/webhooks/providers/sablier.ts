@@ -48,15 +48,15 @@ function formatSablierAlert(payload: SablierPayload): string | null {
   const desc = data.description ? `: ${escapeHtml(data.description)}` : "";
 
   if (event === "timer_started") {
-    return `⏱ <b>[Sablier]</b> Timer started${user}${project}${task}${desc}`;
+    return `<b>[Sablier]</b> Timer started${user}${project}${task}${desc}`;
   }
 
   if (event === "timer_stopped") {
     const duration = formatDuration(data.started_at, data.stopped_at);
-    return `⏹ <b>[Sablier]</b> Timer stopped${user}${project}${task}${desc}${duration}`;
+    return `<b>[Sablier]</b> Timer stopped${user}${project}${task}${desc}${duration}`;
   }
 
-  return `⏱ <b>[Sablier]</b> <code>${escapeHtml(event)}</code>`;
+  return `<b>[Sablier]</b> <code>${escapeHtml(event)}</code>`;
 }
 
 function parsePayload(payload: unknown): SablierPayload {

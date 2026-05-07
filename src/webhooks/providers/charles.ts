@@ -50,14 +50,13 @@ function formatActor(payload: CharlesWebhookPayload) {
 function formatAdminMessage(payload: CharlesWebhookPayload) {
   const event = payload.event ?? "admin.event";
   const [, entity = "record", action = "updated"] = event.split(".");
-  const emoji = action === "created" ? "🟢" : action === "deleted" ? "🔴" : "🛠️";
   const actor = escapeHtml(formatActor(payload));
   const entityLabel = escapeHtml(entity);
   const entityId = payload.data?.entityId ?? payload.data?.record?.id;
   const name = [payload.data?.record?.firstName, payload.data?.record?.lastName].filter(Boolean).join(" ");
   const email = payload.data?.record?.email;
   const parts = [
-    `${emoji} <b>[Charles]</b> ${actor} ${escapeHtml(action)} ${entityLabel}`,
+    `<b>[Charles]</b> ${actor} ${escapeHtml(action)} ${entityLabel}`,
     entityId ? `ID: <code>${escapeHtml(String(entityId))}</code>` : null,
     name ? `Name: <b>${escapeHtml(name)}</b>` : null,
     email ? `Email: <code>${escapeHtml(email)}</code>` : null,

@@ -118,7 +118,7 @@ async function updateSettings(input: unknown) {
     for (const provider of newlyEnabledProviders) {
       try {
         await sendConfiguredAlert(
-          `🟢 <b>Provider enabled</b><br/><b>${provider.name}</b> is now active.`,
+          `<b>Provider enabled</b><br/><b>${provider.name}</b> is now active.`,
           {
             providerId: SYSTEM_PROVIDER_ID,
             providerName: "Nook",
@@ -158,7 +158,7 @@ console.log(`[startup] webhooks: ${settings.providers.items.filter(isWebhookProv
 if (hasAnyDelivery(settings.delivery) && settings.system.events.startup) {
   try {
     await sendConfiguredAlert(
-      "🟢 <b>Nook started</b><br/>Dashboard and API ready.",
+      "<b>Nook started</b><br/>Dashboard and API ready.",
       {
         providerId: SYSTEM_PROVIDER_ID,
         providerName: "Nook",

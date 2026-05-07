@@ -20,7 +20,7 @@ function formatDokployAlert(payload: DokployWebhookPayload, context: WebhookDisp
   }
 
   const heading = title || context.providerName || "Dokploy";
-  const parts = [`🚀 <b>[Dokploy] ${escapeHtml(heading)}</b>`];
+  const parts = [`<b>[Dokploy] ${escapeHtml(heading)}</b>`];
 
   if (projectName || applicationName) {
     const segments: string[] = [];

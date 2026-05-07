@@ -95,7 +95,7 @@ function formatPush(payload: GitPayload): string | null {
   const commits = payload.commits ?? [];
   const count = commits.length || payload.total_commits_count || 0;
 
-  const parts = [`📦 <b>[${repo}]</b> ${actor} pushed ${count} commit${count !== 1 ? "s" : ""} to <code>${branch}</code>`];
+  const parts = [`<b>[${repo}]</b> ${actor} pushed ${count} commit${count !== 1 ? "s" : ""} to <code>${branch}</code>`];
 
   for (const commit of commits.slice(0, 3)) {
     const sha = commit.id ? `<code>${shortSha(commit.id)}</code>` : "";
@@ -125,10 +125,9 @@ function formatPullRequest(payload: GitPayload): string | null {
   const number = payload.pull_request?.number ?? payload.object_attributes?.iid ?? "";
   const url = payload.pull_request?.html_url ?? payload.object_attributes?.url;
 
-  const emoji = action === "opened" ? "🔀" : action === "closed" && (payload.pull_request?.merged) ? "🟣" : action === "closed" ? "🔴" : "🔀";
   const label = url ? `<a href="${escapeHtml(url)}">#${number}</a>` : `#${number}`;
 
-  return `${emoji} <b>[${repo}]</b> ${actor} ${escapeHtml(action)} PR ${label}: ${title}`;
+  return `<b>[${repo}]</b> ${actor} ${escapeHtml(action)} PR ${label}: ${title}`;
 }
 
 function formatIssue(payload: GitPayload): string | null {
@@ -142,10 +141,9 @@ function formatIssue(payload: GitPayload): string | null {
   const number = payload.issue?.number ?? payload.object_attributes?.iid ?? "";
   const url = payload.issue?.html_url ?? payload.object_attributes?.url;
 
-  const emoji = action === "opened" ? "🟢" : action === "closed" ? "🔴" : "📌";
   const label = url ? `<a href="${escapeHtml(url)}">#${number}</a>` : `#${number}`;
 
-  return `${emoji} <b>[${repo}]</b> ${actor} ${escapeHtml(action)} issue ${label}: ${title}`;
+  return `<b>[${repo}]</b> ${actor} ${escapeHtml(action)} issue ${label}: ${title}`;
 }
 
 function formatGenericEvent(payload: GitPayload): string | null {

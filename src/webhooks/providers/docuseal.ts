@@ -51,7 +51,7 @@ function formatDocuSealAlert(payload: DocuSealEventPayload): string | null {
 
   if (eventType === "form.completed") {
     const parts = [
-      `✅ <b>[DocuSeal] ${escapeHtml(templateName)}</b> completed`,
+      `<b>[DocuSeal] ${escapeHtml(templateName)}</b> completed`,
       submitter ? `Signer: <b>${escapeHtml(submitter)}</b>` : null,
       submissionId ? `Submission: ${renderCode(submissionId)}` : null,
       externalId ? `External ID: ${renderCode(externalId)}` : null,
@@ -64,7 +64,7 @@ function formatDocuSealAlert(payload: DocuSealEventPayload): string | null {
 
   if (eventType === "form.declined") {
     const parts = [
-      `🟠 <b>[DocuSeal] ${escapeHtml(templateName)}</b> declined`,
+      `<b>[DocuSeal] ${escapeHtml(templateName)}</b> declined`,
       submitter ? `Signer: <b>${escapeHtml(submitter)}</b>` : null,
       data.decline_reason ? `Reason: <i>${escapeHtml(data.decline_reason)}</i>` : null,
       submissionId ? `Submission: ${renderCode(submissionId)}` : null,
@@ -77,7 +77,7 @@ function formatDocuSealAlert(payload: DocuSealEventPayload): string | null {
   if (eventType === "form.started" || eventType === "form.viewed") {
     const verb = eventType === "form.started" ? "started" : "viewed";
     const parts = [
-      `ℹ️ <b>[DocuSeal] ${escapeHtml(templateName)}</b> ${verb}`,
+      `<b>[DocuSeal] ${escapeHtml(templateName)}</b> ${verb}`,
       submitter ? `Signer: <b>${escapeHtml(submitter)}</b>` : null,
       submissionId ? `Submission: ${renderCode(submissionId)}` : null,
       submissionUrl ? `<a href="${escapeHtml(submissionUrl)}">Open submission</a>` : null,

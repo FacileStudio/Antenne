@@ -32,7 +32,7 @@ export function createMonitorManager(sendAlert: (message: string, context: Monit
     if (state.up && state.consecutiveFailures >= 2) {
       state.up = false;
       state.lastChange = new Date();
-      await sendAlert(`🔴 <b>[Website] ${site.name}</b> is DOWN — ${reason}<br/><code>${site.url}</code>`, {
+      await sendAlert(`<b>[Website] ${site.name}</b> is DOWN — ${reason}<br/><code>${site.url}</code>`, {
         providerId: site.id,
         providerName: site.name,
         providerType: "website",
@@ -62,7 +62,7 @@ export function createMonitorManager(sendAlert: (message: string, context: Monit
       if (res.status < 400) {
         if (!entry.state.up) {
           const downtime = timeSince(entry.state.lastChange);
-          await sendAlert(`✅ <b>[Website] ${site.name}</b> is back up — was down for ${downtime}`, {
+          await sendAlert(`<b>[Website] ${site.name}</b> is back up — was down for ${downtime}`, {
             providerId: site.id,
             providerName: site.name,
             providerType: "website",
