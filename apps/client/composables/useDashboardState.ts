@@ -185,11 +185,14 @@ export function useDashboardState() {
   }
 
   async function logout() {
-    await apiFetch<{ ok: boolean }>("/api/logout", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-    window.location.href = "/dashboard";
+    try {
+      await apiFetch<{ ok: boolean }>("/api/logout", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+    } finally {
+      window.location.href = "/dashboard";
+    }
   }
 
   async function testDeliveryTarget(targetId: string) {
