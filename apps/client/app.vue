@@ -11,6 +11,7 @@ const {
   saving,
   testing,
   toasts,
+  passwordRequired,
   dismissToast,
   loadSettings,
   saveSettings,
@@ -44,6 +45,7 @@ onMounted(() => {
     <AppSidebar :sections="sections">
       <template #footer>
         <button
+          v-if="passwordRequired"
           type="button"
           class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
           @click="logout"

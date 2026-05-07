@@ -15,6 +15,12 @@ type SettingsResponse = {
   matrixConfigured: boolean;
 };
 
+type SessionResponse = {
+  authenticated: boolean;
+  passwordRequired: boolean;
+  username: string;
+};
+
 type Toast = {
   id: number;
   type: "success" | "error";
@@ -87,6 +93,7 @@ export function useDashboardState() {
   const settings = useState("dashboard-settings", () => reactive(defaultSettings()));
   const runtime = useState<RuntimeStatus | null>("dashboard-runtime", () => null);
   const matrixConfigured = useState("dashboard-matrix-configured", () => false);
+  const passwordRequired = useState("dashboard-password-required", () => false);
   const loading = useState("dashboard-loading", () => false);
   const saving = useState("dashboard-saving", () => false);
   const testing = useState("dashboard-testing", () => false);
@@ -132,10 +139,14 @@ export function useDashboardState() {
     error.value = "";
 
     try {
-      const payload = await apiFetch<SettingsResponse>("/api/settings");
+      const [payload, session] = await Promise.all([
+        apiFetch<SettingsResponse>("/api/settings"),
+        apiFetch<SessionResponse>("/api/session"),
+      ]);
       cloneFromPayload(settings.value, payload.settings);
       runtime.value = payload.runtime;
       matrixConfigured.value = payload.matrixConfigured;
+      passwordRequired.value = session.passwordRequired;
       loaded.value = true;
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : "Failed to load settings";
@@ -268,6 +279,7 @@ export function useDashboardState() {
     settings: settings.value,
     runtime,
     matrixConfigured,
+    passwordRequired,
     loading,
     saving,
     testing,
