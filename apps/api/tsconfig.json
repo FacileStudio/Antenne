@@ -26,5 +26,5 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "exclude": ["dashboard"]
+  "exclude": ["dashboard", "node_modules"]
 }

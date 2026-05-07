@@ -1,4 +1,8 @@
 node_modules
+apps/api/node_modules
+apps/client/node_modules
+apps/client/.nuxt
+apps/client/.output
+apps/api/dashboard
 config.yml
-nook-storage.json
 .DS_Store

@@ -18,6 +18,10 @@ export default defineNuxtConfig({
     prerender: {
       routes: ["/"],
     },
+    output: {
+      dir: "../api/dashboard/.output",
+      publicDir: "../api/dashboard/.output/public",
+    },
   },
   css: ["~/assets/main.css"],
 });

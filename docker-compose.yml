@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    expose:
+      - "${PORT:-9090}"
+    environment:
+      NOOK_SETTINGS_PATH: ${NOOK_SETTINGS_PATH:-/data/nook.json}
+      PORT: ${PORT:-9090}
+    volumes:
+      - app_data:/data
+
+volumes:
+  app_data:
+    name: nook_data

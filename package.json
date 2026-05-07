@@ -1,25 +1,10 @@
 {
-  "name": "Nook",
-  "module": "index.ts",
-  "scripts": {
-    "dev": "bun run index.ts",
-    "dashboard:dev": "bunx nuxi dev dashboard",
-    "dashboard:build": "bunx nuxi generate dashboard",
-    "typecheck": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "nuxt": "^4.4.2"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
+  "name": "nook",
   "private": true,
-  "type": "module",
-  "dependencies": {
-    "@iconify-json/solar": "^1.2.5",
-    "@iconify/vue": "^5.0.0",
-    "lucide-vue-next": "^1.0.0",
-    "vue": "^3.5.33"
+  "scripts": {
+    "dev": "cd apps/api && bun run dev",
+    "client:dev": "cd apps/client && bun run dev",
+    "client:build": "cd apps/client && bun run build",
+    "typecheck": "cd apps/api && tsc --noEmit"
   }
 }
