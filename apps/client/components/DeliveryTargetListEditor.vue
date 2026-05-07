@@ -12,6 +12,7 @@ import {
   type DeliveryTarget,
   type DeliveryTargetType,
   type ProviderSettings,
+  SYSTEM_PROVIDER_ID,
 } from "../types";
 
 const props = defineProps<{
@@ -46,8 +47,9 @@ function updateTargets(nextTargets: DeliveryTarget[]) {
 }
 
 function addTarget() {
+  const providerIds = [SYSTEM_PROVIDER_ID, ...props.providers.map((provider) => provider.id)];
   const nextTargets = [
-    createDefaultDeliveryTarget(nextTargetType.value),
+    { ...createDefaultDeliveryTarget(nextTargetType.value), providerIds },
     ...props.modelValue,
   ];
   updateTargets(nextTargets);

@@ -4,5 +4,4 @@ apps/client/node_modules
 apps/client/.nuxt
 apps/client/.output
 apps/api/dashboard
-config.yml
 .DS_Store

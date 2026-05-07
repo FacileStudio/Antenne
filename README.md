@@ -11,16 +11,16 @@ The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard
 - receives Uptime Kuma, DocuSeal, and Dokploy webhooks
 - delivers alerts to Matrix, Discord webhooks, HTTP webhooks, SMTP, and ntfy
 - serves a dashboard at `/dashboard`
-- keeps env and YAML as bootstrap defaults, with dashboard-saved settings overriding them later
+- keeps env as first-boot bootstrap defaults, with dashboard-saved settings overriding them later
 
 ## Config Model
 
 Nook uses two layers:
 
-1. bootstrap defaults from env vars and optional `config.yml`
+1. bootstrap defaults from env vars
 2. persistent dashboard settings in `/data/nook.json`
 
-If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env plus `config.yml`.
+If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env defaults.
 
 ## Environment Variables
 
@@ -30,7 +30,6 @@ If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env plu
 |---|---|---|
 | `PORT` | No | HTTP port for API, dashboard, health, and webhooks. Falls back to `WEBHOOK_PORT` or `9090`. |
 | `NOOK_SETTINGS_PATH` | No | JSON settings file path. Default: `/data/nook.json` |
-| `CONFIG_PATH` | No | Legacy YAML bootstrap file path. Default: `/data/config.yml` |
 
 ### Dashboard Auth
 
@@ -66,18 +65,17 @@ If `MATRIX_USER_ID` and `MATRIX_PASSWORD` are set, Nook will request refresh tok
 | `NTFY_TAGS` | No | Comma-separated tags |
 | `NTFY_CLICK_URL` | No | Optional click-through URL |
 
-### Monitoring Bootstrap
+### Runtime Bootstrap
 
 | Variable | Required | Description |
 |---|---|---|
 | `TIMEOUT` | No | Default timeout in seconds |
-| `EVERY` | No | Default website provider interval in seconds |
 
 ### Webhook Bootstrap
 
 | Variable | Required | Description |
 |---|---|---|
-| `WEBHOOK_ENABLED` | No | Global default for providers |
+| `WEBHOOK_ENABLED` | No | Global default for Uptime Kuma and DocuSeal providers |
 | `WEBHOOK_PORT` | No | Legacy port fallback if `PORT` is not set |
 | `WEBHOOK_SECRET` | No | Legacy shared secret for Uptime Kuma |
 | `UPTIME_KUMA_WEBHOOK_ENABLED` | No | Enable or disable Uptime Kuma provider |
@@ -92,22 +90,6 @@ If `MATRIX_USER_ID` and `MATRIX_PASSWORD` are set, Nook will request refresh tok
 | `DOKPLOY_WEBHOOK_PATH` | No | Default path: `/webhook/dokploy` |
 | `DOKPLOY_WEBHOOK_SECRET` | No | Dokploy secret value |
 | `DOKPLOY_WEBHOOK_SECRET_HEADER` | No | Default: `x-dokploy-secret` |
-
-## Legacy `config.yml`
-
-This is still valid as bootstrap input:
-
-```yaml
-timeout: 10
-every: 60
-sites:
-  - https://example.com
-  - name: API
-    url: https://api.example.com
-    every: 30
-```
-
-After saving from the dashboard, the resulting JSON settings file becomes the active config source.
 
 Saved dashboard settings use a single provider list. Each provider can be a website, IMAP inbox, or webhook source.
 

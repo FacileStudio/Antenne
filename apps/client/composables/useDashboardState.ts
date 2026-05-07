@@ -3,6 +3,7 @@ import { reactive } from "vue";
 import {
   createDefaultDeliveryTarget,
   createDefaultProvider,
+  SYSTEM_PROVIDER_ID,
   type AppSettings,
   type EventLogEntry,
   type EventLogStats,
@@ -30,30 +31,35 @@ type Toast = {
 let nextToastId = 1;
 const toastTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
-const defaultSettings = (): AppSettings => ({
-  delivery: {
-    items: [
-      createDefaultDeliveryTarget("matrix"),
-      createDefaultDeliveryTarget("discord"),
-      createDefaultDeliveryTarget("webhook"),
-    ],
-  },
-  system: {
-    events: {
-      startup: true,
-      providerEnabled: false,
+const defaultSettings = (): AppSettings => {
+  const providers = [
+    createDefaultProvider("website"),
+    createDefaultProvider("uptime-kuma"),
+    createDefaultProvider("docuseal"),
+  ];
+  const providerIds = [SYSTEM_PROVIDER_ID, ...providers.map((provider) => provider.id)];
+
+  return {
+    delivery: {
+      items: [
+        { ...createDefaultDeliveryTarget("matrix"), providerIds },
+        { ...createDefaultDeliveryTarget("discord"), providerIds },
+        { ...createDefaultDeliveryTarget("webhook"), providerIds },
+      ],
     },
-  },
-  timeout: 10,
-  providers: {
-    port: 9090,
-    items: [
-      createDefaultProvider("website"),
-      createDefaultProvider("uptime-kuma"),
-      createDefaultProvider("docuseal"),
-    ],
-  },
-});
+    system: {
+      events: {
+        startup: true,
+        providerEnabled: false,
+      },
+    },
+    timeout: 10,
+    providers: {
+      port: 9090,
+      items: providers,
+    },
+  };
+};
 
 function cloneFromPayload(target: AppSettings, next: AppSettings) {
   target.delivery.items = next.delivery.items.map((item) => ({ ...item }));

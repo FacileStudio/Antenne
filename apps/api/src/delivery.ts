@@ -114,16 +114,12 @@ function isKnownDeliveryTargetType(type: unknown): type is DeliveryTargetType {
   return type === "matrix" || type === "discord" || type === "webhook" || type === "smtp" || type === "ntfy";
 }
 
-function targetAcceptsProvider(target: DeliveryTarget, providerId: string | null): boolean {
-  if (!target.providerIds || target.providerIds.length === 0) {
-    return true;
-  }
-
+export function targetAcceptsProvider(target: DeliveryTarget, providerId: string | null): boolean {
   if (!providerId) {
     return false;
   }
 
-  return target.providerIds.includes(providerId);
+  return target.providerIds?.includes(providerId) ?? false;
 }
 
 function pushDeliveryTask(target: DeliveryTarget, message: string, targets: DeliveryTarget[], tasks: Promise<void>[]) {

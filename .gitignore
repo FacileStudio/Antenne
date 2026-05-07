@@ -11,8 +11,6 @@ dist
 
 .env
 .env.*
-config.yaml
-config.yml
 
 .eslintcache
 .cache

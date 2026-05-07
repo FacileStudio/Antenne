@@ -31,7 +31,7 @@ const infoItems = computed(() => [
   },
   {
     label: "Source",
-    value: runtime.value?.usingPersistedSettings ? "Dashboard override" : "Env/YAML defaults",
+    value: runtime.value?.usingPersistedSettings ? "Dashboard override" : "Env defaults",
   },
   {
     label: "Reloaded",

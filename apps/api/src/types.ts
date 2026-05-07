@@ -1,4 +1,4 @@
-import type { ProviderSettings, RawWebhookConfig } from "./webhooks/types";
+import type { ProviderSettings } from "./webhooks/types";
 
 export interface SiteState {
   up: boolean;
@@ -87,23 +87,6 @@ export interface AppSettings {
   system: SystemSettings;
   timeout: number;
   providers: ProvidersConfig;
-}
-
-export interface RawSiteOptions {
-  name?: string;
-  url?: string;
-  every?: number;
-  interval?: number;
-}
-
-export type RawSiteConfig = string | RawSiteOptions;
-
-export interface RawConfig {
-  timeout?: number;
-  every?: number;
-  interval?: number;
-  sites?: RawSiteConfig[];
-  webhook?: RawWebhookConfig;
 }
 
 export interface DashboardSessionConfig {
