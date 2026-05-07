@@ -92,6 +92,7 @@ If `MATRIX_USER_ID` and `MATRIX_PASSWORD` are set, Nook will request refresh tok
 | `DOKPLOY_WEBHOOK_SECRET_HEADER` | No | Default: `x-dokploy-secret` |
 
 Saved dashboard settings use a single provider list. Each provider can be a website, IMAP inbox, or webhook source.
+Delivery target provider filters are explicit: an empty provider selection means the target receives nothing.
 
 ## Routes
 

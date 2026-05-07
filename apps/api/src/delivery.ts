@@ -29,6 +29,23 @@ import type {
   NtfyDeliveryTarget,
 } from "./types";
 
+export interface DeliveryRouteSummary {
+  selectedTargets: DeliveryTarget[];
+  sendableTargets: DeliveryTarget[];
+  skippedByFilterCount: number;
+  skippedUnconfiguredTargets: DeliveryTarget[];
+}
+
+export class DeliveryError extends Error {
+  readonly attempts: DeliveryAttempt[];
+
+  constructor(message: string, attempts: DeliveryAttempt[]) {
+    super(message);
+    this.name = "DeliveryError";
+    this.attempts = attempts;
+  }
+}
+
 export {
   hasDiscordDelivery,
   hasHttpDelivery,
@@ -122,38 +139,39 @@ export function targetAcceptsProvider(target: DeliveryTarget, providerId: string
   return target.providerIds?.includes(providerId) ?? false;
 }
 
-function pushDeliveryTask(target: DeliveryTarget, message: string, targets: DeliveryTarget[], tasks: Promise<void>[]) {
-  if (isMatrixDeliveryTarget(target) && hasMatrixDelivery(target)) {
-    targets.push(target);
-    tasks.push(sendMatrixAlert(target, message));
-    return;
-  }
+export function getDeliveryRouteSummary(config: DeliveryConfig, providerId: string): DeliveryRouteSummary {
+  const selectedTargets = config.items.filter((target) => targetAcceptsProvider(target, providerId));
+  const sendableTargets = selectedTargets.filter((target) => canSendToDeliveryTarget(target));
 
-  if (isDiscordDeliveryTarget(target) && hasDiscordDelivery(target)) {
-    targets.push(target);
-    tasks.push(sendDiscordAlert(target, message));
-    return;
-  }
-
-  if (isSmtpDeliveryTarget(target) && hasSmtpDelivery(target)) {
-    targets.push(target);
-    tasks.push(sendSmtpAlert(target, message));
-    return;
-  }
-
-  if (isNtfyDeliveryTarget(target) && hasNtfyDelivery(target)) {
-    targets.push(target);
-    tasks.push(sendNtfyAlert(target, message));
-    return;
-  }
-
-  if (isHttpDeliveryTarget(target) && hasHttpDelivery(target)) {
-    targets.push(target);
-    tasks.push(sendHttpAlert(target, message));
-  }
+  return {
+    selectedTargets,
+    sendableTargets,
+    skippedByFilterCount: config.items.length - selectedTargets.length,
+    skippedUnconfiguredTargets: selectedTargets.filter((target) => !sendableTargets.includes(target)),
+  };
 }
 
-export async function sendAlert(config: DeliveryConfig, message: string, providerId?: string | null): Promise<DeliveryAttempt[]> {
+function createDeliveryTask(target: DeliveryTarget, message: string): Promise<void> | null {
+  if (isMatrixDeliveryTarget(target)) {
+    return hasMatrixDelivery(target) ? sendMatrixAlert(target, message) : null;
+  }
+
+  if (isDiscordDeliveryTarget(target)) {
+    return hasDiscordDelivery(target) ? sendDiscordAlert(target, message) : null;
+  }
+
+  if (isSmtpDeliveryTarget(target)) {
+    return hasSmtpDelivery(target) ? sendSmtpAlert(target, message) : null;
+  }
+
+  if (isNtfyDeliveryTarget(target)) {
+    return hasNtfyDelivery(target) ? sendNtfyAlert(target, message) : null;
+  }
+
+  return isHttpDeliveryTarget(target) && hasHttpDelivery(target) ? sendHttpAlert(target, message) : null;
+}
+
+export async function sendAlert(config: DeliveryConfig, message: string, providerId: string): Promise<DeliveryAttempt[]> {
   if (!hasAnyDelivery(config)) {
     throw new Error("No delivery channel is configured.");
   }
@@ -164,15 +182,15 @@ export async function sendAlert(config: DeliveryConfig, message: string, provide
     }
   }
 
-  const targets: DeliveryTarget[] = [];
+  const route = getDeliveryRouteSummary(config, providerId);
+  const targets: DeliveryTarget[] = route.sendableTargets;
   const tasks: Promise<void>[] = [];
 
-  for (const target of config.items) {
-    if (!targetAcceptsProvider(target, providerId ?? null)) {
-      continue;
+  for (const target of targets) {
+    const task = createDeliveryTask(target, message);
+    if (task) {
+      tasks.push(task);
     }
-
-    pushDeliveryTask(target, message, targets, tasks);
   }
 
   if (tasks.length === 0) {
@@ -201,7 +219,7 @@ export async function sendAlert(config: DeliveryConfig, message: string, provide
   }
 
   if (failures.length === tasks.length) {
-    throw new Error("All configured delivery channels failed.");
+    throw new DeliveryError("All configured delivery channels failed.", attempts);
   }
 
   return attempts;

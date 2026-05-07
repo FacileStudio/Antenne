@@ -1,9 +1,9 @@
 import { createImapManager, testImapConnection } from "./src/imap";
 import { createMonitorManager } from "./src/monitor";
-import { hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
+import { DeliveryError, getDeliveryRouteSummary, hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
 import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
-import { initEventLog, pushEvent, updateEventDeliveries } from "./src/event-log";
+import { initEventLog, pushEvent, updateEventDeliveries, type DeliveryAttempt } from "./src/event-log";
 import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
   createInitialRuntimeStatus,
@@ -24,36 +24,83 @@ const store = new SettingsStore(defaults, initialSettings, settingsPath, Boolean
 const runtimeStatus = createInitialRuntimeStatus(settingsPath, Boolean(persistedSettings));
 const session = createDashboardSessionConfig();
 
-async function sendConfiguredAlert(message: string, context?: { providerId: string; providerName: string; providerType: string; event: string }) {
+type AlertContext = {
+  providerId: string;
+  providerName: string;
+  providerType: string;
+  event: string;
+};
+
+function getAlertSource(context?: AlertContext) {
+  if (context?.providerType === "website") return "website";
+  if (context?.providerType === "imap") return "imap";
+  if (context?.providerType === "system") return "system";
+  return context ? "webhook" : "system";
+}
+
+function describeAlertSource(context: AlertContext | undefined, providerId: string) {
+  const providerName = context?.providerName ?? "Nook";
+  const providerType = context?.providerType ?? "system";
+  return `${providerName} (${providerType}:${providerId})`;
+}
+
+function describeTargets(deliveries: DeliveryAttempt[]) {
+  return deliveries.map((delivery) => `${delivery.targetName}(${delivery.targetType})`).join(", ") || "none";
+}
+
+function describeConfiguredTargets(targets: { name: string; type: string }[]) {
+  return targets.map((target) => `${target.name}(${target.type})`).join(", ") || "none";
+}
+
+async function sendConfiguredAlert(message: string, context?: AlertContext): Promise<DeliveryAttempt[]> {
   const settings = store.getSettings();
   if (!hasAnyDelivery(settings.delivery)) {
     throw new Error("No delivery target configured. Add and enable at least one delivery target first.");
   }
 
-  const source = (
-    context?.providerType === "website"
-      ? "website"
-      : context?.providerType === "imap"
-        ? "imap"
-        : context?.providerType === "system"
-          ? "system"
-          : context
-            ? "webhook"
-            : "system"
-  ) as "webhook" | "website" | "imap" | "system";
+  const providerId = context?.providerId ?? SYSTEM_PROVIDER_ID;
+  const route = getDeliveryRouteSummary(settings.delivery, providerId);
+  const source = getAlertSource(context);
+  const sourceLabel = describeAlertSource(context, providerId);
+  const eventLabel = context?.event ?? message.slice(0, 80);
 
   const entry = pushEvent({
     source,
-    providerId: context?.providerId ?? null,
+    providerId,
     providerName: context?.providerName ?? "Nook",
     providerType: context?.providerType ?? "system",
-    event: context?.event ?? message.slice(0, 80),
+    event: eventLabel,
     message,
     deliveries: [],
   });
 
-  const deliveries = await sendAlert(settings.delivery, message, context?.providerId ?? SYSTEM_PROVIDER_ID);
-  updateEventDeliveries(entry.id, deliveries);
+  if (route.selectedTargets.length === 0) {
+    console.log(`[delivery] skipped \`${eventLabel}\` from ${sourceLabel}: no selected delivery targets`);
+    updateEventDeliveries(entry.id, []);
+    return [];
+  }
+
+  if (route.sendableTargets.length === 0) {
+    console.warn(`[delivery] skipped \`${eventLabel}\` from ${sourceLabel}: selected targets are not fully configured (${describeConfiguredTargets(route.skippedUnconfiguredTargets)})`);
+    updateEventDeliveries(entry.id, []);
+    return [];
+  }
+
+  try {
+    const deliveries = await sendAlert(settings.delivery, message, providerId);
+    updateEventDeliveries(entry.id, deliveries);
+    const successCount = deliveries.filter((delivery) => delivery.status === "success").length;
+    const errorCount = deliveries.length - successCount;
+    console.log(`[delivery] \`${eventLabel}\` from ${sourceLabel}: ${successCount} delivered, ${errorCount} failed, ${route.skippedByFilterCount} filtered; targets: ${describeTargets(deliveries)}`);
+    return deliveries;
+  } catch (error) {
+    if (error instanceof DeliveryError) {
+      updateEventDeliveries(entry.id, error.attempts);
+      console.error(`[delivery] \`${eventLabel}\` from ${sourceLabel}: all selected targets failed; targets: ${describeTargets(error.attempts)}`);
+    }
+
+    throw error;
+  }
 }
 
 function getNewlyEnabledProviders(previous: AppSettings, next: AppSettings) {
@@ -157,7 +204,7 @@ console.log(`[startup] webhooks: ${settings.providers.items.filter(isWebhookProv
 
 if (hasAnyDelivery(settings.delivery) && settings.system.events.startup) {
   try {
-    await sendConfiguredAlert(
+    const deliveries = await sendConfiguredAlert(
       "<b>Nook started</b><br/>Dashboard and API ready.",
       {
         providerId: SYSTEM_PROVIDER_ID,
@@ -166,7 +213,11 @@ if (hasAnyDelivery(settings.delivery) && settings.system.events.startup) {
         event: "nook started",
       },
     );
-    console.log("[startup] Startup notification sent");
+    if (deliveries.length > 0) {
+      console.log("[startup] Startup notification delivered");
+    } else {
+      console.log("[startup] Startup notification skipped by provider filters");
+    }
   } catch (error) {
     console.error(`[startup] Failed to send startup notification: ${error instanceof Error ? error.message : String(error)}`);
   }

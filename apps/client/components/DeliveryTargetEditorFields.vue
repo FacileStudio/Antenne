@@ -45,7 +45,7 @@ const providerOptions = computed(() => [
 
   <div class="field">
     <span>Providers</span>
-    <p class="field-hint">Select which providers send to this target. Leave empty for all.</p>
+    <p class="field-hint">Select which providers send to this target. Empty means this target receives nothing.</p>
     <div class="provider-picker">
       <label
         v-for="provider in providerOptions"

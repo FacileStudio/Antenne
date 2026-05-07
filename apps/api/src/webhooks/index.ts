@@ -1,4 +1,5 @@
 import type { AppSettings } from "../types";
+import type { DeliveryAttempt } from "../event-log";
 import type {
   ConfiguredWebhookProvider,
   ProvidersConfigInput,
@@ -76,7 +77,7 @@ export interface WebhookAlertContext {
 export async function handleWebhookRequest(
   req: Request,
   settings: AppSettings,
-  sendAlert: (message: string, context: WebhookAlertContext) => Promise<void>,
+  sendAlert: (message: string, context: WebhookAlertContext) => Promise<DeliveryAttempt[]>,
 ): Promise<Response> {
   if (req.method !== "POST") {
     return new Response("not found", { status: 404 });
