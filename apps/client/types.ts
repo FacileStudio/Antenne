@@ -97,6 +97,7 @@ export interface ImapProviderSettings {
   username: string;
   password: string | null;
   pollInterval: number;
+  includeEmailBody: boolean;
 }
 
 export type ProviderSettings = WebsiteProviderSettings | WebhookProviderSettings | ImapProviderSettings;
@@ -214,6 +215,7 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
       username: "",
       password: "",
       pollInterval: 60,
+      includeEmailBody: false,
     };
   }
 

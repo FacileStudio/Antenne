@@ -58,6 +58,7 @@ function normalizeImapProvider(input: unknown, fallback?: ImapProviderSettings):
     username: normalizeString(candidate.username) || seed.username,
     password: "password" in candidate ? (normalizeString(candidate.password) || null) : seed.password,
     pollInterval: normalizeInteger(candidate.pollInterval, seed.pollInterval, `Provider \`${seed.name}\` poll interval`),
+    includeEmailBody: normalizeBoolean(candidate.includeEmailBody, seed.includeEmailBody),
   };
 }
 

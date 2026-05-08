@@ -17,6 +17,7 @@ interface ImapFetchResult {
   subject: string | null;
   from: string | null;
   date: string | null;
+  body: string | null;
 }
 
 const defaultImapMailbox = "INBOX";
@@ -226,7 +227,35 @@ class ImapSession {
       subject: rawSubject ? decodeMimeWord(rawSubject) : null,
       from: rawFrom ? decodeMimeWord(rawFrom) : null,
       date: headers.get("date") ?? null,
+      body: null,
     };
+  }
+
+  async fetchPlainTextBody(uid: number): Promise<string | null> {
+    const lines = await this.command(`UID FETCH ${uid} (BODY.PEEK[TEXT])`);
+    const bodyLines: string[] = [];
+    let collecting = false;
+
+    for (const line of lines) {
+      if (line.startsWith("* ") && line.includes("{")) {
+        collecting = true;
+        continue;
+      }
+
+      if (!collecting) {
+        continue;
+      }
+
+      if (line === ")" || line.startsWith("A")) {
+        collecting = false;
+        continue;
+      }
+
+      bodyLines.push(line);
+    }
+
+    const raw = bodyLines.join("\n").trim();
+    return raw || null;
   }
 
   async close() {
@@ -265,6 +294,10 @@ function buildMessage(provider: ImapProviderSettings, message: ImapFetchResult) 
     parts.push(`Date: <code>${escapeHtml(formatTimestamp(message.date))}</code>`);
   }
 
+  if (message.body) {
+    parts.push(`<pre>${escapeHtml(message.body)}</pre>`);
+  }
+
   return parts.join("<br/>");
 }
 
@@ -301,6 +334,9 @@ export function createImapManager(sendAlert: (message: string, context: ImapAler
       const newUids = uids.filter((uid) => uid > (entry.lastSeenUid ?? 0));
       for (const uid of newUids) {
         const message = await session.fetchHeaders(uid);
+        if (provider.includeEmailBody) {
+          message.body = await session.fetchPlainTextBody(uid);
+        }
         await sendAlert(buildMessage(provider, message), {
           providerId: provider.id,
           providerName: provider.name,
@@ -323,6 +359,7 @@ export function createImapManager(sendAlert: (message: string, context: ImapAler
             subject: message.subject,
             from: message.from,
             date: message.date,
+            body: message.body,
           },
           containsPii: true,
         });

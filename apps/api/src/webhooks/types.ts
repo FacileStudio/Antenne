@@ -26,6 +26,7 @@ export interface ImapProviderSettings extends BaseProviderSettings {
   username: string;
   password: string | null;
   pollInterval: number;
+  includeEmailBody: boolean;
 }
 
 export interface WebsiteProviderSettings extends BaseProviderSettings {

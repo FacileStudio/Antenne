@@ -137,6 +137,7 @@ export function createDefaultImapProvider(
     username: overrides.username?.trim() || "",
     password: overrides.password?.trim() || null,
     pollInterval: overrides.pollInterval ?? 60,
+    includeEmailBody: overrides.includeEmailBody ?? false,
   };
 }
 
