@@ -108,4 +108,35 @@ export const charlesWebhookProvider: WebhookProviderDefinition = {
   describeEvent(payload) {
     return parsePayload(payload).event ?? "charles event";
   },
+  buildEvent(payload) {
+    const parsed = parsePayload(payload);
+    const entityType = parsed.data?.entity ?? parsed.event?.split(".")[1] ?? "client";
+    const record = parsed.data?.record;
+    const name = [record?.firstName, record?.lastName].filter(Boolean).join(" ") || null;
+    return {
+      eventType: parsed.event ?? "charles.event",
+      eventTitle: parsed.event ? toTitle(parsed.event) : "Charles event",
+      occurredAt: parsed.createdAt ?? null,
+      actor: {
+        id: parsed.actor?.id ?? null,
+        email: parsed.actor?.email ?? null,
+        name: parsed.actor?.role ?? null,
+      },
+      subject: {
+        type: "client",
+        id: parsed.data?.entityId ?? record?.id ?? parsed.id ?? null,
+        name: name ?? record?.email ?? entityType,
+        url: null,
+      },
+      normalizedPayload: {
+        event: parsed.event ?? null,
+        source: parsed.source ?? null,
+        entity: entityType,
+        entityId: parsed.data?.entityId ?? record?.id ?? null,
+        changedFields: parsed.data?.changedFields ?? [],
+        recordEmail: record?.email ?? null,
+      },
+      containsPii: true,
+    };
+  },
 };

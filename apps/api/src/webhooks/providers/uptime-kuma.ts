@@ -38,4 +38,32 @@ export const uptimeKumaWebhookProvider: WebhookProviderDefinition = {
     const parsed = parsePayload(payload);
     return parsed.msg ?? parsed.monitor?.name ?? parsed.monitor?.url ?? "unknown";
   },
+  buildEvent(payload) {
+    const parsed = parsePayload(payload);
+    const monitor = parsed.monitor;
+    const heartbeat = parsed.heartbeat;
+    const name = monitor?.name ?? monitor?.url ?? "unknown";
+    const status = heartbeat?.status === 1 ? "up" : heartbeat?.status === 0 ? "down" : "unknown";
+    return {
+      eventType: `uptime-kuma.${status}`,
+      eventTitle: `${name} ${status}`,
+      eventUrl: monitor?.url ?? null,
+      occurredAt: heartbeat?.time ?? null,
+      subject: {
+        type: "service",
+        id: monitor?.id ? String(monitor.id) : heartbeat?.monitorID ? String(heartbeat.monitorID) : null,
+        name,
+        url: monitor?.url ?? null,
+      },
+      normalizedPayload: {
+        status,
+        monitorId: monitor?.id ?? heartbeat?.monitorID ?? null,
+        monitorName: monitor?.name ?? null,
+        url: monitor?.url ?? null,
+        message: heartbeat?.msg ?? parsed.msg ?? null,
+        ping: heartbeat?.ping ?? null,
+        duration: heartbeat?.duration ?? null,
+      },
+    };
+  },
 };

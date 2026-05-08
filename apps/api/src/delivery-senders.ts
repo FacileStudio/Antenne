@@ -4,7 +4,6 @@ import { connect as connectTls } from "node:tls";
 import { htmlToPlainText } from "./delivery-utils";
 import type {
   DiscordDeliveryTarget,
-  HttpDeliveryTarget,
   NtfyDeliveryTarget,
   SmtpDeliveryTarget,
 } from "./types";
@@ -76,33 +75,6 @@ export async function sendDiscordAlert(config: DiscordDeliveryTarget, message: s
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Discord webhook -> HTTP ${res.status}${text ? ` ${text}` : ""}`);
-  }
-}
-
-export async function sendHttpAlert(config: HttpDeliveryTarget, message: string) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "User-Agent": "Nook/1.0 uptime-bot",
-  };
-
-  if (config.secretHeader && config.secretValue) {
-    headers[config.secretHeader] = config.secretValue;
-  }
-
-  const res = await fetch(config.url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      source: "nook",
-      message,
-      text: htmlToPlainText(message),
-      sentAt: new Date().toISOString(),
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`HTTP delivery webhook -> HTTP ${res.status}${text ? ` ${text}` : ""}`);
   }
 }
 
@@ -216,10 +188,6 @@ export function hasSmtpDelivery(config: SmtpDeliveryTarget): boolean {
 
 export function hasDiscordDelivery(config: DiscordDeliveryTarget): boolean {
   return Boolean(config.enabled && config.webhookUrl);
-}
-
-export function hasHttpDelivery(config: HttpDeliveryTarget): boolean {
-  return Boolean(config.enabled && config.url);
 }
 
 export function hasNtfyDelivery(config: NtfyDeliveryTarget): boolean {

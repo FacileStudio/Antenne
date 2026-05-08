@@ -6,6 +6,7 @@ import type {
   HttpDeliveryTarget,
   MatrixDeliveryTarget,
   NtfyDeliveryTarget,
+  PerceptionDeliveryTarget,
   SmtpDeliveryTarget,
 } from "./types";
 import {
@@ -18,7 +19,7 @@ import {
 } from "./settings-normalize-shared";
 
 export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
-  const candidate = input && typeof input === "object" ? input as Partial<DeliveryTarget> : {};
+  const candidate = input && typeof input === "object" ? input as Partial<DeliveryTarget> & Record<string, unknown> : {};
   const type = candidate.type;
   const providerIds = normalizeProviderIds(candidate.providerIds);
 
@@ -88,6 +89,20 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
     };
   }
 
+  if (type === "perception") {
+    const fallback = createDefaultDeliveryTarget("perception") as PerceptionDeliveryTarget;
+    return {
+      ...fallback,
+      id: normalizeString(candidate.id) || fallback.id,
+      name: normalizeString(candidate.name) || fallback.name,
+      enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
+      providerIds,
+      url: "url" in candidate ? normalizeString(candidate.url) : fallback.url,
+      secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : fallback.secretValue,
+      includeRawPayload: "includeRawPayload" in candidate ? normalizeBoolean(candidate.includeRawPayload, fallback.includeRawPayload) : fallback.includeRawPayload,
+    };
+  }
+
   if (typeof type === "string" && type !== "webhook") {
     throw new Error(`Unknown delivery target type \`${type}\`.`);
   }
@@ -100,8 +115,8 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
     enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
     providerIds,
     url: "url" in candidate ? normalizeString(candidate.url) : fallback.url,
-    secretHeader: "secretHeader" in candidate ? (normalizeString(candidate.secretHeader) || null) : fallback.secretHeader,
     secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : fallback.secretValue,
+    includeRawPayload: "includeRawPayload" in candidate ? normalizeBoolean(candidate.includeRawPayload, fallback.includeRawPayload) : fallback.includeRawPayload,
   };
 }
 
@@ -151,7 +166,7 @@ export function normalizeDeliveryConfig(input: unknown, fallback: AppSettings["d
         };
       }
 
-      if (target.type === "smtp" || target.type === "ntfy") {
+      if (target.type === "smtp" || target.type === "ntfy" || target.type === "perception") {
         return target;
       }
 
@@ -160,7 +175,6 @@ export function normalizeDeliveryConfig(input: unknown, fallback: AppSettings["d
         ...target,
         enabled: typeof webhook.enabled === "boolean" ? webhook.enabled : target.enabled,
         url: "url" in webhook ? normalizeString(webhook.url) : target.url,
-        secretHeader: "secretHeader" in webhook ? (normalizeString(webhook.secretHeader) || null) : target.secretHeader,
         secretValue: "secretValue" in webhook ? (normalizeString(webhook.secretValue) || null) : target.secretValue,
       };
     }),

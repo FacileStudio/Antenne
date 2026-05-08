@@ -2,6 +2,7 @@ import { createImapManager, testImapConnection } from "./src/imap";
 import { createMonitorManager } from "./src/monitor";
 import { DeliveryError, getDeliveryRouteSummary, hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
 import { isMatrixDeliveryTarget } from "./src/delivery-config";
+import { buildNookEventEnvelope } from "./src/event-envelope";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
 import { initEventLog, pushEvent, updateEventDeliveries, type DeliveryAttempt } from "./src/event-log";
 import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
@@ -13,6 +14,7 @@ import {
   SettingsStore,
 } from "./src/settings";
 import { SYSTEM_PROVIDER_ID, type AppSettings } from "./src/types";
+import type { AlertContext, DeliveryMessage } from "./src/types";
 
 const settingsPath = getSettingsPath();
 const eventLogPath = settingsPath.replace(/\.json$/, "-events.json");
@@ -24,18 +26,19 @@ const store = new SettingsStore(defaults, initialSettings, settingsPath, Boolean
 const runtimeStatus = createInitialRuntimeStatus(settingsPath, Boolean(persistedSettings));
 const session = createDashboardSessionConfig();
 
-type AlertContext = {
-  providerId: string;
-  providerName: string;
-  providerType: string;
-  event: string;
-};
-
 function getAlertSource(context?: AlertContext) {
   if (context?.providerType === "website") return "website";
   if (context?.providerType === "imap") return "imap";
   if (context?.providerType === "system") return "system";
   return context ? "webhook" : "system";
+}
+
+function getProviderTags(settings: AppSettings, providerId: string) {
+  if (providerId === SYSTEM_PROVIDER_ID) {
+    return [];
+  }
+
+  return settings.providers.items.find((provider) => provider.id === providerId)?.tags ?? [];
 }
 
 function describeAlertSource(context: AlertContext | undefined, providerId: string) {
@@ -63,6 +66,30 @@ async function sendConfiguredAlert(message: string, context?: AlertContext): Pro
   const source = getAlertSource(context);
   const sourceLabel = describeAlertSource(context, providerId);
   const eventLabel = context?.event ?? message.slice(0, 80);
+  const envelope = buildNookEventEnvelope({
+    source,
+    providerId,
+    providerName: context?.providerName ?? "Nook",
+    providerType: context?.providerType ?? "system",
+    providerTags: context?.providerTags ?? getProviderTags(settings, providerId),
+    eventType: context?.eventType ?? eventLabel,
+    eventTitle: context?.eventTitle ?? eventLabel,
+    eventUrl: context?.eventUrl ?? null,
+    messageHtml: message,
+    actor: context?.actor ?? null,
+    subject: context?.subject ?? {
+      type: context?.providerType === "system" || !context ? "system" : "unknown",
+      id: null,
+      name: context?.providerName ?? "Nook",
+      url: null,
+    },
+    normalizedPayload: context?.normalizedPayload ?? {},
+    rawPayload: context?.rawPayload ?? null,
+    occurredAt: context?.occurredAt ?? null,
+    containsPii: context?.containsPii ?? false,
+    rawPayloadAllowed: context?.rawPayloadAllowed ?? false,
+  });
+  const delivery: DeliveryMessage = { message, envelope };
 
   const entry = pushEvent({
     source,
@@ -71,6 +98,7 @@ async function sendConfiguredAlert(message: string, context?: AlertContext): Pro
     providerType: context?.providerType ?? "system",
     event: eventLabel,
     message,
+    envelope,
     deliveries: [],
   });
 
@@ -87,7 +115,7 @@ async function sendConfiguredAlert(message: string, context?: AlertContext): Pro
   }
 
   try {
-    const deliveries = await sendAlert(settings.delivery, message, providerId);
+    const deliveries = await sendAlert(settings.delivery, delivery, providerId);
     updateEventDeliveries(entry.id, deliveries);
     const successCount = deliveries.filter((delivery) => delivery.status === "success").length;
     const errorCount = deliveries.length - successCount;
@@ -115,7 +143,29 @@ async function sendTestAlertToTarget(targetId: string) {
     throw new Error("Delivery target not found.");
   }
 
-  await sendAlertToTarget(target, `🧪 <b>Nook target test</b><br/>Target <b>${target.name}</b> is configured.`);
+  const message = `🧪 <b>Nook target test</b><br/>Target <b>${target.name}</b> is configured.`;
+  await sendAlertToTarget(target, {
+    message,
+    envelope: buildNookEventEnvelope({
+      source: "test",
+      providerId: SYSTEM_PROVIDER_ID,
+      providerName: "Nook",
+      providerType: "system",
+      eventType: "target test",
+      eventTitle: "Nook target test",
+      messageHtml: message,
+      subject: {
+        type: "system",
+        id: target.id,
+        name: target.name,
+        url: null,
+      },
+      normalizedPayload: {
+        targetId: target.id,
+        targetType: target.type,
+      },
+    }),
+  });
 }
 
 async function testProviderConnection(providerId: string) {

@@ -2,7 +2,7 @@ import { connect as connectNet } from "node:net";
 import { connect as connectTls, TLSSocket } from "node:tls";
 
 import { formatTimestamp } from "./format";
-import type { AppSettings } from "./types";
+import type { AlertContext, AppSettings } from "./types";
 import { isImapProviderSettings, type ImapProviderSettings } from "./webhooks/types";
 
 interface ImapEntryState {
@@ -268,11 +268,8 @@ function buildMessage(provider: ImapProviderSettings, message: ImapFetchResult) 
   return parts.join("<br/>");
 }
 
-export interface ImapAlertContext {
-  providerId: string;
-  providerName: string;
+export interface ImapAlertContext extends AlertContext {
   providerType: "imap";
-  event: string;
 }
 
 export function createImapManager(sendAlert: (message: string, context: ImapAlertContext) => Promise<void>) {
@@ -309,6 +306,25 @@ export function createImapManager(sendAlert: (message: string, context: ImapAler
           providerName: provider.name,
           providerType: "imap",
           event: `new email: ${message.subject ?? "no subject"}`,
+          eventType: "imap.email.received",
+          eventTitle: message.subject ?? "New email",
+          occurredAt: message.date,
+          actor: {
+            email: message.from,
+          },
+          subject: {
+            type: "email",
+            id: String(message.uid),
+            name: message.subject ?? "No subject",
+            url: null,
+          },
+          normalizedPayload: {
+            uid: message.uid,
+            subject: message.subject,
+            from: message.from,
+            date: message.date,
+          },
+          containsPii: true,
         });
         entry.lastSeenUid = uid;
       }

@@ -58,4 +58,30 @@ export const dokployWebhookProvider: WebhookProviderDefinition = {
     const event = parsed.title ?? parsed.message ?? "unknown";
     return label ? `${event} (${label})` : event;
   },
+  buildEvent(payload) {
+    const parsed = parsePayload(payload);
+    const name = [parsed.projectName, parsed.applicationName].filter(Boolean).join(" / ") || (parsed.title ?? "Dokploy");
+    return {
+      eventType: parsed.type ?? parsed.status ?? parsed.title ?? "dokploy.event",
+      eventTitle: parsed.title ?? name,
+      eventUrl: parsed.buildLink ?? null,
+      occurredAt: parsed.timestamp ?? null,
+      subject: {
+        type: "deployment",
+        id: parsed.applicationName ?? parsed.projectName ?? null,
+        name,
+        url: parsed.buildLink ?? null,
+      },
+      normalizedPayload: {
+        title: parsed.title ?? null,
+        message: parsed.message ?? null,
+        projectName: parsed.projectName ?? null,
+        applicationName: parsed.applicationName ?? null,
+        applicationType: parsed.applicationType ?? null,
+        status: parsed.status ?? null,
+        type: parsed.type ?? null,
+        buildLink: parsed.buildLink ?? null,
+      },
+    };
+  },
 };

@@ -1,7 +1,7 @@
 import { hasConfiguredMatrixDelivery } from "./delivery";
 import { getEvents, getGlobalStats, getProviderStats, getTargetStats, type DeliveryAttempt } from "./event-log";
 import { createJsonResponse } from "./server-responses";
-import type { AppSettings, DashboardSessionConfig, RuntimeStatus } from "./types";
+import type { AlertContext, AppSettings, DashboardSessionConfig, RuntimeStatus } from "./types";
 
 function escapeHtml(value: string) {
   return value
@@ -13,7 +13,7 @@ function escapeHtml(value: string) {
 export type AppServerOptions = {
   getSettings: () => AppSettings;
   updateSettings: (input: unknown) => Promise<AppSettings>;
-  sendConfiguredAlert: (message: string, context?: { providerId: string; providerName: string; providerType: string; event: string }) => Promise<DeliveryAttempt[]>;
+  sendConfiguredAlert: (message: string, context?: AlertContext) => Promise<DeliveryAttempt[]>;
   sendTestAlertToTarget: (targetId: string) => Promise<void>;
   testProviderConnection: (providerId: string) => Promise<void>;
   getRuntimeStatus: () => RuntimeStatus;

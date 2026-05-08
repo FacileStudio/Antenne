@@ -1,5 +1,6 @@
 import type { AppSettings } from "../types";
 import type { DeliveryAttempt } from "../event-log";
+import type { AlertContext } from "../types";
 import type {
   ConfiguredWebhookProvider,
   ProvidersConfigInput,
@@ -67,11 +68,8 @@ function createDispatchContext(provider: WebhookProviderSettings): WebhookDispat
   };
 }
 
-export interface WebhookAlertContext {
-  providerId: string;
-  providerName: string;
+export interface WebhookAlertContext extends AlertContext {
   providerType: WebhookProviderType;
-  event: string;
 }
 
 export async function handleWebhookRequest(
@@ -110,11 +108,23 @@ export async function handleWebhookRequest(
   console.log(`[webhook] ${provider.settings.name} (${provider.definition.type}): ${eventDescription}`);
   const message = provider.definition.formatMessage(payload, createDispatchContext(provider.settings));
   if (message) {
+    const event = provider.definition.buildEvent?.(payload, createDispatchContext(provider.settings)) ?? {};
     await sendAlert(message, {
       providerId: provider.settings.id,
       providerName: provider.settings.name,
       providerType: provider.settings.type,
       event: eventDescription,
+      providerTags: provider.settings.tags,
+      eventType: event.eventType ?? eventDescription,
+      eventTitle: event.eventTitle ?? eventDescription,
+      eventUrl: event.eventUrl ?? null,
+      actor: event.actor ?? null,
+      subject: event.subject ?? null,
+      normalizedPayload: event.normalizedPayload ?? {},
+      rawPayload: payload,
+      occurredAt: event.occurredAt ?? null,
+      containsPii: event.containsPii ?? (provider.settings.type === "docuseal" || provider.settings.type === "charles"),
+      rawPayloadAllowed: event.rawPayloadAllowed ?? false,
     });
   }
 

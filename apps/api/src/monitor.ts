@@ -1,4 +1,4 @@
-import type { AppSettings, SiteState } from "./types";
+import type { AlertContext, AppSettings, SiteState } from "./types";
 import { isWebsiteProviderSettings, type WebsiteProviderSettings } from "./webhooks/types";
 
 interface MonitorEntry {
@@ -17,11 +17,8 @@ function timeSince(date: Date): string {
   return `${days}d ${hours % 24}h`;
 }
 
-export interface MonitorAlertContext {
-  providerId: string;
-  providerName: string;
+export interface MonitorAlertContext extends AlertContext {
   providerType: "website";
-  event: string;
 }
 
 export function createMonitorManager(sendAlert: (message: string, context: MonitorAlertContext) => Promise<void>) {
@@ -37,6 +34,20 @@ export function createMonitorManager(sendAlert: (message: string, context: Monit
         providerName: site.name,
         providerType: "website",
         event: "site DOWN",
+        eventType: "website.down",
+        eventTitle: `${site.name} is down`,
+        subject: {
+          type: "service",
+          id: site.id,
+          name: site.name,
+          url: site.url,
+        },
+        normalizedPayload: {
+          url: site.url,
+          status: "down",
+          reason,
+          consecutiveFailures: state.consecutiveFailures,
+        },
       });
     }
   }
@@ -67,6 +78,19 @@ export function createMonitorManager(sendAlert: (message: string, context: Monit
             providerName: site.name,
             providerType: "website",
             event: "site UP",
+            eventType: "website.up",
+            eventTitle: `${site.name} is back up`,
+            subject: {
+              type: "service",
+              id: site.id,
+              name: site.name,
+              url: site.url,
+            },
+            normalizedPayload: {
+              url: site.url,
+              status: "up",
+              downtime,
+            },
           });
           entry.state.up = true;
           entry.state.lastChange = new Date();

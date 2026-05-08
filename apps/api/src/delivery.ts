@@ -3,30 +3,37 @@ import {
   isHttpDeliveryTarget,
   isMatrixDeliveryTarget,
   isNtfyDeliveryTarget,
+  isPerceptionDeliveryTarget,
   isSmtpDeliveryTarget,
 } from "./delivery-config";
 import { createDefaultDeliveryTarget } from "./delivery-config";
 import {
   hasDiscordDelivery,
-  hasHttpDelivery,
   hasNtfyDelivery,
   hasSmtpDelivery,
   normalizeNtfyPriority,
   sendDiscordAlert,
-  sendHttpAlert,
   sendNtfyAlert,
   sendSmtpAlert,
 } from "./delivery-senders";
+import {
+  hasHttpDelivery,
+  hasPerceptionDelivery,
+  sendHttpAlert,
+  sendPerceptionEvent,
+} from "./delivery-http";
 import type { DeliveryAttempt } from "./event-log";
 import { hasMatrixDelivery, sendMatrixAlert } from "./matrix-delivery";
 import type {
   DeliveryConfig,
   DeliveryTarget,
   DeliveryTargetType,
+  DeliveryMessage,
   DiscordDeliveryTarget,
   HttpDeliveryTarget,
   MatrixDeliveryTarget,
   NtfyDeliveryTarget,
+  PerceptionDeliveryTarget,
 } from "./types";
 
 export interface DeliveryRouteSummary {
@@ -52,6 +59,7 @@ export {
   hasNtfyDelivery,
   hasSmtpDelivery,
   hasMatrixDelivery,
+  hasPerceptionDelivery,
 };
 
 export function hasAnyDelivery(config: DeliveryConfig): boolean {
@@ -77,6 +85,10 @@ export function canSendToDeliveryTarget(target: DeliveryTarget): boolean {
 
   if (isNtfyDeliveryTarget(target)) {
     return hasNtfyDelivery(target);
+  }
+
+  if (isPerceptionDeliveryTarget(target)) {
+    return hasPerceptionDelivery(target);
   }
 
   return hasHttpDelivery(target);
@@ -108,9 +120,16 @@ export function loadDeliveryConfigFromEnv(): DeliveryConfig {
   const webhook = createDefaultDeliveryTarget("webhook") as HttpDeliveryTarget;
   webhook.enabled = process.env.HTTP_WEBHOOK_ENABLED === "true" || Boolean(process.env.HTTP_WEBHOOK_URL);
   webhook.url = process.env.HTTP_WEBHOOK_URL ?? "";
-  webhook.secretHeader = process.env.HTTP_WEBHOOK_SECRET_HEADER ?? "x-nook-secret";
   webhook.secretValue = process.env.HTTP_WEBHOOK_SECRET ?? null;
+  webhook.includeRawPayload = process.env.HTTP_WEBHOOK_INCLUDE_RAW_PAYLOAD === "true";
   items.push(webhook);
+
+  const perception = createDefaultDeliveryTarget("perception") as PerceptionDeliveryTarget;
+  perception.enabled = process.env.PERCEPTION_ENABLED === "true" || Boolean(process.env.PERCEPTION_WEBHOOK_URL);
+  perception.url = process.env.PERCEPTION_WEBHOOK_URL ?? "";
+  perception.secretValue = process.env.PERCEPTION_WEBHOOK_SECRET ?? null;
+  perception.includeRawPayload = process.env.PERCEPTION_INCLUDE_RAW_PAYLOAD === "true";
+  items.push(perception);
 
   const ntfy = createDefaultDeliveryTarget("ntfy") as NtfyDeliveryTarget;
   ntfy.enabled = process.env.NTFY_ENABLED === "true" || Boolean(process.env.NTFY_TOPIC);
@@ -128,7 +147,7 @@ export function loadDeliveryConfigFromEnv(): DeliveryConfig {
 }
 
 function isKnownDeliveryTargetType(type: unknown): type is DeliveryTargetType {
-  return type === "matrix" || type === "discord" || type === "webhook" || type === "smtp" || type === "ntfy";
+  return type === "matrix" || type === "discord" || type === "webhook" || type === "smtp" || type === "ntfy" || type === "perception";
 }
 
 export function targetAcceptsProvider(target: DeliveryTarget, providerId: string | null): boolean {
@@ -151,27 +170,31 @@ export function getDeliveryRouteSummary(config: DeliveryConfig, providerId: stri
   };
 }
 
-function createDeliveryTask(target: DeliveryTarget, message: string): Promise<void> | null {
+function createDeliveryTask(target: DeliveryTarget, delivery: DeliveryMessage): Promise<void> | null {
   if (isMatrixDeliveryTarget(target)) {
-    return hasMatrixDelivery(target) ? sendMatrixAlert(target, message) : null;
+    return hasMatrixDelivery(target) ? sendMatrixAlert(target, delivery.message) : null;
   }
 
   if (isDiscordDeliveryTarget(target)) {
-    return hasDiscordDelivery(target) ? sendDiscordAlert(target, message) : null;
+    return hasDiscordDelivery(target) ? sendDiscordAlert(target, delivery.message) : null;
   }
 
   if (isSmtpDeliveryTarget(target)) {
-    return hasSmtpDelivery(target) ? sendSmtpAlert(target, message) : null;
+    return hasSmtpDelivery(target) ? sendSmtpAlert(target, delivery.message) : null;
   }
 
   if (isNtfyDeliveryTarget(target)) {
-    return hasNtfyDelivery(target) ? sendNtfyAlert(target, message) : null;
+    return hasNtfyDelivery(target) ? sendNtfyAlert(target, delivery.message) : null;
   }
 
-  return isHttpDeliveryTarget(target) && hasHttpDelivery(target) ? sendHttpAlert(target, message) : null;
+  if (isPerceptionDeliveryTarget(target)) {
+    return hasPerceptionDelivery(target) ? sendPerceptionEvent(target, delivery) : null;
+  }
+
+  return isHttpDeliveryTarget(target) && hasHttpDelivery(target) ? sendHttpAlert(target, delivery) : null;
 }
 
-export async function sendAlert(config: DeliveryConfig, message: string, providerId: string): Promise<DeliveryAttempt[]> {
+export async function sendAlert(config: DeliveryConfig, delivery: DeliveryMessage, providerId: string): Promise<DeliveryAttempt[]> {
   if (!hasAnyDelivery(config)) {
     throw new Error("No delivery channel is configured.");
   }
@@ -187,7 +210,7 @@ export async function sendAlert(config: DeliveryConfig, message: string, provide
   const tasks: Promise<void>[] = [];
 
   for (const target of targets) {
-    const task = createDeliveryTask(target, message);
+    const task = createDeliveryTask(target, delivery);
     if (task) {
       tasks.push(task);
     }
@@ -225,33 +248,38 @@ export async function sendAlert(config: DeliveryConfig, message: string, provide
   return attempts;
 }
 
-export async function sendAlertToTarget(target: DeliveryTarget, message: string) {
+export async function sendAlertToTarget(target: DeliveryTarget, delivery: DeliveryMessage) {
   if (!isKnownDeliveryTargetType(target.type)) {
     throw new Error(`Unknown delivery target type: ${String(target.type)}`);
   }
 
   if (isMatrixDeliveryTarget(target) && hasMatrixDelivery(target)) {
-    await sendMatrixAlert(target, message);
+    await sendMatrixAlert(target, delivery.message);
     return;
   }
 
   if (isDiscordDeliveryTarget(target) && hasDiscordDelivery(target)) {
-    await sendDiscordAlert(target, message);
+    await sendDiscordAlert(target, delivery.message);
     return;
   }
 
   if (isSmtpDeliveryTarget(target) && hasSmtpDelivery(target)) {
-    await sendSmtpAlert(target, message);
+    await sendSmtpAlert(target, delivery.message);
     return;
   }
 
   if (isNtfyDeliveryTarget(target) && hasNtfyDelivery(target)) {
-    await sendNtfyAlert(target, message);
+    await sendNtfyAlert(target, delivery.message);
+    return;
+  }
+
+  if (isPerceptionDeliveryTarget(target) && hasPerceptionDelivery(target)) {
+    await sendPerceptionEvent(target, delivery);
     return;
   }
 
   if (isHttpDeliveryTarget(target) && hasHttpDelivery(target)) {
-    await sendHttpAlert(target, message);
+    await sendHttpAlert(target, delivery);
     return;
   }
 

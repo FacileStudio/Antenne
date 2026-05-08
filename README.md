@@ -9,7 +9,8 @@ The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard
 - monitors websites on intervals
 - polls IMAP inboxes for newly received emails
 - receives Uptime Kuma, DocuSeal, and Dokploy webhooks
-- delivers alerts to Matrix, Discord webhooks, HTTP webhooks, SMTP, and ntfy
+- delivers alerts to Matrix, Discord webhooks, HTTP webhooks, SMTP, ntfy, and Perception
+- can send signed structured event envelopes for downstream memory/reasoning systems
 - serves a dashboard at `/dashboard`
 - keeps env as first-boot bootstrap defaults, with dashboard-saved settings overriding them later
 
@@ -90,9 +91,33 @@ If `MATRIX_USER_ID` and `MATRIX_PASSWORD` are set, Nook will request refresh tok
 | `DOKPLOY_WEBHOOK_PATH` | No | Default path: `/webhook/dokploy` |
 | `DOKPLOY_WEBHOOK_SECRET` | No | Dokploy secret value |
 | `DOKPLOY_WEBHOOK_SECRET_HEADER` | No | Default: `x-dokploy-secret` |
+| `HTTP_WEBHOOK_INCLUDE_RAW_PAYLOAD` | No | Include raw provider payloads in HTTP deliveries. Default: `false`. |
+| `PERCEPTION_ENABLED` | No | Enable the Perception target bootstrap. Also enabled when `PERCEPTION_WEBHOOK_URL` is set. |
+| `PERCEPTION_WEBHOOK_URL` | No | Perception ingest URL, for example `https://perception.example.com/ingest`. |
+| `PERCEPTION_WEBHOOK_SECRET` | No | HMAC secret used to sign Perception event envelopes. |
+| `PERCEPTION_INCLUDE_RAW_PAYLOAD` | No | Include raw provider payloads in Perception deliveries. Default: `false`. |
 
 Saved dashboard settings use a single provider list. Each provider can be a website, IMAP inbox, or webhook source.
 Delivery target provider filters are explicit: an empty provider selection means the target receives nothing.
+
+## Event Envelopes
+
+HTTP webhook targets and the dedicated Perception target both send the structured event envelope.
+
+Envelope deliveries use fixed signing headers:
+
+- `x-nook-event-id`
+- `x-nook-timestamp`
+- `x-nook-schema-version`
+- `x-nook-signature-256`
+
+The signature is HMAC-SHA256 over:
+
+```text
+<timestamp>.<event_id>.<raw_body>
+```
+
+The event envelope uses `schemaVersion: 1` but the TypeScript type is named `NookEventEnvelope` so callers do not carry version suffix noise around the codebase.
 
 ## Routes
 

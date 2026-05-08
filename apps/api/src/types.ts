@@ -1,5 +1,7 @@
 import type { ProviderSettings } from "./webhooks/types";
 
+import type { NookEventEnvelope } from "./event-envelope";
+
 export interface SiteState {
   up: boolean;
   lastChange: Date;
@@ -7,7 +9,7 @@ export interface SiteState {
   inFlight: boolean;
 }
 
-export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy";
+export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy" | "perception";
 
 export interface DeliveryTargetBase {
   id: string;
@@ -36,8 +38,8 @@ export interface DiscordDeliveryTarget extends DeliveryTargetBase {
 export interface HttpDeliveryTarget extends DeliveryTargetBase {
   type: "webhook";
   url: string;
-  secretHeader: string | null;
   secretValue: string | null;
+  includeRawPayload: boolean;
 }
 
 export interface SmtpDeliveryTarget extends DeliveryTargetBase {
@@ -62,7 +64,14 @@ export interface NtfyDeliveryTarget extends DeliveryTargetBase {
   clickUrl: string | null;
 }
 
-export type DeliveryTarget = MatrixDeliveryTarget | DiscordDeliveryTarget | HttpDeliveryTarget | SmtpDeliveryTarget | NtfyDeliveryTarget;
+export interface PerceptionDeliveryTarget extends DeliveryTargetBase {
+  type: "perception";
+  url: string;
+  secretValue: string | null;
+  includeRawPayload: boolean;
+}
+
+export type DeliveryTarget = MatrixDeliveryTarget | DiscordDeliveryTarget | HttpDeliveryTarget | SmtpDeliveryTarget | NtfyDeliveryTarget | PerceptionDeliveryTarget;
 
 export interface DeliveryConfig {
   items: DeliveryTarget[];
@@ -97,6 +106,38 @@ export interface DashboardSessionConfig {
 }
 
 export const SYSTEM_PROVIDER_ID = "__nook_system__";
+
+export type AlertContext = {
+  providerId: string;
+  providerName: string;
+  providerType: string;
+  event: string;
+  providerTags?: string[];
+  eventType?: string;
+  eventTitle?: string | null;
+  eventUrl?: string | null;
+  actor?: {
+    id?: string | null;
+    name?: string | null;
+    email?: string | null;
+  } | null;
+  subject?: {
+    type?: "task" | "contract" | "client" | "deployment" | "repository" | "email" | "service" | "schedule" | "system" | "unknown";
+    id?: string | null;
+    name?: string | null;
+    url?: string | null;
+  } | null;
+  normalizedPayload?: Record<string, unknown> | null;
+  rawPayload?: unknown | null;
+  occurredAt?: string | null;
+  containsPii?: boolean;
+  rawPayloadAllowed?: boolean;
+};
+
+export interface DeliveryMessage {
+  message: string;
+  envelope: NookEventEnvelope;
+}
 
 export interface RuntimeStatus {
   serverPort: number;

@@ -1,3 +1,5 @@
+import type { NookEventEnvelopeInput } from "../event-envelope";
+
 export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier";
 export type ProviderType = WebhookProviderType | "imap" | "website";
 
@@ -158,6 +160,7 @@ export interface WebhookProviderDefinition {
   authenticate?: (req: Request, rawBody: string, settings: WebhookProviderSettings) => boolean | Promise<boolean>;
   formatMessage: (payload: unknown, context: WebhookDispatchContext) => string | null;
   describeEvent: (payload: unknown) => string;
+  buildEvent?: (payload: unknown, context: WebhookDispatchContext) => Partial<NookEventEnvelopeInput>;
 }
 
 export interface ConfiguredWebhookProvider {

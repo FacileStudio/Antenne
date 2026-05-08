@@ -5,6 +5,7 @@ import type {
   HttpDeliveryTarget,
   MatrixDeliveryTarget,
   NtfyDeliveryTarget,
+  PerceptionDeliveryTarget,
   SmtpDeliveryTarget,
 } from "./types";
 
@@ -31,6 +32,10 @@ export function getDeliveryTargetLabel(type: DeliveryTargetType) {
 
   if (type === "ntfy") {
     return "ntfy";
+  }
+
+  if (type === "perception") {
+    return "Perception";
   }
 
   return "HTTP webhook";
@@ -99,6 +104,19 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     };
   }
 
+  if (type === "perception") {
+    return {
+      id: createId(),
+      type,
+      name: "Perception",
+      enabled: true,
+      providerIds: [],
+      url: "",
+      secretValue: null,
+      includeRawPayload: false,
+    };
+  }
+
   return {
     id: createId(),
     type,
@@ -106,8 +124,8 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     enabled: true,
     providerIds: [],
     url: "",
-    secretHeader: "x-nook-secret",
     secretValue: null,
+    includeRawPayload: false,
   };
 }
 
@@ -129,4 +147,8 @@ export function isSmtpDeliveryTarget(target: DeliveryTarget): target is SmtpDeli
 
 export function isNtfyDeliveryTarget(target: DeliveryTarget): target is NtfyDeliveryTarget {
   return target.type === "ntfy";
+}
+
+export function isPerceptionDeliveryTarget(target: DeliveryTarget): target is PerceptionDeliveryTarget {
+  return target.type === "perception";
 }

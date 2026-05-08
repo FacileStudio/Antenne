@@ -74,4 +74,34 @@ export const sablierWebhookProvider: WebhookProviderDefinition = {
   describeEvent(payload) {
     return parsePayload(payload).event ?? "unknown event";
   },
+  buildEvent(payload) {
+    const parsed = parsePayload(payload);
+    const data = parsed.data;
+    return {
+      eventType: parsed.event ?? "sablier.event",
+      eventTitle: data?.task_name ?? data?.project_name ?? parsed.event ?? "Sablier event",
+      occurredAt: data?.stopped_at ?? data?.started_at ?? null,
+      actor: {
+        id: data?.user_id ? String(data.user_id) : null,
+        email: data?.user_email ?? null,
+      },
+      subject: {
+        type: "schedule",
+        id: data?.id ? String(data.id) : null,
+        name: data?.task_name ?? data?.project_name ?? data?.description ?? null,
+        url: null,
+      },
+      normalizedPayload: {
+        event: parsed.event ?? null,
+        timeEntryId: data?.id ?? null,
+        projectId: data?.project_id ?? null,
+        projectName: data?.project_name ?? null,
+        taskId: data?.task_id ?? null,
+        taskName: data?.task_name ?? null,
+        startedAt: data?.started_at ?? null,
+        stoppedAt: data?.stopped_at ?? null,
+      },
+      containsPii: true,
+    };
+  },
 };

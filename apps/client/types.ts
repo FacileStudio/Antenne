@@ -1,6 +1,6 @@
 export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier";
 export type ProviderType = WebhookProviderType | "imap" | "website";
-export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy";
+export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy" | "perception";
 
 export interface DeliveryTargetBase {
   id: string;
@@ -29,8 +29,8 @@ export interface DiscordTarget extends DeliveryTargetBase {
 export interface WebhookTarget extends DeliveryTargetBase {
   type: "webhook";
   url: string;
-  secretHeader: string | null;
   secretValue: string | null;
+  includeRawPayload: boolean;
 }
 
 export interface SmtpTarget extends DeliveryTargetBase {
@@ -55,7 +55,14 @@ export interface NtfyTarget extends DeliveryTargetBase {
   clickUrl: string | null;
 }
 
-export type DeliveryTarget = MatrixTarget | DiscordTarget | WebhookTarget | SmtpTarget | NtfyTarget;
+export interface PerceptionTarget extends DeliveryTargetBase {
+  type: "perception";
+  url: string;
+  secretValue: string | null;
+  includeRawPayload: boolean;
+}
+
+export type DeliveryTarget = MatrixTarget | DiscordTarget | WebhookTarget | SmtpTarget | NtfyTarget | PerceptionTarget;
 
 export interface WebsiteProviderSettings {
   id: string;
@@ -137,6 +144,7 @@ export interface EventLogEntry {
   providerType: string;
   event: string;
   message: string | null;
+  envelope?: unknown;
   deliveries: DeliveryAttempt[];
 }
 
@@ -148,7 +156,7 @@ export interface EventLogStats {
 }
 
 export const providerTypes = ["website", "imap", "charles", "docuseal", "dokploy", "git", "sablier", "uptime-kuma", "vikunja"] as const satisfies ProviderType[];
-export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp", "ntfy"] as const satisfies DeliveryTargetType[];
+export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp", "ntfy", "perception"] as const satisfies DeliveryTargetType[];
 export const SYSTEM_PROVIDER_ID = "__nook_system__";
 
 function createId() {
@@ -176,6 +184,7 @@ export function getDeliveryTargetLabel(type: DeliveryTargetType) {
   if (type === "discord") return "Discord webhook";
   if (type === "smtp") return "SMTP";
   if (type === "ntfy") return "ntfy";
+  if (type === "perception") return "Perception";
   return "HTTP webhook";
 }
 
@@ -283,6 +292,19 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     };
   }
 
+  if (type === "perception") {
+    return {
+      id: createId(),
+      type,
+      name: "Perception",
+      enabled: true,
+      providerIds: [],
+      url: "",
+      secretValue: "",
+      includeRawPayload: false,
+    };
+  }
+
   return {
     id: createId(),
     type,
@@ -290,7 +312,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     enabled: true,
     providerIds: [],
     url: "",
-    secretHeader: "x-nook-secret",
     secretValue: "",
+    includeRawPayload: false,
   };
 }

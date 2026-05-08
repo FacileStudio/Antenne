@@ -193,6 +193,10 @@ function describeEvent(payload: unknown): string {
   return parsed.event_name ?? "unknown event";
 }
 
+function getSubjectType(event: string): "task" | "unknown" {
+  return event.startsWith("task.") || event === "tasks.overdue" ? "task" : "unknown";
+}
+
 export const vikunjaWebhookProvider: WebhookProviderDefinition = {
   type: "vikunja",
   label: "Vikunja",
@@ -203,5 +207,42 @@ export const vikunjaWebhookProvider: WebhookProviderDefinition = {
   },
   describeEvent(payload) {
     return describeEvent(payload);
+  },
+  buildEvent(payload) {
+    const parsed = parsePayload(payload);
+    const event = parsed.event_name ?? "vikunja.event";
+    const task = parsed.data?.task;
+    const project = parsed.data?.project;
+    const doer = parsed.data?.doer;
+    const subjectName = task?.title ?? project?.title ?? parsed.data?.team?.name ?? event;
+    return {
+      eventType: event,
+      eventTitle: subjectName,
+      occurredAt: parsed.time ?? null,
+      actor: {
+        id: doer?.id ? String(doer.id) : null,
+        name: doer?.name ?? doer?.username ?? null,
+        email: doer?.email ?? null,
+      },
+      subject: {
+        type: getSubjectType(event),
+        id: task?.identifier ?? (task?.id ? String(task.id) : project?.id ? String(project.id) : null),
+        name: subjectName,
+        url: null,
+      },
+      normalizedPayload: {
+        event,
+        taskId: task?.id ?? null,
+        taskIdentifier: task?.identifier ?? null,
+        taskTitle: task?.title ?? null,
+        taskDone: task?.done ?? null,
+        priority: task?.priority ?? null,
+        dueDate: task?.due_date ?? null,
+        projectId: task?.project_id ?? project?.id ?? null,
+        projectTitle: project?.title ?? null,
+        assignee: payload && typeof payload === "object" ? parsed.data?.assignee?.username ?? parsed.data?.assignee?.name ?? parsed.data?.assignee?.email ?? null : null,
+      },
+      containsPii: Boolean(doer?.email || parsed.data?.assignee?.email),
+    };
   },
 };

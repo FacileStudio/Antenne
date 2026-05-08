@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import type { NookEventEnvelope } from "./event-envelope";
 
 export interface DeliveryAttempt {
   targetId: string;
@@ -18,6 +19,7 @@ export interface EventLogEntry {
   providerType: string;
   event: string;
   message: string | null;
+  envelope?: NookEventEnvelope;
   deliveries: DeliveryAttempt[];
 }
 

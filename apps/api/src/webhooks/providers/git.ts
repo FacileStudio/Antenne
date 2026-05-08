@@ -164,6 +164,16 @@ function isIssue(payload: GitPayload): boolean {
   return Boolean(payload.issue);
 }
 
+function getPrimaryUrl(payload: GitPayload): string | null {
+  return payload.pull_request?.html_url
+    ?? payload.issue?.html_url
+    ?? payload.object_attributes?.url
+    ?? payload.compare
+    ?? payload.repository?.html_url
+    ?? payload.project?.web_url
+    ?? null;
+}
+
 function formatGitAlert(payload: GitPayload): string | null {
   if (isPush(payload)) return formatPush(payload);
   if (isPullRequest(payload)) return formatPullRequest(payload);
@@ -190,5 +200,48 @@ export const gitWebhookProvider: WebhookProviderDefinition = {
     if (isPullRequest(parsed)) return `PR on ${repo}`;
     if (isIssue(parsed)) return `issue on ${repo}`;
     return `event on ${repo}`;
+  },
+  buildEvent(payload) {
+    const parsed = parsePayload(payload);
+    const repo = getRepoName(parsed);
+    const actor = getActor(parsed);
+    const headCommit = parsed.head_commit ?? parsed.commits?.[0] ?? null;
+    const pr = parsed.pull_request ?? parsed.object_attributes;
+    const issue = parsed.issue;
+    const eventType = isPush(parsed)
+      ? "git.push"
+      : isPullRequest(parsed)
+        ? "git.pull_request"
+        : isIssue(parsed)
+          ? "git.issue"
+          : "git.event";
+    return {
+      eventType,
+      eventTitle: repo,
+      eventUrl: getPrimaryUrl(parsed),
+      actor: {
+        name: actor,
+      },
+      subject: {
+        type: "repository",
+        id: repo,
+        name: repo,
+        url: parsed.repository?.html_url ?? parsed.project?.web_url ?? null,
+      },
+      normalizedPayload: {
+        repository: repo,
+        ref: parsed.ref ? shortRef(parsed.ref) : null,
+        before: parsed.before ?? null,
+        after: parsed.after ?? null,
+        commitSha: headCommit?.id ?? parsed.after ?? null,
+        commitMessage: headCommit?.message?.split("\n")[0] ?? null,
+        commitCount: parsed.commits?.length ?? parsed.total_commits_count ?? null,
+        pullRequestId: parsed.pull_request?.number ?? parsed.object_attributes?.iid ?? null,
+        issueId: issue?.number ?? null,
+        action: parsed.action ?? parsed.object_attributes?.action ?? null,
+        merged: parsed.pull_request?.merged ?? null,
+        url: getPrimaryUrl(parsed),
+      },
+    };
   },
 };

@@ -244,19 +244,48 @@ const providerOptions = computed(() => [
     </label>
   </template>
 
+  <template v-else-if="editingTarget.type === 'perception'">
+    <label class="field required">
+      <span>Perception URL</span>
+      <input :value="editingTarget.url" type="url" placeholder="https://perception.example.com/ingest" @input="emit('patch', { url: ($event.target as HTMLInputElement).value })">
+    </label>
+
+    <label class="field required">
+      <span>Signing secret</span>
+      <p class="field-hint">Used to sign structured event envelopes with `x-nook-signature-256`.</p>
+      <div class="secret-field">
+        <input
+          :value="editingTarget.secretValue ?? ''"
+          :type="revealedSecrets[editingTarget.id] ? 'text' : 'password'"
+          @input="emit('patch', { secretValue: ($event.target as HTMLInputElement).value })"
+        >
+        <button class="ghost action-button reveal-button" type="button" @click="emit('toggle-reveal', editingTarget.id)">
+          <component :is="revealedSecrets[editingTarget.id] ? EyeOff : Eye" :size="16" aria-hidden="true" />
+          <span>{{ revealedSecrets[editingTarget.id] ? "Hide" : "Show" }}</span>
+        </button>
+      </div>
+    </label>
+
+    <label class="toggle">
+      <input :checked="editingTarget.includeRawPayload" type="checkbox" @change="emit('patch', { includeRawPayload: ($event.target as HTMLInputElement).checked })">
+      <span>Include raw provider payload</span>
+    </label>
+  </template>
+
   <template v-else>
     <label class="field required">
       <span>Webhook URL</span>
       <input :value="editingTarget.url" type="url" placeholder="https://example.com/hooks/nook" @input="emit('patch', { url: ($event.target as HTMLInputElement).value })">
     </label>
 
-    <label class="field">
-      <span>Secret header</span>
-      <input :value="editingTarget.secretHeader ?? ''" type="text" placeholder="x-nook-secret" @input="emit('patch', { secretHeader: ($event.target as HTMLInputElement).value })">
+    <label class="toggle">
+      <input :checked="editingTarget.includeRawPayload" type="checkbox" @change="emit('patch', { includeRawPayload: ($event.target as HTMLInputElement).checked })">
+      <span>Include raw provider payload</span>
     </label>
 
     <label class="field">
-      <span>Secret value</span>
+      <span>Signing secret</span>
+      <p class="field-hint">Used as the HMAC signing secret for `x-nook-signature-256`.</p>
       <div class="secret-field">
         <input
           :value="editingTarget.secretValue ?? ''"

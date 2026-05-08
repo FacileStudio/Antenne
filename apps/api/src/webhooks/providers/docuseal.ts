@@ -127,4 +127,37 @@ export const docuSealWebhookProvider: WebhookProviderDefinition = {
   describeEvent(payload) {
     return parsePayload(payload).event_type ?? "unknown";
   },
+  buildEvent(payload) {
+    const parsed = parsePayload(payload);
+    const data = parsed.data;
+    const templateName = pickTemplateName(parsed);
+    return {
+      eventType: parsed.event_type ?? "docuseal.event",
+      eventTitle: templateName,
+      eventUrl: data?.submission?.url ?? null,
+      occurredAt: parsed.timestamp ?? data?.completed_at ?? data?.declined_at ?? data?.opened_at ?? null,
+      actor: {
+        id: data?.id ? String(data.id) : null,
+        name: data?.name ?? data?.role ?? null,
+        email: data?.email ?? null,
+      },
+      subject: {
+        type: "contract",
+        id: data?.submission?.id ? String(data.submission.id) : data?.id ? String(data.id) : null,
+        name: templateName,
+        url: data?.submission?.url ?? null,
+      },
+      normalizedPayload: {
+        eventType: parsed.event_type ?? null,
+        submissionId: data?.submission?.id ?? data?.id ?? null,
+        submissionStatus: data?.submission?.status ?? data?.status ?? null,
+        templateId: data?.template?.id ?? null,
+        templateName,
+        completedAt: data?.completed_at ?? null,
+        declinedAt: data?.declined_at ?? null,
+        openedAt: data?.opened_at ?? null,
+      },
+      containsPii: true,
+    };
+  },
 };
