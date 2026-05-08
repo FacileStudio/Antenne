@@ -67,6 +67,26 @@ const infoItems = computed(() => [
           <input v-model="settings.system.events.providerEnabled" type="checkbox">
           <span>Send events when a provider gets enabled</span>
         </label>
+
+        <label class="toggle event-toggle">
+          <input v-model="settings.system.events.providerDisabled" type="checkbox">
+          <span>Send events when a provider gets disabled</span>
+        </label>
+
+        <label class="toggle event-toggle">
+          <input v-model="settings.system.events.providerAdded" type="checkbox">
+          <span>Send events when a provider is added</span>
+        </label>
+
+        <label class="toggle event-toggle">
+          <input v-model="settings.system.events.providerRemoved" type="checkbox">
+          <span>Send events when a provider is removed</span>
+        </label>
+
+        <label class="toggle event-toggle">
+          <input v-model="settings.system.events.deliveryFailure" type="checkbox">
+          <span>Send events when a delivery target fails</span>
+        </label>
       </div>
       <p class="field-hint">
         Targets can opt into these Nook system events from their provider filter inside Delivery.

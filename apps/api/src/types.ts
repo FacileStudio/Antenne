@@ -80,6 +80,10 @@ export interface DeliveryConfig {
 export interface SystemEventSettings {
   startup: boolean;
   providerEnabled: boolean;
+  providerDisabled: boolean;
+  providerAdded: boolean;
+  providerRemoved: boolean;
+  deliveryFailure: boolean;
 }
 
 export interface SystemSettings {

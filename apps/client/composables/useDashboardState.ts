@@ -51,6 +51,10 @@ const defaultSettings = (): AppSettings => {
       events: {
         startup: true,
         providerEnabled: false,
+        providerDisabled: false,
+        providerAdded: false,
+        providerRemoved: false,
+        deliveryFailure: false,
       },
     },
     timeout: 10,
@@ -65,6 +69,10 @@ function cloneFromPayload(target: AppSettings, next: AppSettings) {
   target.delivery.items = next.delivery.items.map((item) => ({ ...item }));
   target.system.events.startup = next.system.events.startup;
   target.system.events.providerEnabled = next.system.events.providerEnabled;
+  target.system.events.providerDisabled = next.system.events.providerDisabled;
+  target.system.events.providerAdded = next.system.events.providerAdded;
+  target.system.events.providerRemoved = next.system.events.providerRemoved;
+  target.system.events.deliveryFailure = next.system.events.deliveryFailure;
   target.timeout = next.timeout;
   target.providers.port = next.providers.port;
   target.providers.items = next.providers.items.map((provider) => ({ ...provider }));

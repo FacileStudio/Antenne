@@ -16,6 +16,10 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
       events: {
         startup: normalizeBoolean(candidate.system?.events?.startup, fallback.system.events.startup),
         providerEnabled: normalizeBoolean(candidate.system?.events?.providerEnabled, fallback.system.events.providerEnabled),
+        providerDisabled: normalizeBoolean(candidate.system?.events?.providerDisabled, fallback.system.events.providerDisabled),
+        providerAdded: normalizeBoolean(candidate.system?.events?.providerAdded, fallback.system.events.providerAdded),
+        providerRemoved: normalizeBoolean(candidate.system?.events?.providerRemoved, fallback.system.events.providerRemoved),
+        deliveryFailure: normalizeBoolean(candidate.system?.events?.deliveryFailure, fallback.system.events.deliveryFailure),
       },
     },
     timeout,

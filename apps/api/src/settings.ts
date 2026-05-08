@@ -79,6 +79,10 @@ export async function loadDefaultSettings(): Promise<AppSettings> {
       events: {
         startup: true,
         providerEnabled: false,
+        providerDisabled: false,
+        providerAdded: false,
+        providerRemoved: false,
+        deliveryFailure: false,
       },
     },
     timeout: envPositiveNumber("TIMEOUT", 10),

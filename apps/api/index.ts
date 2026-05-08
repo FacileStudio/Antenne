@@ -120,6 +120,10 @@ async function sendConfiguredAlert(message: string, context?: AlertContext): Pro
     const successCount = deliveries.filter((delivery) => delivery.status === "success").length;
     const errorCount = deliveries.length - successCount;
     console.log(`[delivery] \`${eventLabel}\` from ${sourceLabel}: ${successCount} delivered, ${errorCount} failed, ${route.skippedByFilterCount} filtered; targets: ${describeTargets(deliveries)}`);
+    if (errorCount > 0 && settings.system.events.deliveryFailure && !notifyingDeliveryFailure) {
+      const failedTargets = deliveries.filter((d) => d.status === "error").map((d) => d.targetName).join(", ");
+      void notifyDeliveryFailure(`<b>Delivery failure</b><br/>${errorCount} target(s) failed for <b>${eventLabel}</b>: ${failedTargets}`);
+    }
     return deliveries;
   } catch (error) {
     if (error instanceof DeliveryError) {
@@ -131,9 +135,43 @@ async function sendConfiguredAlert(message: string, context?: AlertContext): Pro
   }
 }
 
+let notifyingDeliveryFailure = false;
+async function notifyDeliveryFailure(message: string) {
+  notifyingDeliveryFailure = true;
+  try {
+    await sendConfiguredAlert(message, {
+      providerId: SYSTEM_PROVIDER_ID,
+      providerName: "Nook",
+      providerType: "system",
+      event: "delivery failure",
+      eventType: "system.delivery.failure",
+      eventTitle: "Delivery failure",
+      subject: { type: "system", id: null, name: "Nook", url: null },
+    });
+  } catch {
+  } finally {
+    notifyingDeliveryFailure = false;
+  }
+}
+
 function getNewlyEnabledProviders(previous: AppSettings, next: AppSettings) {
   const previousEnabled = new Map(previous.providers.items.map((provider) => [provider.id, provider.enabled]));
   return next.providers.items.filter((provider) => provider.enabled && previousEnabled.get(provider.id) === false);
+}
+
+function getNewlyDisabledProviders(previous: AppSettings, next: AppSettings) {
+  const nextEnabled = new Map(next.providers.items.map((provider) => [provider.id, provider.enabled]));
+  return previous.providers.items.filter((provider) => provider.enabled && nextEnabled.get(provider.id) === false);
+}
+
+function getAddedProviders(previous: AppSettings, next: AppSettings) {
+  const previousIds = new Set(previous.providers.items.map((provider) => provider.id));
+  return next.providers.items.filter((provider) => !previousIds.has(provider.id));
+}
+
+function getRemovedProviders(previous: AppSettings, next: AppSettings) {
+  const nextIds = new Set(next.providers.items.map((provider) => provider.id));
+  return previous.providers.items.filter((provider) => !nextIds.has(provider.id));
 }
 
 async function sendTestAlertToTarget(targetId: string) {
@@ -210,22 +248,58 @@ async function updateSettings(input: unknown) {
   const settings = await store.update(input);
   applySettings();
 
+  async function fireSystemEvent(message: string, event: string, eventType: string) {
+    try {
+      await sendConfiguredAlert(message, {
+        providerId: SYSTEM_PROVIDER_ID,
+        providerName: "Nook",
+        providerType: "system",
+        event,
+        eventType,
+        subject: { type: "system", id: null, name: "Nook", url: null },
+      });
+    } catch (error) {
+      console.error(`[settings] Failed to send system event \`${event}\`: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   if (settings.system.events.providerEnabled) {
-    const newlyEnabledProviders = getNewlyEnabledProviders(previousSettings, settings);
-    for (const provider of newlyEnabledProviders) {
-      try {
-        await sendConfiguredAlert(
-          `<b>Provider enabled</b><br/><b>${provider.name}</b> is now active.`,
-          {
-            providerId: SYSTEM_PROVIDER_ID,
-            providerName: "Nook",
-            providerType: "system",
-            event: `provider enabled: ${provider.name}`,
-          },
-        );
-      } catch (error) {
-        console.error(`[settings] Failed to send provider-enabled notification: ${error instanceof Error ? error.message : String(error)}`);
-      }
+    for (const provider of getNewlyEnabledProviders(previousSettings, settings)) {
+      await fireSystemEvent(
+        `<b>Provider enabled</b><br/><b>${provider.name}</b> is now active.`,
+        `provider enabled: ${provider.name}`,
+        "system.provider.enabled",
+      );
+    }
+  }
+
+  if (settings.system.events.providerDisabled) {
+    for (const provider of getNewlyDisabledProviders(previousSettings, settings)) {
+      await fireSystemEvent(
+        `<b>Provider disabled</b><br/><b>${provider.name}</b> is now inactive.`,
+        `provider disabled: ${provider.name}`,
+        "system.provider.disabled",
+      );
+    }
+  }
+
+  if (settings.system.events.providerAdded) {
+    for (const provider of getAddedProviders(previousSettings, settings)) {
+      await fireSystemEvent(
+        `<b>Provider added</b><br/><b>${provider.name}</b> (${provider.type}) was added.`,
+        `provider added: ${provider.name}`,
+        "system.provider.added",
+      );
+    }
+  }
+
+  if (settings.system.events.providerRemoved) {
+    for (const provider of getRemovedProviders(previousSettings, settings)) {
+      await fireSystemEvent(
+        `<b>Provider removed</b><br/><b>${provider.name}</b> (${provider.type}) was removed.`,
+        `provider removed: ${provider.name}`,
+        "system.provider.removed",
+      );
     }
   }
 

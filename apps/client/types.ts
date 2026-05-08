@@ -110,6 +110,10 @@ export interface AppSettings {
     events: {
       startup: boolean;
       providerEnabled: boolean;
+      providerDisabled: boolean;
+      providerAdded: boolean;
+      providerRemoved: boolean;
+      deliveryFailure: boolean;
     };
   };
   timeout: number;
