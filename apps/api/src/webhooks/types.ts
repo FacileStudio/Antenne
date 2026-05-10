@@ -39,6 +39,7 @@ export interface RssProviderSettings extends BaseProviderSettings {
   type: "rss";
   feedUrl: string;
   pollInterval: number;
+  includeContent: boolean;
 }
 
 export type ProviderSettings = WebhookProviderSettings | ImapProviderSettings | WebsiteProviderSettings | RssProviderSettings;

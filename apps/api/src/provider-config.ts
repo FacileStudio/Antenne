@@ -183,6 +183,7 @@ export function createDefaultRssProvider(
     tags: overrides.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [],
     feedUrl: overrides.feedUrl?.trim() || "",
     pollInterval: overrides.pollInterval ?? 300,
+    includeContent: overrides.includeContent ?? false,
   };
 }
 

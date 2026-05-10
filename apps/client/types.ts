@@ -109,6 +109,7 @@ export interface RssProviderSettings {
   tags: string[];
   feedUrl: string;
   pollInterval: number;
+  includeContent: boolean;
 }
 
 export type ProviderSettings = WebsiteProviderSettings | WebhookProviderSettings | ImapProviderSettings | RssProviderSettings;
@@ -245,6 +246,7 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
       tags: [],
       feedUrl: "",
       pollInterval: 300,
+      includeContent: false,
     };
   }
 

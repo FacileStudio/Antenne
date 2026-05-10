@@ -61,6 +61,11 @@ const emit = defineEmits<{
       <span>Poll interval</span>
       <input :value="editingProvider.pollInterval" type="number" min="10" step="1" @input="emit('patch', { pollInterval: Number(($event.target as HTMLInputElement).value) || 300 })">
     </label>
+
+    <label class="toggle">
+      <input :checked="editingProvider.includeContent" type="checkbox" @change="emit('patch', { includeContent: ($event.target as HTMLInputElement).checked })">
+      <span>Include full content</span>
+    </label>
   </template>
 
   <template v-else-if="editingProvider.type === 'imap'">

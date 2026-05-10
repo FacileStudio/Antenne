@@ -7,6 +7,7 @@ interface RssItem {
   title: string | null;
   link: string | null;
   description: string | null;
+  content: string | null;
   pubDate: string | null;
   author: string | null;
 }
@@ -56,6 +57,7 @@ function parseRssItems(xml: string): RssItem[] {
       title: extractTag(block, "title"),
       link: extractTag(block, "link"),
       description: extractTag(block, "description"),
+      content: extractTag(block, "content:encoded") ?? extractTag(block, "content"),
       pubDate: extractTag(block, "pubDate"),
       author: extractTag(block, "author") ?? extractTag(block, "dc:creator"),
     });
@@ -79,7 +81,8 @@ function parseAtomItems(xml: string): RssItem[] {
       guid,
       title: extractTag(block, "title"),
       link,
-      description: extractTag(block, "summary") ?? extractTag(block, "content"),
+      description: extractTag(block, "summary"),
+      content: extractTag(block, "content"),
       pubDate: extractTag(block, "published") ?? extractTag(block, "updated"),
       author: extractTag(block, "name"),
     });
@@ -132,9 +135,14 @@ function buildMessage(provider: RssProviderSettings, feed: RssFeed, item: RssIte
     }
   }
 
-  if (item.description) {
-    const plain = stripHtml(item.description);
-    const snippet = plain.length > 300 ? `${plain.slice(0, 300)}…` : plain;
+  const body = provider.includeContent
+    ? (item.content ?? item.description)
+    : item.description;
+
+  if (body) {
+    const plain = stripHtml(body);
+    const limit = provider.includeContent ? 2000 : 300;
+    const snippet = plain.length > limit ? `${plain.slice(0, limit)}…` : plain;
     parts.push(escapeHtml(snippet));
   }
 
@@ -219,6 +227,7 @@ export function createRssManager(sendAlert: (message: string, context: RssAlertC
             title: item.title,
             link: item.link,
             description: item.description ? stripHtml(item.description).slice(0, 500) : null,
+            content: provider.includeContent ? (item.content ?? item.description) : null,
             pubDate: item.pubDate,
             author: item.author,
             feedTitle: feed.title,

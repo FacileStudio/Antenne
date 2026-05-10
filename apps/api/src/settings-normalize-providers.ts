@@ -76,6 +76,7 @@ function normalizeRssProvider(input: unknown, fallback?: RssProviderSettings): R
     tags: "tags" in candidate ? normalizeList(candidate.tags) : seed.tags,
     feedUrl: normalizeString(candidate.feedUrl) || seed.feedUrl,
     pollInterval: normalizeInteger(candidate.pollInterval, seed.pollInterval, `Provider \`${seed.name}\` poll interval`),
+    includeContent: normalizeBoolean(candidate.includeContent, seed.includeContent),
   };
 }
 
