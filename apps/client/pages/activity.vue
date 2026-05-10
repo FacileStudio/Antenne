@@ -104,8 +104,8 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="flex gap-2.5">
-        <input v-model="searchQuery" class="flex-1 min-w-0 w-auto" type="text" placeholder="Search events...">
-        <select v-model="sourceFilter" class="w-auto flex-none">
+        <input v-model="searchQuery" class="!flex-1 min-w-0 !w-auto" type="text" placeholder="Search events...">
+        <select v-model="sourceFilter" class="!w-auto flex-none">
           <option value="">All sources</option>
           <option value="webhook">Webhook</option>
           <option value="website">Website</option>
