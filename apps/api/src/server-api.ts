@@ -1,5 +1,5 @@
 import { hasConfiguredMatrixDelivery } from "./delivery";
-import { getEvents, getGlobalStats, getProviderStats, getTargetStats, type DeliveryAttempt } from "./event-log";
+import { getEvents, getGlobalStats, getProviderStats, getTargetStats, onEventPushed, getEventById, type DeliveryAttempt } from "./event-log";
 import { createJsonResponse } from "./server-responses";
 import type { AlertContext, AppSettings, DashboardSessionConfig, RuntimeStatus } from "./types";
 
@@ -17,6 +17,7 @@ export type AppServerOptions = {
   sendTestAlertToTarget: (targetId: string) => Promise<void>;
   testProviderConnection: (providerId: string) => Promise<void>;
   getRuntimeStatus: () => RuntimeStatus;
+  replayEventToTarget: (eventId: string, targetId: string) => Promise<void>;
   session: DashboardSessionConfig;
 };
 
@@ -99,9 +100,35 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
     }
   }
 
+  if (url.pathname === "/api/events/stream" && req.method === "GET") {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const cleanup = onEventPushed((entry) => {
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(entry)}\n\n`));
+          } catch {}
+        });
+        req.signal.addEventListener("abort", () => {
+          cleanup();
+          try { controller.close(); } catch {}
+        });
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
   if (url.pathname === "/api/events" && req.method === "GET") {
     const limit = Number(url.searchParams.get("limit")) || 50;
-    return createJsonResponse({ events: getEvents({ limit }), stats: getGlobalStats() });
+    const q = url.searchParams.get("q") || undefined;
+    const source = url.searchParams.get("source") || undefined;
+    return createJsonResponse({ events: getEvents({ limit, q, source }), stats: getGlobalStats() });
   }
 
   if (url.pathname.startsWith("/api/events/provider/") && req.method === "GET") {
@@ -114,6 +141,21 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
     const targetId = url.pathname.replace("/api/events/target/", "");
     const limit = Number(url.searchParams.get("limit")) || 50;
     return createJsonResponse({ events: getEvents({ targetId, limit }), stats: getTargetStats(targetId) });
+  }
+
+  const replayMatch = url.pathname.match(/^\/api\/events\/([^/]+)\/replay$/);
+  if (replayMatch && req.method === "POST") {
+    const eventId = replayMatch[1]!;
+    const body = await parseJson(req) as { targetId?: string };
+    if (!body.targetId) {
+      return createJsonResponse({ error: "targetId is required" }, { status: 400 });
+    }
+    try {
+      await options.replayEventToTarget(eventId, body.targetId);
+      return createJsonResponse({ ok: true });
+    } catch (error) {
+      return createJsonResponse({ error: error instanceof Error ? error.message : "replay failed" }, { status: 400 });
+    }
   }
 
   return createJsonResponse({ error: "not found" }, { status: 404 });

@@ -22,6 +22,7 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
   const candidate = input && typeof input === "object" ? input as Partial<DeliveryTarget> & Record<string, unknown> : {};
   const type = candidate.type;
   const providerIds = normalizeProviderIds(candidate.providerIds);
+  const providerTags = normalizeList(candidate.providerTags);
 
   if (type === "matrix") {
     const fallback = createDefaultDeliveryTarget("matrix") as MatrixDeliveryTarget;
@@ -31,6 +32,7 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       name: normalizeString(candidate.name) || fallback.name,
       enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
       providerIds,
+      providerTags,
       homeserver: "homeserver" in candidate ? normalizeString(candidate.homeserver) : fallback.homeserver,
       accessToken: "accessToken" in candidate ? normalizeString(candidate.accessToken) : fallback.accessToken,
       refreshToken: "refreshToken" in candidate ? (normalizeString(candidate.refreshToken) || null) : fallback.refreshToken,
@@ -49,6 +51,7 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       name: normalizeString(candidate.name) || fallback.name,
       enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
       providerIds,
+      providerTags,
       webhookUrl: "webhookUrl" in candidate ? normalizeString(candidate.webhookUrl) : fallback.webhookUrl,
     };
   }
@@ -61,6 +64,7 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       name: normalizeString(candidate.name) || fallback.name,
       enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
       providerIds,
+      providerTags,
       host: "host" in candidate ? normalizeString(candidate.host) : fallback.host,
       port: "port" in candidate ? normalizeInteger(candidate.port, fallback.port, "SMTP port") : fallback.port,
       secure: "secure" in candidate ? normalizeBoolean(candidate.secure, fallback.secure) : fallback.secure,
@@ -80,6 +84,7 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       name: normalizeString(candidate.name) || fallback.name,
       enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
       providerIds,
+      providerTags,
       serverUrl: "serverUrl" in candidate ? normalizeString(candidate.serverUrl) : fallback.serverUrl,
       topic: "topic" in candidate ? normalizeString(candidate.topic) : fallback.topic,
       accessToken: "accessToken" in candidate ? (normalizeString(candidate.accessToken) || null) : fallback.accessToken,
@@ -97,6 +102,7 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       name: normalizeString(candidate.name) || fallback.name,
       enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
       providerIds,
+      providerTags,
       url: "url" in candidate ? normalizeString(candidate.url) : fallback.url,
       secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : fallback.secretValue,
       includeRawPayload: "includeRawPayload" in candidate ? normalizeBoolean(candidate.includeRawPayload, fallback.includeRawPayload) : fallback.includeRawPayload,
@@ -114,6 +120,7 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
     name: normalizeString(candidate.name) || fallback.name,
     enabled: normalizeBoolean(candidate.enabled, fallback.enabled),
     providerIds,
+    providerTags,
     url: "url" in candidate ? normalizeString(candidate.url) : fallback.url,
     secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : fallback.secretValue,
     includeRawPayload: "includeRawPayload" in candidate ? normalizeBoolean(candidate.includeRawPayload, fallback.includeRawPayload) : fallback.includeRawPayload,

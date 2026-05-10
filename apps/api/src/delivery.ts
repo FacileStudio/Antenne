@@ -150,16 +150,20 @@ function isKnownDeliveryTargetType(type: unknown): type is DeliveryTargetType {
   return type === "matrix" || type === "discord" || type === "webhook" || type === "smtp" || type === "ntfy" || type === "perception";
 }
 
-export function targetAcceptsProvider(target: DeliveryTarget, providerId: string | null): boolean {
-  if (!providerId) {
-    return false;
+export function targetAcceptsProvider(target: DeliveryTarget, providerId: string | null, providerTags?: string[]): boolean {
+  if (providerId && target.providerIds?.includes(providerId)) {
+    return true;
   }
 
-  return target.providerIds?.includes(providerId) ?? false;
+  if (providerTags && providerTags.length > 0 && target.providerTags && target.providerTags.length > 0) {
+    return providerTags.some(tag => target.providerTags.includes(tag));
+  }
+
+  return false;
 }
 
-export function getDeliveryRouteSummary(config: DeliveryConfig, providerId: string): DeliveryRouteSummary {
-  const selectedTargets = config.items.filter((target) => targetAcceptsProvider(target, providerId));
+export function getDeliveryRouteSummary(config: DeliveryConfig, providerId: string, providerTags?: string[]): DeliveryRouteSummary {
+  const selectedTargets = config.items.filter((target) => targetAcceptsProvider(target, providerId, providerTags));
   const sendableTargets = selectedTargets.filter((target) => canSendToDeliveryTarget(target));
 
   return {
@@ -194,7 +198,7 @@ function createDeliveryTask(target: DeliveryTarget, delivery: DeliveryMessage): 
   return isHttpDeliveryTarget(target) && hasHttpDelivery(target) ? sendHttpAlert(target, delivery) : null;
 }
 
-export async function sendAlert(config: DeliveryConfig, delivery: DeliveryMessage, providerId: string): Promise<DeliveryAttempt[]> {
+export async function sendAlert(config: DeliveryConfig, delivery: DeliveryMessage, providerId: string, providerTags?: string[]): Promise<DeliveryAttempt[]> {
   if (!hasAnyDelivery(config)) {
     throw new Error("No delivery channel is configured.");
   }
@@ -205,7 +209,7 @@ export async function sendAlert(config: DeliveryConfig, delivery: DeliveryMessag
     }
   }
 
-  const route = getDeliveryRouteSummary(config, providerId);
+  const route = getDeliveryRouteSummary(config, providerId, providerTags);
   const targets: DeliveryTarget[] = route.sendableTargets;
   const tasks: Promise<void>[] = [];
 

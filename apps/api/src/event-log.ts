@@ -36,6 +36,14 @@ let entries: EventLogEntry[] = [];
 let persistPath: string | null = null;
 let flushTimer: Timer | null = null;
 
+type EventLogListener = (entry: EventLogEntry) => void;
+const listeners: Set<EventLogListener> = new Set();
+
+export function onEventPushed(listener: EventLogListener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
 function scheduleFlush() {
   if (!persistPath) return;
   if (flushTimer) return;
@@ -94,6 +102,11 @@ export function pushEvent(
   }
 
   scheduleFlush();
+
+  for (const listener of listeners) {
+    try { listener(entry); } catch {}
+  }
+
   return entry;
 }
 
@@ -108,9 +121,30 @@ export function updateEventDeliveries(
   }
 }
 
+export function updateEventDeliveryRetry(
+  eventId: string,
+  targetId: string,
+  status: "success" | "error",
+): void {
+  const entry = entries.find((e) => e.id === eventId);
+  if (!entry) return;
+
+  const delivery = entry.deliveries.find((d) => d.targetId === targetId);
+  if (delivery) {
+    delivery.status = status;
+    if (status === "success") {
+      delete delivery.error;
+    }
+  }
+
+  scheduleFlush();
+}
+
 export function getEvents(options?: {
   providerId?: string;
   targetId?: string;
+  source?: string;
+  q?: string;
   limit?: number;
 }): EventLogEntry[] {
   let result = entries;
@@ -125,8 +159,25 @@ export function getEvents(options?: {
     );
   }
 
+  if (options?.source) {
+    result = result.filter((e) => e.source === options.source);
+  }
+
+  if (options?.q) {
+    const query = options.q.toLowerCase();
+    result = result.filter((e) =>
+      e.event?.toLowerCase().includes(query) ||
+      e.providerName?.toLowerCase().includes(query) ||
+      e.message?.toLowerCase().includes(query)
+    );
+  }
+
   const reversed = [...result].reverse();
   return options?.limit ? reversed.slice(0, options.limit) : reversed;
+}
+
+export function getEventById(id: string): EventLogEntry | null {
+  return entries.find((e) => e.id === id) ?? null;
 }
 
 export function getProviderStats(providerId: string): EventLogStats {

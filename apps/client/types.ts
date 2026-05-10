@@ -8,6 +8,7 @@ export interface DeliveryTargetBase {
   name: string;
   enabled: boolean;
   providerIds: string[];
+  providerTags: string[];
 }
 
 export interface MatrixTarget extends DeliveryTargetBase {
@@ -243,6 +244,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       name: "Matrix",
       enabled: true,
       providerIds: [],
+      providerTags: [],
       homeserver: "https://matrix.org",
       accessToken: "",
       refreshToken: "",
@@ -260,6 +262,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       name: "Discord webhook",
       enabled: true,
       providerIds: [],
+      providerTags: [],
       webhookUrl: "",
     };
   }
@@ -271,6 +274,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       name: "SMTP",
       enabled: true,
       providerIds: [],
+      providerTags: [],
       host: "",
       port: 587,
       secure: true,
@@ -289,6 +293,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       name: "ntfy",
       enabled: true,
       providerIds: [],
+      providerTags: [],
       serverUrl: "https://ntfy.sh",
       topic: "",
       accessToken: "",
@@ -305,6 +310,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       name: "Perception",
       enabled: true,
       providerIds: [],
+      providerTags: [],
       url: "",
       secretValue: "",
       includeRawPayload: false,
@@ -317,6 +323,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
     name: "HTTP webhook",
     enabled: true,
     providerIds: [],
+    providerTags: [],
     url: "",
     secretValue: "",
     includeRawPayload: false,

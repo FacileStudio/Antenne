@@ -1,10 +1,11 @@
+import { enqueueRetry, startRetryProcessor } from "./src/retry";
 import { createImapManager, testImapConnection } from "./src/imap";
 import { createMonitorManager } from "./src/monitor";
 import { DeliveryError, getDeliveryRouteSummary, hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
 import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { buildNookEventEnvelope } from "./src/event-envelope";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
-import { initEventLog, pushEvent, updateEventDeliveries, type DeliveryAttempt } from "./src/event-log";
+import { initEventLog, pushEvent, updateEventDeliveries, getEventById, type DeliveryAttempt } from "./src/event-log";
 import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
   createInitialRuntimeStatus,
@@ -15,6 +16,22 @@ import {
 } from "./src/settings";
 import { SYSTEM_PROVIDER_ID, type AppSettings } from "./src/types";
 import type { AlertContext, DeliveryMessage } from "./src/types";
+import { createHash } from "node:crypto";
+
+const recentEventHashes = new Map<string, number>();
+const DEDUP_WINDOW_MS = 30_000;
+
+function isDuplicateEvent(message: string, providerId: string): boolean {
+  const now = Date.now();
+  for (const [key, timestamp] of recentEventHashes) {
+    if (now - timestamp > DEDUP_WINDOW_MS) recentEventHashes.delete(key);
+  }
+
+  const hash = createHash("sha256").update(`${providerId}\0${message}`).digest("hex");
+  if (recentEventHashes.has(hash)) return true;
+  recentEventHashes.set(hash, now);
+  return false;
+}
 
 const settingsPath = getSettingsPath();
 const eventLogPath = settingsPath.replace(/\.json$/, "-events.json");
@@ -62,16 +79,23 @@ async function sendConfiguredAlert(message: string, context?: AlertContext): Pro
   }
 
   const providerId = context?.providerId ?? SYSTEM_PROVIDER_ID;
-  const route = getDeliveryRouteSummary(settings.delivery, providerId);
+  const providerTags = context?.providerTags ?? getProviderTags(settings, providerId);
   const source = getAlertSource(context);
   const sourceLabel = describeAlertSource(context, providerId);
   const eventLabel = context?.event ?? message.slice(0, 80);
+
+  if (isDuplicateEvent(message, providerId)) {
+    console.log(`[delivery] deduplicated: ${eventLabel}`);
+    return [];
+  }
+
+  const route = getDeliveryRouteSummary(settings.delivery, providerId, providerTags);
   const envelope = buildNookEventEnvelope({
     source,
     providerId,
     providerName: context?.providerName ?? "Nook",
     providerType: context?.providerType ?? "system",
-    providerTags: context?.providerTags ?? getProviderTags(settings, providerId),
+    providerTags,
     eventType: context?.eventType ?? eventLabel,
     eventTitle: context?.eventTitle ?? eventLabel,
     eventUrl: context?.eventUrl ?? null,
@@ -115,8 +139,15 @@ async function sendConfiguredAlert(message: string, context?: AlertContext): Pro
   }
 
   try {
-    const deliveries = await sendAlert(settings.delivery, delivery, providerId);
+    const deliveries = await sendAlert(settings.delivery, delivery, providerId, providerTags);
     updateEventDeliveries(entry.id, deliveries);
+    const failedDeliveries = deliveries.filter((d) => d.status === "error");
+    for (const failure of failedDeliveries) {
+      const target = settings.delivery.items.find((t) => t.id === failure.targetId);
+      if (target) {
+        enqueueRetry(entry.id, target, delivery);
+      }
+    }
     const successCount = deliveries.filter((delivery) => delivery.status === "success").length;
     const errorCount = deliveries.length - successCount;
     console.log(`[delivery] \`${eventLabel}\` from ${sourceLabel}: ${successCount} delivered, ${errorCount} failed, ${route.skippedByFilterCount} filtered; targets: ${describeTargets(deliveries)}`);
@@ -128,6 +159,13 @@ async function sendConfiguredAlert(message: string, context?: AlertContext): Pro
   } catch (error) {
     if (error instanceof DeliveryError) {
       updateEventDeliveries(entry.id, error.attempts);
+      const failedAttempts = error.attempts.filter((a) => a.status === "error");
+      for (const failure of failedAttempts) {
+        const target = settings.delivery.items.find((t) => t.id === failure.targetId);
+        if (target) {
+          enqueueRetry(entry.id, target, delivery);
+        }
+      }
       console.error(`[delivery] \`${eventLabel}\` from ${sourceLabel}: all selected targets failed; targets: ${describeTargets(error.attempts)}`);
     }
 
@@ -234,6 +272,24 @@ const imapManager = createImapManager(async (message, context) => {
     console.error(`[imap] ${error instanceof Error ? error.message : String(error)}`);
   }
 });
+
+async function replayEventToTarget(eventId: string, targetId: string) {
+  const entry = getEventById(eventId);
+  if (!entry || !entry.envelope) {
+    throw new Error("Event not found or has no envelope.");
+  }
+
+  const settings = store.getSettings();
+  const target = settings.delivery.items.find((t) => t.id === targetId);
+  if (!target) {
+    throw new Error("Delivery target not found.");
+  }
+
+  await sendAlertToTarget(target, {
+    message: entry.message ?? "",
+    envelope: entry.envelope,
+  });
+}
 
 function applySettings() {
   const settings = store.getSettings();
@@ -349,6 +405,8 @@ if (hasAnyDelivery(settings.delivery) && settings.system.events.startup) {
   console.warn("[startup] No delivery channel is configured yet. Dashboard will still start.");
 }
 
+startRetryProcessor();
+
 Bun.serve({
   port: serverPort,
   fetch: createAppServer({
@@ -357,6 +415,7 @@ Bun.serve({
     sendConfiguredAlert,
     sendTestAlertToTarget,
     testProviderConnection,
+    replayEventToTarget,
     getRuntimeStatus: () => ({ ...runtimeStatus }),
     session,
   }),

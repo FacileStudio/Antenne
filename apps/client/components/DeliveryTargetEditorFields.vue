@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-vue-next";
 
 import RoomIdEditor from "./RoomIdEditor.vue";
 import SmtpAddressEditor from "./SmtpAddressEditor.vue";
+import TagPillInput from "./TagPillInput.vue";
 import { getProviderLabel, SYSTEM_PROVIDER_ID, type DeliveryTarget, type ProviderSettings } from "../types";
 
 const props = defineProps<{
@@ -65,6 +66,12 @@ const providerOptions = computed(() => [
       </label>
       <p v-if="providers.length === 0" class="field-hint">No providers configured yet. System events can still be targeted.</p>
     </div>
+  </div>
+
+  <div class="field">
+    <span>Provider tags</span>
+    <p class="field-hint">Optionally match providers by tag. A provider matches if it has any of these tags, even without explicit provider selection.</p>
+    <TagPillInput :model-value="editingTarget.providerTags ?? []" @update:model-value="emit('patch', { providerTags: $event })" />
   </div>
 
   <template v-if="editingTarget.type === 'matrix'">

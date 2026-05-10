@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { Clock, CheckCircle2, XCircle } from "lucide-vue-next";
+import { Clock, CheckCircle2, XCircle, RotateCcw } from "lucide-vue-next";
 
 import type { EventLogEntry } from "../types";
 
 defineProps<{
   events: EventLogEntry[];
+}>();
+
+const emit = defineEmits<{
+  replay: [eventId: string];
 }>();
 
 function formatTime(iso: string) {
@@ -123,6 +127,10 @@ function previewFor(entry: EventLogEntry) {
             {{ d.targetName }}
           </span>
         </div>
+        <button class="replay-button" title="Replay this event" @click="emit('replay', entry.id)">
+          <RotateCcw :size="13" />
+          <span>Replay</span>
+        </button>
       </div>
     </div>
   </div>
@@ -273,6 +281,27 @@ function previewFor(entry: EventLogEntry) {
   color: oklch(43% 0.16 25);
   border-color: oklch(84% 0.08 25);
   background: oklch(96% 0.04 25);
+}
+
+.replay-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--nook-muted);
+  font-size: 0.73rem;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+  margin-top: 0.2rem;
+  width: fit-content;
+}
+
+.replay-button:hover {
+  color: var(--nook-text);
+  border-color: oklch(0.7 0.1 250);
 }
 
 @media (max-width: 720px) {

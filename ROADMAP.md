@@ -4,12 +4,12 @@
 
 - [x] Standardize `status`, `dueDate`, `completedDate` fields across all webhook providers
 - [x] Enrich IMAP normalized payload with `from`, `to`, `subject`, `snippet`, `messageId`
-- [ ] Tag-based delivery routing — route providers to targets by tag, not all-or-nothing
-- [ ] Retry + exponential backoff on delivery failures (3 attempts: 5s / 30s / 5min)
-- [ ] Event deduplication window — collapse repeated identical alerts
-- [ ] Real-time activity feed via SSE
-- [ ] Full-text search and filtering in activity log
-- [ ] Webhook replay — re-deliver any logged event to any target from the dashboard
+- [x] Tag-based delivery routing — route providers to targets by tag, not all-or-nothing
+- [x] Retry + exponential backoff on delivery failures (3 attempts: 5s / 30s / 5min)
+- [x] Event deduplication window — collapse repeated identical alerts
+- [x] Real-time activity feed via SSE
+- [x] Full-text search and filtering in activity log
+- [x] Webhook replay — re-deliver any logged event to any target from the dashboard
 - [ ] SQLite persistence — replace flat JSON file
 
 ## New Webhook Providers
