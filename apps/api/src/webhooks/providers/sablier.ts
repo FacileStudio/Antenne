@@ -100,6 +100,8 @@ export const sablierWebhookProvider: WebhookProviderDefinition = {
         taskName: data?.task_name ?? null,
         startedAt: data?.started_at ?? null,
         stoppedAt: data?.stopped_at ?? null,
+        status: parsed.event === "timer_started" ? "started" : parsed.event === "timer_stopped" ? "stopped" : null,
+        completedDate: parsed.event === "timer_stopped" ? (data?.stopped_at ?? null) : null,
       },
       containsPii: true,
     };

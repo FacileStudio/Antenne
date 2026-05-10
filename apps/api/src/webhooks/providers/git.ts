@@ -241,6 +241,15 @@ export const gitWebhookProvider: WebhookProviderDefinition = {
         action: parsed.action ?? parsed.object_attributes?.action ?? null,
         merged: parsed.pull_request?.merged ?? null,
         url: getPrimaryUrl(parsed),
+        status: eventType === "git.push"
+          ? "pushed"
+          : eventType === "git.pull_request"
+            ? parsed.pull_request?.merged
+              ? "merged"
+              : (parsed.action ?? parsed.object_attributes?.action ?? null)
+            : eventType === "git.issue"
+              ? (parsed.action ?? parsed.object_attributes?.action ?? null)
+              : null,
       },
     };
   },

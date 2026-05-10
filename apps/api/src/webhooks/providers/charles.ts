@@ -135,6 +135,13 @@ export const charlesWebhookProvider: WebhookProviderDefinition = {
         entityId: parsed.data?.entityId ?? record?.id ?? null,
         changedFields: parsed.data?.changedFields ?? [],
         recordEmail: record?.email ?? null,
+        status: (() => {
+          const action = parsed.event?.split(".").pop();
+          if (action === "create" || action === "created") return "created";
+          if (action === "update" || action === "updated") return "updated";
+          if (action === "delete" || action === "deleted") return "deleted";
+          return null;
+        })(),
       },
       containsPii: true,
     };

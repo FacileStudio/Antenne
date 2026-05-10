@@ -16,8 +16,10 @@ interface ImapFetchResult {
   uid: number;
   subject: string | null;
   from: string | null;
+  to: string | null;
   date: string | null;
   body: string | null;
+  messageId: string | null;
 }
 
 const defaultImapMailbox = "INBOX";
@@ -179,7 +181,7 @@ class ImapSession {
   }
 
   async fetchHeaders(uid: number): Promise<ImapFetchResult> {
-    const lines = await this.command(`UID FETCH ${uid} (UID BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])`);
+    const lines = await this.command(`UID FETCH ${uid} (UID BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID)])`);
     const headerLines: string[] = [];
     let collectingHeaders = false;
 
@@ -221,13 +223,16 @@ class ImapSession {
 
     const rawSubject = headers.get("subject");
     const rawFrom = headers.get("from");
+    const rawTo = headers.get("to");
 
     return {
       uid,
       subject: rawSubject ? decodeMimeWord(rawSubject) : null,
       from: rawFrom ? decodeMimeWord(rawFrom) : null,
+      to: rawTo ? decodeMimeWord(rawTo) : null,
       date: headers.get("date") ?? null,
       body: null,
+      messageId: headers.get("message-id") ?? null,
     };
   }
 
@@ -358,8 +363,11 @@ export function createImapManager(sendAlert: (message: string, context: ImapAler
             uid: message.uid,
             subject: message.subject,
             from: message.from,
+            to: message.to,
             date: message.date,
             body: message.body,
+            snippet: message.body ? message.body.slice(0, 200) : null,
+            messageId: message.messageId,
           },
           containsPii: true,
         });

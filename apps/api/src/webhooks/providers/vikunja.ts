@@ -241,6 +241,18 @@ export const vikunjaWebhookProvider: WebhookProviderDefinition = {
         projectId: task?.project_id ?? project?.id ?? null,
         projectTitle: project?.title ?? null,
         assignee: payload && typeof payload === "object" ? parsed.data?.assignee?.username ?? parsed.data?.assignee?.name ?? parsed.data?.assignee?.email ?? null : null,
+        status: event === "task.created"
+          ? "open"
+          : event === "task.updated" && task?.done === true
+            ? "completed"
+            : event === "task.updated" && task?.done === false
+              ? "open"
+              : event === "task.deleted"
+                ? "deleted"
+                : event === "task.overdue" || event === "tasks.overdue"
+                  ? "overdue"
+                  : null,
+        completedDate: task?.done === true ? (parsed.time ?? null) : null,
       },
       containsPii: Boolean(doer?.email || parsed.data?.assignee?.email),
     };

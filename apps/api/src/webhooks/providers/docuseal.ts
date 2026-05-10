@@ -156,6 +156,16 @@ export const docuSealWebhookProvider: WebhookProviderDefinition = {
         completedAt: data?.completed_at ?? null,
         declinedAt: data?.declined_at ?? null,
         openedAt: data?.opened_at ?? null,
+        status: data?.submission?.status ?? data?.status
+          ? (data?.submission?.status ?? data?.status ?? null)
+          : parsed.event_type === "form.completed" || parsed.event_type === "submission.completed"
+            ? "completed"
+            : parsed.event_type === "form.declined" || parsed.event_type === "submission.declined"
+              ? "declined"
+              : parsed.event_type === "form.started" || parsed.event_type === "form.viewed"
+                ? "pending"
+                : null,
+        completedDate: data?.completed_at ?? null,
       },
       containsPii: true,
     };
