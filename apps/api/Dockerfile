@@ -2,8 +2,8 @@ FROM oven/bun:1 AS client-build
 
 WORKDIR /build/apps/client
 
-COPY apps/client/package.json ./
-RUN bun install
+COPY apps/client/package.json apps/client/bun.lock* ./
+RUN bun install --frozen-lockfile
 
 COPY apps/client ./
 
