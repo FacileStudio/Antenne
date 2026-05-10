@@ -52,6 +52,10 @@ export function getProviderLabel(type: ProviderType) {
     return "Charles";
   }
 
+  if (type === "perception") {
+    return "Perception";
+  }
+
   return toTitleCase(type);
 }
 
@@ -80,6 +84,10 @@ export function getWebhookDefaultPath(type: WebhookProviderType) {
     return "/webhook/sablier";
   }
 
+  if (type === "perception") {
+    return "/webhook/perception";
+  }
+
   return "/webhook/dokploy";
 }
 
@@ -106,6 +114,10 @@ export function getWebhookDefaultSecretHeader(type: WebhookProviderType) {
 
   if (type === "sablier") {
     return "x-sablier-signature";
+  }
+
+  if (type === "perception") {
+    return "x-perception-secret";
   }
 
   return "x-dokploy-secret";

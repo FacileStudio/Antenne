@@ -16,6 +16,7 @@ import { uptimeKumaWebhookProvider } from "./providers/uptime-kuma";
 import { vikunjaWebhookProvider } from "./providers/vikunja";
 import { charlesWebhookProvider } from "./providers/charles";
 import { sablierWebhookProvider } from "./providers/sablier";
+import { perceptionWebhookProvider } from "./providers/perception";
 import { isWebhookProviderSettings } from "./types";
 
 const providerDefinitions = {
@@ -26,6 +27,7 @@ const providerDefinitions = {
   vikunja: vikunjaWebhookProvider,
   charles: charlesWebhookProvider,
   sablier: sablierWebhookProvider,
+  perception: perceptionWebhookProvider,
 } satisfies Record<WebhookProviderType, WebhookProviderDefinition>;
 
 function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhookProvider[] {
