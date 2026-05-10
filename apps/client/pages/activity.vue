@@ -62,16 +62,25 @@ async function handleReplay(eventId: string) {
   }
 }
 
+function connectSSE() {
+  try {
+    eventSource = new EventSource("/api/events/stream");
+    eventSource.onmessage = (event) => {
+      try {
+        const entry = JSON.parse(event.data) as EventLogEntry;
+        events.value = [entry, ...events.value].slice(0, 100);
+      } catch {}
+    };
+    eventSource.onerror = () => {
+      eventSource?.close();
+      eventSource = null;
+    };
+  } catch {}
+}
+
 onMounted(() => {
   void refresh();
-
-  eventSource = new EventSource("/api/events/stream");
-  eventSource.onmessage = (event) => {
-    try {
-      const entry = JSON.parse(event.data) as EventLogEntry;
-      events.value = [entry, ...events.value].slice(0, 100);
-    } catch {}
-  };
+  connectSSE();
 });
 
 onUnmounted(() => {
@@ -95,8 +104,8 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="search-bar">
-        <input v-model="searchQuery" type="text" placeholder="Search events..." class="search-input">
-        <select v-model="sourceFilter" class="source-select">
+        <input v-model="searchQuery" type="text" placeholder="Search events...">
+        <select v-model="sourceFilter">
           <option value="">All sources</option>
           <option value="webhook">Webhook</option>
           <option value="website">Website</option>
@@ -149,27 +158,8 @@ onUnmounted(() => {
   gap: 0.65rem;
 }
 
-.search-input {
+.search-bar input {
   flex: 1;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid var(--nook-border);
-  border-radius: var(--radius-lg);
-  background: var(--nook-surface);
-  color: var(--nook-text);
-  font-size: 0.88rem;
-}
-
-.search-input::placeholder {
-  color: var(--nook-muted);
-}
-
-.source-select {
-  padding: 0.55rem 0.85rem;
-  border: 1px solid var(--nook-border);
-  border-radius: var(--radius-lg);
-  background: var(--nook-surface);
-  color: var(--nook-text);
-  font-size: 0.88rem;
 }
 
 @media (max-width: 980px) {

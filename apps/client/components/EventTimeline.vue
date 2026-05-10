@@ -127,9 +127,9 @@ function previewFor(entry: EventLogEntry) {
             {{ d.targetName }}
           </span>
         </div>
-        <button class="replay-button" title="Replay this event" @click="emit('replay', entry.id)">
+        <button v-if="entry.envelope" class="replay-button" type="button" title="Replay this event" @click="emit('replay', entry.id)">
           <RotateCcw :size="13" />
-          <span>Replay</span>
+          Replay
         </button>
       </div>
     </div>
