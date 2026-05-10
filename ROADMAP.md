@@ -1,0 +1,42 @@
+# Nook Roadmap
+
+## Core Upgrades
+
+- [x] Standardize `status`, `dueDate`, `completedDate` fields across all webhook providers
+- [x] Enrich IMAP normalized payload with `from`, `to`, `subject`, `snippet`, `messageId`
+- [ ] Tag-based delivery routing — route providers to targets by tag, not all-or-nothing
+- [ ] Retry + exponential backoff on delivery failures (3 attempts: 5s / 30s / 5min)
+- [ ] Event deduplication window — collapse repeated identical alerts
+- [ ] Real-time activity feed via SSE
+- [ ] Full-text search and filtering in activity log
+- [ ] Webhook replay — re-deliver any logged event to any target from the dashboard
+- [ ] SQLite persistence — replace flat JSON file
+
+## New Webhook Providers
+
+- [ ] Grafana — alert firing/resolved with severity and metric labels
+- [ ] Prometheus Alertmanager — label-based routing, more granular than Grafana
+- [ ] Coolify — deployment events (popular Dokploy alternative)
+- [ ] Sentry — error spikes, issue lifecycle, release tracking
+- [ ] Gitea / Forgejo — extend existing `git.ts` pattern
+- [ ] Woodpecker CI / Drone — CI pipeline events for non-GitHub shops
+
+## New Pull Providers
+
+- [ ] RSS / Atom feeds — generic content monitoring, one config, infinite sources
+- [ ] SSL certificate expiry — fire N days before expiry
+- [ ] DNS record watcher — fire on any record change
+- [ ] Cron heartbeat monitor — expect a ping on a schedule, alert if missing
+
+## New Delivery Targets
+
+- [ ] Slack
+- [ ] Telegram
+- [ ] Gotify — self-hosted ntfy alternative
+- [ ] Pushover
+
+## Perception Integration
+
+- [x] Standardize `status`, `dueDate`, `completedDate` in all provider `normalizedPayload`s
+- [x] Perception ingest generically extracts and populates `events.status`, `events.due_at`, `events.completed_at`
+- [x] perception-js `IngestOptions` extended with `status`, `dueDate`, `completedDate`
