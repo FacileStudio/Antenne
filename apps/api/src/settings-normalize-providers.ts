@@ -1,15 +1,17 @@
-import { createDefaultProvider, createDefaultWebsiteProvider } from "./provider-config";
+import { createDefaultProvider, createDefaultRssProvider, createDefaultWebsiteProvider } from "./provider-config";
 import type { AppSettings, ProvidersConfig } from "./types";
 import type {
   ImapProviderSettings,
   ProviderSettings,
   ProviderType,
+  RssProviderSettings,
   WebhookProviderSettings,
   WebsiteProviderSettings,
 } from "./webhooks/types";
 import {
   isImapProviderSettings,
   isProviderType,
+  isRssProviderSettings,
   isWebhookProviderSettings,
   isWebsiteProviderSettings,
 } from "./webhooks/types";
@@ -62,6 +64,21 @@ function normalizeImapProvider(input: unknown, fallback?: ImapProviderSettings):
   };
 }
 
+function normalizeRssProvider(input: unknown, fallback?: RssProviderSettings): RssProviderSettings {
+  const seed = fallback ?? createDefaultRssProvider();
+  const candidate = input && typeof input === "object" ? input as Partial<RssProviderSettings> : {};
+
+  return {
+    ...seed,
+    id: normalizeString(candidate.id) || seed.id,
+    name: normalizeString(candidate.name) || seed.name,
+    enabled: normalizeBoolean(candidate.enabled, seed.enabled),
+    tags: "tags" in candidate ? normalizeList(candidate.tags) : seed.tags,
+    feedUrl: normalizeString(candidate.feedUrl) || seed.feedUrl,
+    pollInterval: normalizeInteger(candidate.pollInterval, seed.pollInterval, `Provider \`${seed.name}\` poll interval`),
+  };
+}
+
 function normalizeWebhookProvider(input: unknown, fallback?: WebhookProviderSettings): WebhookProviderSettings {
   const type = input && typeof input === "object" && isProviderType((input as { type?: unknown }).type)
     ? (input as { type: ProviderType }).type
@@ -97,6 +114,10 @@ function normalizeProvider(input: unknown, fallback?: ProviderSettings): Provide
 
   if (type === "imap") {
     return normalizeImapProvider(input, fallback && isImapProviderSettings(fallback) ? fallback : undefined);
+  }
+
+  if (type === "rss") {
+    return normalizeRssProvider(input, fallback && isRssProviderSettings(fallback) ? fallback : undefined);
   }
 
   return normalizeWebhookProvider(input, fallback && isWebhookProviderSettings(fallback) ? fallback : undefined);

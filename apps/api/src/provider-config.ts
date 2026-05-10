@@ -2,6 +2,7 @@ import type {
   ImapProviderSettings,
   ProviderSettings,
   ProviderType,
+  RssProviderSettings,
   WebsiteProviderSettings,
   WebhookProviderSettings,
   WebhookProviderType,
@@ -25,6 +26,10 @@ export function getProviderLabel(type: ProviderType) {
 
   if (type === "imap") {
     return "IMAP";
+  }
+
+  if (type === "rss") {
+    return "RSS";
   }
 
   if (type === "docuseal") {
@@ -155,6 +160,20 @@ export function createDefaultWebsiteProvider(
   };
 }
 
+export function createDefaultRssProvider(
+  overrides: Partial<RssProviderSettings> = {},
+): RssProviderSettings {
+  return {
+    id: overrides.id ?? createProviderId(),
+    type: "rss",
+    name: overrides.name?.trim() || "RSS Feed",
+    enabled: overrides.enabled ?? true,
+    tags: overrides.tags?.map((tag) => tag.trim()).filter(Boolean) ?? [],
+    feedUrl: overrides.feedUrl?.trim() || "",
+    pollInterval: overrides.pollInterval ?? 300,
+  };
+}
+
 export function createDefaultProvider(type: ProviderType, overrides: Partial<ProviderSettings> = {}): ProviderSettings {
   if (type === "website") {
     return createDefaultWebsiteProvider(overrides as Partial<WebsiteProviderSettings>);
@@ -162,6 +181,10 @@ export function createDefaultProvider(type: ProviderType, overrides: Partial<Pro
 
   if (type === "imap") {
     return createDefaultImapProvider(overrides as Partial<ImapProviderSettings>);
+  }
+
+  if (type === "rss") {
+    return createDefaultRssProvider(overrides as Partial<RssProviderSettings>);
   }
 
   return createDefaultWebhookProvider(type, overrides as Partial<WebhookProviderSettings>);

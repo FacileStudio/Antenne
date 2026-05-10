@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { htmlToPlainText } from "./delivery-utils";
 
-export type NookEventSource = "webhook" | "website" | "imap" | "test" | "system";
+export type NookEventSource = "webhook" | "website" | "imap" | "rss" | "test" | "system";
 export type NookSubjectType = "task" | "contract" | "client" | "deployment" | "repository" | "email" | "service" | "schedule" | "system" | "unknown";
 
 export interface NookEventActor {

@@ -1,5 +1,5 @@
 export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier";
-export type ProviderType = WebhookProviderType | "imap" | "website";
+export type ProviderType = WebhookProviderType | "imap" | "website" | "rss";
 export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy" | "perception";
 
 export interface DeliveryTargetBase {
@@ -101,7 +101,17 @@ export interface ImapProviderSettings {
   includeEmailBody: boolean;
 }
 
-export type ProviderSettings = WebsiteProviderSettings | WebhookProviderSettings | ImapProviderSettings;
+export interface RssProviderSettings {
+  id: string;
+  type: "rss";
+  name: string;
+  enabled: boolean;
+  tags: string[];
+  feedUrl: string;
+  pollInterval: number;
+}
+
+export type ProviderSettings = WebsiteProviderSettings | WebhookProviderSettings | ImapProviderSettings | RssProviderSettings;
 
 export interface AppSettings {
   delivery: {
@@ -144,7 +154,7 @@ export interface DeliveryAttempt {
 export interface EventLogEntry {
   id: string;
   timestamp: string;
-  source: "webhook" | "website" | "imap" | "test" | "system";
+  source: "webhook" | "website" | "imap" | "rss" | "test" | "system";
   providerId: string | null;
   providerName: string;
   providerType: string;
@@ -161,7 +171,7 @@ export interface EventLogStats {
   deliveryErrorCount: number;
 }
 
-export const providerTypes = ["website", "imap", "charles", "docuseal", "dokploy", "git", "sablier", "uptime-kuma", "vikunja"] as const satisfies ProviderType[];
+export const providerTypes = ["website", "imap", "rss", "charles", "docuseal", "dokploy", "git", "sablier", "uptime-kuma", "vikunja"] as const satisfies ProviderType[];
 export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp", "ntfy", "perception"] as const satisfies DeliveryTargetType[];
 export const SYSTEM_PROVIDER_ID = "__nook_system__";
 
@@ -176,6 +186,7 @@ function createMatrixDeviceId() {
 export function getProviderLabel(type: ProviderType) {
   if (type === "website") return "Website";
   if (type === "imap") return "IMAP";
+  if (type === "rss") return "RSS";
   if (type === "docuseal") return "DocuSeal";
   if (type === "dokploy") return "Dokploy";
   if (type === "git") return "Git";
@@ -221,6 +232,18 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
       password: "",
       pollInterval: 60,
       includeEmailBody: false,
+    };
+  }
+
+  if (type === "rss") {
+    return {
+      id: createId(),
+      type,
+      name: "RSS Feed",
+      enabled: true,
+      tags: [],
+      feedUrl: "",
+      pollInterval: 300,
     };
   }
 

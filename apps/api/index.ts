@@ -1,12 +1,13 @@
 import { enqueueRetry, startRetryProcessor } from "./src/retry";
 import { createImapManager, testImapConnection } from "./src/imap";
 import { createMonitorManager } from "./src/monitor";
+import { createRssManager } from "./src/rss";
 import { DeliveryError, getDeliveryRouteSummary, hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
 import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { buildNookEventEnvelope } from "./src/event-envelope";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
 import { initEventLog, pushEvent, updateEventDeliveries, getEventById, type DeliveryAttempt } from "./src/event-log";
-import { isImapProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
+import { isImapProviderSettings, isRssProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
   createInitialRuntimeStatus,
   getSettingsPath,
@@ -46,6 +47,7 @@ const session = createDashboardSessionConfig();
 function getAlertSource(context?: AlertContext) {
   if (context?.providerType === "website") return "website";
   if (context?.providerType === "imap") return "imap";
+  if (context?.providerType === "rss") return "rss";
   if (context?.providerType === "system") return "system";
   return context ? "webhook" : "system";
 }
@@ -272,6 +274,13 @@ const imapManager = createImapManager(async (message, context) => {
     console.error(`[imap] ${error instanceof Error ? error.message : String(error)}`);
   }
 });
+const rssManager = createRssManager(async (message, context) => {
+  try {
+    await sendConfiguredAlert(message, context);
+  } catch (error) {
+    console.error(`[rss] ${error instanceof Error ? error.message : String(error)}`);
+  }
+});
 
 async function replayEventToTarget(eventId: string, targetId: string) {
   const entry = getEventById(eventId);
@@ -297,6 +306,7 @@ function applySettings() {
   runtimeStatus.lastReloadedAt = new Date().toISOString();
   monitorManager.apply(settings);
   imapManager.apply(settings);
+  rssManager.apply(settings);
 }
 
 async function updateSettings(input: unknown) {
@@ -380,6 +390,7 @@ console.log(`[startup] matrix rooms: ${settings.delivery.items.filter(isMatrixDe
 console.log(`[startup] providers: ${settings.providers.items.length} total`);
 console.log(`[startup] websites: ${settings.providers.items.filter(isWebsiteProviderSettings).length}`);
 console.log(`[startup] imap: ${settings.providers.items.filter(isImapProviderSettings).length}`);
+console.log(`[startup] rss: ${settings.providers.items.filter(isRssProviderSettings).length}`);
 console.log(`[startup] webhooks: ${settings.providers.items.filter(isWebhookProviderSettings).length}`);
 
 if (hasAnyDelivery(settings.delivery) && settings.system.events.startup) {

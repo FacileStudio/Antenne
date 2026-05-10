@@ -23,7 +23,7 @@
 
 ## New Pull Providers
 
-- [ ] RSS / Atom feeds — generic content monitoring, one config, infinite sources
+- [x] RSS / Atom feeds — generic content monitoring, one config, infinite sources
 - [ ] SSL certificate expiry — fire N days before expiry
 - [ ] DNS record watcher — fire on any record change
 - [ ] Cron heartbeat monitor — expect a ping on a schedule, alert if missing

@@ -1,7 +1,7 @@
 import type { NookEventEnvelopeInput } from "../event-envelope";
 
 export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier";
-export type ProviderType = WebhookProviderType | "imap" | "website";
+export type ProviderType = WebhookProviderType | "imap" | "website" | "rss";
 
 export interface BaseProviderSettings {
   id: string;
@@ -35,7 +35,13 @@ export interface WebsiteProviderSettings extends BaseProviderSettings {
   interval: number;
 }
 
-export type ProviderSettings = WebhookProviderSettings | ImapProviderSettings | WebsiteProviderSettings;
+export interface RssProviderSettings extends BaseProviderSettings {
+  type: "rss";
+  feedUrl: string;
+  pollInterval: number;
+}
+
+export type ProviderSettings = WebhookProviderSettings | ImapProviderSettings | WebsiteProviderSettings | RssProviderSettings;
 
 export interface ProvidersConfigInput {
   port: number;
@@ -170,7 +176,7 @@ export interface ConfiguredWebhookProvider {
 }
 
 export const webhookProviderTypes = ["uptime-kuma", "docuseal", "dokploy", "git", "vikunja", "charles", "sablier"] as const satisfies WebhookProviderType[];
-export const providerTypes = [...webhookProviderTypes, "imap", "website"] as const satisfies ProviderType[];
+export const providerTypes = [...webhookProviderTypes, "imap", "website", "rss"] as const satisfies ProviderType[];
 
 export function isWebhookProviderType(value: unknown): value is WebhookProviderType {
   return typeof value === "string" && webhookProviderTypes.includes(value as WebhookProviderType);
@@ -190,4 +196,8 @@ export function isImapProviderSettings(provider: ProviderSettings): provider is 
 
 export function isWebsiteProviderSettings(provider: ProviderSettings): provider is WebsiteProviderSettings {
   return provider.type === "website";
+}
+
+export function isRssProviderSettings(provider: ProviderSettings): provider is RssProviderSettings {
+  return provider.type === "rss";
 }

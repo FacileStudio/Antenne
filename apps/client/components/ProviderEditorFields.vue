@@ -51,6 +51,18 @@ const emit = defineEmits<{
     </label>
   </template>
 
+  <template v-else-if="editingProvider.type === 'rss'">
+    <label class="field required">
+      <span>Feed URL</span>
+      <input :value="editingProvider.feedUrl" type="url" @input="emit('patch', { feedUrl: ($event.target as HTMLInputElement).value })">
+    </label>
+
+    <label class="field">
+      <span>Poll interval</span>
+      <input :value="editingProvider.pollInterval" type="number" min="10" step="1" @input="emit('patch', { pollInterval: Number(($event.target as HTMLInputElement).value) || 300 })">
+    </label>
+  </template>
+
   <template v-else-if="editingProvider.type === 'imap'">
     <label class="field required">
       <span>Host</span>

@@ -13,7 +13,7 @@ export interface DeliveryAttempt {
 export interface EventLogEntry {
   id: string;
   timestamp: string;
-  source: "webhook" | "website" | "imap" | "test" | "system";
+  source: "webhook" | "website" | "imap" | "rss" | "test" | "system";
   providerId: string | null;
   providerName: string;
   providerType: string;
