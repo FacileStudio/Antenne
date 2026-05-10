@@ -90,22 +90,22 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="activity-page">
-    <div class="overview-grid">
+  <div class="grid gap-5">
+    <div class="grid grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] gap-3 max-lg:grid-cols-1">
       <ActivityOverview :events="events" :stats="stats" :loading="loading" @refresh="refresh" />
       <ActivityChart :events="events" />
     </div>
 
-    <div class="timeline-panel">
-      <div class="timeline-header">
+    <div class="grid gap-5">
+      <div class="flex items-center gap-3">
         <div>
-          <p class="timeline-eyebrow">Recent feed</p>
-          <h2>Activity stream</h2>
+          <p class="m-0 mb-1.5 text-muted-foreground text-xs">Recent feed</p>
+          <h2 class="m-0 text-xl font-semibold">Activity stream</h2>
         </div>
       </div>
-      <div class="search-bar">
-        <input v-model="searchQuery" type="text" placeholder="Search events...">
-        <select v-model="sourceFilter">
+      <div class="flex gap-2.5">
+        <input v-model="searchQuery" class="flex-1 min-w-0 w-auto" type="text" placeholder="Search events...">
+        <select v-model="sourceFilter" class="w-auto flex-none">
           <option value="">All sources</option>
           <option value="webhook">Webhook</option>
           <option value="website">Website</option>
@@ -118,53 +118,3 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.activity-page {
-  display: grid;
-  gap: var(--space-5);
-}
-
-.overview-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(22rem, 0.9fr);
-  gap: var(--space-3);
-}
-
-.timeline-panel {
-  display: grid;
-  gap: 1.2rem;
-}
-
-.timeline-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.timeline-eyebrow {
-  margin: 0 0 0.35rem;
-  color: var(--nook-muted);
-  font-size: 0.78rem;
-}
-
-.timeline-header h2 {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.search-bar {
-  display: flex;
-  gap: 0.65rem;
-}
-
-.search-bar input {
-  flex: 1;
-}
-
-@media (max-width: 980px) {
-  .overview-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
