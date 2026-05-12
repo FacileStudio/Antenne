@@ -39,6 +39,8 @@ interface OpusPayload {
     newTitle?: string;
     oldDescription?: string;
     newDescription?: string;
+    oldAssignee?: string;
+    newAssignee?: string;
     comment?: string;
     priority?: string;
     status?: string;
@@ -123,6 +125,18 @@ function formatMessage(parsed: OpusPayload): string | null {
       return `✏️ <b>[Opus]</b> ${actor} renamed task ${ref}<b>${oldTitle}</b> → <b>${newTitle}</b>${project}`;
     }
     return `✏️ <b>[Opus]</b> ${actor} renamed task ${ref}<b>${title}</b>${project}`;
+  }
+
+  if (event === "task.assignee_changed") {
+    const newAssignee = parsed.data?.newAssignee ? escapeHtml(String(parsed.data.newAssignee)) : null;
+    const detail = newAssignee ? ` to <b>${newAssignee}</b>` : "";
+    return `👤 <b>[Opus]</b> ${actor} assigned ${ref}<b>${title}</b>${detail}${project}`;
+  }
+
+  if (event === "task.unassigned") {
+    const oldAssignee = parsed.data?.oldAssignee ? escapeHtml(String(parsed.data.oldAssignee)) : null;
+    const detail = oldAssignee ? ` from <b>${oldAssignee}</b>` : "";
+    return `👤 <b>[Opus]</b> ${actor} unassigned ${ref}<b>${title}</b>${detail}${project}`;
   }
 
   if (event === "task.description_changed") {
