@@ -56,6 +56,10 @@ export function getProviderLabel(type: ProviderType) {
     return "Perception";
   }
 
+  if (type === "opus") {
+    return "Opus";
+  }
+
   return toTitleCase(type);
 }
 
@@ -88,6 +92,10 @@ export function getWebhookDefaultPath(type: WebhookProviderType) {
     return "/webhook/perception";
   }
 
+  if (type === "opus") {
+    return "/webhook/opus";
+  }
+
   return "/webhook/dokploy";
 }
 
@@ -118,6 +126,10 @@ export function getWebhookDefaultSecretHeader(type: WebhookProviderType) {
 
   if (type === "perception") {
     return "x-perception-secret";
+  }
+
+  if (type === "opus") {
+    return "x-opus-signature";
   }
 
   return "x-dokploy-secret";
