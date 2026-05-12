@@ -106,34 +106,34 @@ function formatMessage(parsed: OpusPayload): string | null {
     const from = parsed.data?.oldStatus ? escapeHtml(parsed.data.oldStatus) : null;
     const to = parsed.data?.newStatus ? escapeHtml(parsed.data.newStatus) : null;
     const change = from && to ? ` from <code>${from}</code> to <code>${to}</code>` : "";
-    return `🔄 <b>[Opus]</b> ${actor} changed status of ${ref}<b>${title}</b>${change}`;
+    return `🔄 <b>[Opus]</b> ${actor} changed status of ${ref}<b>${title}</b>${change}${project}`;
   }
 
   if (event === "task.priority_changed") {
     const from = parsed.data?.oldPriority ? escapeHtml(parsed.data.oldPriority) : null;
     const to = parsed.data?.newPriority ? escapeHtml(parsed.data.newPriority) : null;
     const change = from && to ? ` from <code>${from}</code> to <code>${to}</code>` : "";
-    return `🏷️ <b>[Opus]</b> ${actor} changed priority of ${ref}<b>${title}</b>${change}`;
+    return `🏷️ <b>[Opus]</b> ${actor} changed priority of ${ref}<b>${title}</b>${change}${project}`;
   }
 
   if (event === "task.title_changed") {
     const oldTitle = parsed.data?.oldTitle ? escapeHtml(parsed.data.oldTitle) : null;
     const newTitle = parsed.data?.newTitle ? escapeHtml(parsed.data.newTitle) : null;
     if (oldTitle && newTitle) {
-      return `✏️ <b>[Opus]</b> ${actor} renamed task ${ref}<b>${oldTitle}</b> → <b>${newTitle}</b>`;
+      return `✏️ <b>[Opus]</b> ${actor} renamed task ${ref}<b>${oldTitle}</b> → <b>${newTitle}</b>${project}`;
     }
-    return `✏️ <b>[Opus]</b> ${actor} renamed task ${ref}<b>${title}</b>`;
+    return `✏️ <b>[Opus]</b> ${actor} renamed task ${ref}<b>${title}</b>${project}`;
   }
 
   if (event === "task.description_changed") {
-    return `📝 <b>[Opus]</b> ${actor} updated description of ${ref}<b>${title}</b>`;
+    return `📝 <b>[Opus]</b> ${actor} updated description of ${ref}<b>${title}</b>${project}`;
   }
 
   if (event === "task.comment_created") {
-    return `💬 <b>[Opus]</b> ${actor} commented on ${ref}<b>${title}</b>`;
+    return `💬 <b>[Opus]</b> ${actor} commented on ${ref}<b>${title}</b>${project}`;
   }
 
-  return `📋 <b>[Opus]</b> ${actor} triggered <code>${escapeHtml(event)}</code> on ${ref}<b>${title}</b>`;
+  return `📋 <b>[Opus]</b> ${actor} triggered <code>${escapeHtml(event)}</code> on ${ref}<b>${title}</b>${project}`;
 }
 
 function mapStatus(event: string, data?: OpusPayload["data"]): string | null {
