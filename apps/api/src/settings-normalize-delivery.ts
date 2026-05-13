@@ -104,6 +104,7 @@ export function normalizeDeliveryTarget(input: unknown): DeliveryTarget {
       providerIds,
       providerTags,
       url: "url" in candidate ? normalizeString(candidate.url) : fallback.url,
+      workspace: "workspace" in candidate ? normalizeString(candidate.workspace) : fallback.workspace,
       secretValue: "secretValue" in candidate ? (normalizeString(candidate.secretValue) || null) : fallback.secretValue,
       includeRawPayload: "includeRawPayload" in candidate ? normalizeBoolean(candidate.includeRawPayload, fallback.includeRawPayload) : fallback.includeRawPayload,
     };
