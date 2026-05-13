@@ -258,6 +258,12 @@ const providerOptions = computed(() => [
     </label>
 
     <label class="field required">
+      <span>Workspace</span>
+      <p class="field-hint">Workspace ID to scope ingested events to.</p>
+      <input :value="editingTarget.workspace" type="text" placeholder="workspace-id" @input="emit('patch', { workspace: ($event.target as HTMLInputElement).value })">
+    </label>
+
+    <label class="field required">
       <span>Signing secret</span>
       <p class="field-hint">Used to sign structured event envelopes with `x-nook-signature-256`.</p>
       <div class="secret-field">

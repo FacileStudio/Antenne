@@ -59,6 +59,7 @@ export interface NtfyTarget extends DeliveryTargetBase {
 export interface PerceptionTarget extends DeliveryTargetBase {
   type: "perception";
   url: string;
+  workspace: string;
   secretValue: string | null;
   includeRawPayload: boolean;
 }
@@ -339,6 +340,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       providerIds: [],
       providerTags: [],
       url: "",
+      workspace: "",
       secretValue: "",
       includeRawPayload: false,
     };
