@@ -117,6 +117,7 @@ export function createDefaultDeliveryTarget(type: DeliveryTargetType): DeliveryT
       providerIds: [],
       providerTags: [],
       url: "",
+      workspace: "",
       secretValue: null,
       includeRawPayload: false,
     };

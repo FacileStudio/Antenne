@@ -68,6 +68,7 @@ export interface NtfyDeliveryTarget extends DeliveryTargetBase {
 export interface PerceptionDeliveryTarget extends DeliveryTargetBase {
   type: "perception";
   url: string;
+  workspace: string;
   secretValue: string | null;
   includeRawPayload: boolean;
 }

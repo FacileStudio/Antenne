@@ -94,6 +94,7 @@ If `MATRIX_USER_ID` and `MATRIX_PASSWORD` are set, Nook will request refresh tok
 | `HTTP_WEBHOOK_INCLUDE_RAW_PAYLOAD` | No | Include raw provider payloads in HTTP deliveries. Default: `false`. |
 | `PERCEPTION_ENABLED` | No | Enable the Perception target bootstrap. Also enabled when `PERCEPTION_WEBHOOK_URL` is set. |
 | `PERCEPTION_WEBHOOK_URL` | No | Perception ingest URL, for example `https://perception.example.com/ingest`. |
+| `PERCEPTION_WORKSPACE` | No | Workspace ID to scope ingested events to. Required by Perception. |
 | `PERCEPTION_WEBHOOK_SECRET` | No | HMAC secret used to sign Perception event envelopes. |
 | `PERCEPTION_INCLUDE_RAW_PAYLOAD` | No | Include raw provider payloads in Perception deliveries. Default: `false`. |
 

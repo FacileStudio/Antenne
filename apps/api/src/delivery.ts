@@ -127,6 +127,7 @@ export function loadDeliveryConfigFromEnv(): DeliveryConfig {
   const perception = createDefaultDeliveryTarget("perception") as PerceptionDeliveryTarget;
   perception.enabled = process.env.PERCEPTION_ENABLED === "true" || Boolean(process.env.PERCEPTION_WEBHOOK_URL);
   perception.url = process.env.PERCEPTION_WEBHOOK_URL ?? "";
+  perception.workspace = process.env.PERCEPTION_WORKSPACE ?? "";
   perception.secretValue = process.env.PERCEPTION_WEBHOOK_SECRET ?? null;
   perception.includeRawPayload = process.env.PERCEPTION_INCLUDE_RAW_PAYLOAD === "true";
   items.push(perception);

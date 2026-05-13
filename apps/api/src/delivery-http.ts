@@ -28,7 +28,10 @@ export async function sendPerceptionEvent(config: PerceptionDeliveryTarget, deli
   const body = buildEnvelopeBody(delivery, config.includeRawPayload);
   const res = await fetch(config.url, {
     method: "POST",
-    headers: createSignedEventHeaders(config.secretValue, delivery.envelope.id, body),
+    headers: {
+      ...createSignedEventHeaders(config.secretValue, delivery.envelope.id, body),
+      "x-perception-workspace": config.workspace,
+    },
     body,
   });
 
@@ -43,5 +46,5 @@ export function hasHttpDelivery(config: HttpDeliveryTarget): boolean {
 }
 
 export function hasPerceptionDelivery(config: PerceptionDeliveryTarget): boolean {
-  return Boolean(config.enabled && config.url && config.secretValue);
+  return Boolean(config.enabled && config.url && config.workspace && config.secretValue);
 }

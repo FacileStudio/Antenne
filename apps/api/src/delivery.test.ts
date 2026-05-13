@@ -115,6 +115,7 @@ function createTargets(providerIdsForTargets = providerIds): DeliveryTarget[] {
       providerIds: providerIdsForTargets,
       providerTags: [],
       url: "https://perception.example/ingest",
+      workspace: "test-workspace",
       secretValue: "perception-secret",
       includeRawPayload: false,
     },
@@ -228,6 +229,7 @@ describe("delivery provider filters", () => {
     expect(url).toBe("https://perception.example/ingest");
     expect(headers.get("x-nook-event-id")).toBe(requestBody.id);
     expect(headers.get("x-nook-signature-256")).toStartWith("sha256=");
+    expect(headers.get("x-perception-workspace")).toBe("test-workspace");
     expect(requestBody.provider.type).toBe("website");
     expect(requestBody.payload.raw).toBeNull();
   });
