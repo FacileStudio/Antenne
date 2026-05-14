@@ -53,7 +53,7 @@ function removeAddress(index: number) {
         @keydown.enter.prevent="addAddress"
       >
       <button class="secondary action-button" type="button" @click="addAddress">
-        <Icon icon="mdi:plus" :width="16" :height="16" aria-hidden="true" />
+        <Icon icon="mdi:plus" class="button-icon" :width="16" :height="16" aria-hidden="true" />
         <span>Add address</span>
       </button>
     </div>

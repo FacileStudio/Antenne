@@ -175,7 +175,7 @@ async function runTargetTest(target: DeliveryTarget) {
       </label>
 
       <button class="primary action-button add-button" type="button" @click="addTarget">
-        <Icon icon="mdi:plus" :width="16" :height="16" aria-hidden="true" />
+        <Icon icon="mdi:plus" class="button-icon" :width="16" :height="16" aria-hidden="true" />
         <span>Add target</span>
       </button>
     </div>

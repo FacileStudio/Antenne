@@ -98,40 +98,31 @@ function previewFor(entry: EventLogEntry) {
 </script>
 
 <template>
-  <div class="grid space-y-2.5">
-    <p v-if="events.length === 0" class="text-center text-muted-foreground py-6 px-5 rounded-xl border border-dashed border-border bg-black/[0.02]">No events recorded yet.</p>
-    <div v-for="entry in events" :key="entry.id" class="p-4 border border-border rounded-xl bg-black/[0.02]">
-      <div class="grid gap-1.5 min-w-0">
-        <div class="flex justify-between items-baseline gap-2 max-sm:flex-col max-sm:items-start">
-          <span class="font-semibold leading-tight">{{ titleFor(entry) }}</span>
-          <span class="flex-none inline-flex items-center gap-1 text-xs text-muted-foreground">
+  <div class="event-list">
+    <p v-if="events.length === 0" class="empty-event">No events recorded yet.</p>
+    <article v-for="entry in events" :key="entry.id" class="event-card">
+      <div class="event-content">
+        <div class="event-heading">
+          <span class="event-title">{{ titleFor(entry) }}</span>
+          <span class="event-time">
             <Icon icon="solar:clock-circle-linear" :width="12" :height="12" aria-hidden="true" />
             {{ formatTime(entry.timestamp) }}
           </span>
         </div>
-        <div class="flex flex-wrap gap-1.5 items-center">
+        <div class="pill-row">
           <span
-            class="inline-flex items-center min-h-5 px-2 py-0.5 rounded-full border border-border bg-black/[0.03] text-muted-foreground text-[0.73rem] whitespace-nowrap"
-            :class="[
-              sourceMeta(entry.source).tone === 'system' && 'text-[oklch(38%_0.14_250)] bg-[oklch(95%_0.04_250)] border-[oklch(84%_0.07_250)]',
-              sourceMeta(entry.source).tone === 'website' && 'text-[oklch(37%_0.13_155)] bg-[oklch(95%_0.05_155)] border-[oklch(83%_0.08_155)]',
-              sourceMeta(entry.source).tone === 'webhook' && 'text-[oklch(42%_0.11_65)] bg-[oklch(96%_0.04_65)] border-[oklch(86%_0.07_65)]',
-              sourceMeta(entry.source).tone === 'imap' && 'text-[oklch(40%_0.14_310)] bg-[oklch(95%_0.04_310)] border-[oklch(84%_0.07_310)]',
-              sourceMeta(entry.source).tone === 'test' && 'text-[oklch(44%_0.12_45)] bg-[oklch(96%_0.04_45)] border-[oklch(86%_0.07_45)]',
-            ]"
+            class="event-pill source-pill"
+            :data-tone="sourceMeta(entry.source).tone"
           >{{ sourceMeta(entry.source).label }}</span>
-          <span v-if="entry.providerName && entry.providerName !== 'system' && entry.providerName !== 'Nook'" class="inline-flex items-center min-h-5 px-2 py-0.5 rounded-full border border-border bg-black/[0.03] text-muted-foreground text-[0.73rem] whitespace-nowrap">{{ entry.providerName }}</span>
+          <span v-if="entry.providerName && entry.providerName !== 'system' && entry.providerName !== 'Nook'" class="event-pill">{{ entry.providerName }}</span>
         </div>
-        <p v-if="previewFor(entry)" class="m-0 text-muted-foreground text-sm leading-relaxed line-clamp-2">{{ previewFor(entry) }}</p>
-        <div v-if="entry.deliveries.length > 0" class="flex flex-wrap gap-1.5 mt-0.5">
+        <p v-if="previewFor(entry)" class="event-preview">{{ previewFor(entry) }}</p>
+        <div v-if="entry.deliveries.length > 0" class="delivery-row">
           <span
             v-for="d in entry.deliveries"
             :key="d.targetId"
-            class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border border-border bg-black/[0.03]"
-            :class="[
-              d.status === 'success' && 'text-[oklch(37%_0.14_155)] border-[oklch(83%_0.08_155)] bg-[oklch(95%_0.05_155)]',
-              d.status === 'error' && 'text-[oklch(43%_0.16_25)] border-[oklch(84%_0.08_25)] bg-[oklch(96%_0.04_25)]',
-            ]"
+            class="delivery-pill"
+            :data-status="d.status"
             :title="d.error ?? `${d.durationMs}ms`"
           >
             <Icon v-if="d.status === 'success'" icon="solar:check-circle-linear" :width="12" :height="12" aria-hidden="true" />
@@ -139,11 +130,154 @@ function previewFor(entry: EventLogEntry) {
             {{ d.targetName }}
           </span>
         </div>
-        <button v-if="entry.envelope" class="inline-flex items-center gap-1 px-2.5 py-1 border border-border rounded-full bg-transparent text-muted-foreground text-[0.73rem] cursor-pointer transition-colors mt-0.5 w-fit hover:text-foreground hover:border-[oklch(0.7_0.1_250)]" type="button" title="Replay this event" @click="emit('replay', entry.id)">
+        <button v-if="entry.envelope" class="ghost action-button replay-button" type="button" title="Replay this event" @click="emit('replay', entry.id)">
           <Icon icon="solar:refresh-linear" :width="13" :height="13" aria-hidden="true" />
           Replay
         </button>
       </div>
-    </div>
+    </article>
   </div>
 </template>
+
+<style scoped>
+.event-list,
+.event-content {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.empty-event,
+.event-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+}
+
+.empty-event {
+  margin: 0;
+  padding: var(--space-5);
+  border-style: dashed;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.event-card {
+  padding: var(--space-4);
+}
+
+.event-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.event-title {
+  min-width: 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.event-time {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.pill-row,
+.delivery-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.event-pill,
+.delivery-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.25rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.73rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.source-pill[data-tone="system"] {
+  border-color: oklch(0.84 0.07 250);
+  background: oklch(0.95 0.04 250);
+  color: oklch(0.38 0.14 250);
+}
+
+.source-pill[data-tone="website"] {
+  border-color: var(--success-border);
+  background: var(--success-muted);
+  color: var(--success-foreground);
+}
+
+.source-pill[data-tone="webhook"] {
+  border-color: oklch(0.86 0.07 65);
+  background: oklch(0.96 0.04 65);
+  color: oklch(0.42 0.11 65);
+}
+
+.source-pill[data-tone="imap"] {
+  border-color: oklch(0.84 0.07 310);
+  background: oklch(0.95 0.04 310);
+  color: oklch(0.4 0.14 310);
+}
+
+.source-pill[data-tone="test"] {
+  border-color: oklch(0.86 0.07 45);
+  background: oklch(0.96 0.04 45);
+  color: oklch(0.44 0.12 45);
+}
+
+.event-preview {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.delivery-pill {
+  gap: 0.35rem;
+}
+
+.delivery-pill[data-status="success"] {
+  border-color: var(--success-border);
+  background: var(--success-muted);
+  color: var(--success-foreground);
+}
+
+.delivery-pill[data-status="error"] {
+  border-color: var(--danger-border);
+  background: var(--danger-muted);
+  color: var(--destructive);
+}
+
+.replay-button {
+  width: fit-content;
+  min-height: 1.75rem;
+  padding-inline: 0.6rem;
+  font-size: 0.73rem;
+}
+
+@media (max-width: 640px) {
+  .event-heading {
+    display: grid;
+  }
+}
+</style>
