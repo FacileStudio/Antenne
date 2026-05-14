@@ -18,7 +18,7 @@ function isActive(section: { href: string; activePaths?: string[] }) {
 <template>
   <aside class="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
     <div class="flex items-center gap-3 px-5 pt-8 pb-6">
-      <Icon icon="solar:translation-2-linear" class="shrink-0 text-foreground" :width="28" :height="28" aria-hidden="true" />
+      <Icon icon="solar:translation-2-bold-duotone" class="shrink-0 text-foreground" :width="28" :height="28" aria-hidden="true" />
       <span class="font-heading text-2xl font-bold">Nook</span>
     </div>
 
