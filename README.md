@@ -1,6 +1,6 @@
 # Nook
 
-Nook is a Bun service that watches modular providers, forwards alerts to Matrix, Discord, HTTP webhooks, SMTP, or ntfy, and ships with a Nuxt dashboard for configuring everything without hand-editing config every time.
+Nook is a Bun service that watches modular providers, forwards alerts to Matrix, Discord, HTTP webhooks, SMTP, ntfy, and Perception, and ships with a Nuxt dashboard for configuring everything.
 
 The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard/.output/public`, so container builds do not need to install npm packages.
 
@@ -12,16 +12,10 @@ The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard
 - delivers alerts to Matrix, Discord webhooks, HTTP webhooks, SMTP, ntfy, and Perception
 - can send signed structured event envelopes for downstream memory/reasoning systems
 - serves a dashboard at `/dashboard`
-- keeps env as first-boot bootstrap defaults, with dashboard-saved settings overriding them later
 
 ## Config Model
 
-Nook uses two layers:
-
-1. bootstrap defaults from env vars
-2. persistent dashboard settings in `/data/nook.json`
-
-If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env defaults.
+All provider and delivery target configuration is managed through the dashboard and persisted in `/data/nook.json`. Environment variables are only used for core server settings and dashboard auth.
 
 ## Environment Variables
 
@@ -29,8 +23,9 @@ If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env def
 
 | Variable | Required | Description |
 |---|---|---|
-| `PORT` | No | HTTP port for API, dashboard, health, and webhooks. Falls back to `WEBHOOK_PORT` or `9090`. |
+| `PORT` | No | HTTP port for API, dashboard, health, and webhooks. Default: `9090`. |
 | `NOOK_SETTINGS_PATH` | No | JSON settings file path. Default: `/data/nook.json` |
+| `TIMEOUT` | No | Default timeout in seconds |
 
 ### Dashboard Auth
 
@@ -38,68 +33,6 @@ If `/data/nook.json` exists, it wins. If it does not, Nook falls back to env def
 |---|---|---|
 | `NOOK_ADMIN_PASSWORD` | No | If set, dashboard API requires login |
 | `NOOK_ADMIN_USERNAME` | No | Login label only. Default: `admin` |
-
-### Matrix Bootstrap
-
-| Variable | Required | Description |
-|---|---|---|
-| `MATRIX_HOMESERVER` | No | Matrix homeserver URL |
-| `MATRIX_ACCESS_TOKEN` | No | Matrix bot access token |
-| `MATRIX_REFRESH_TOKEN` | No | Matrix refresh token for renewing expired access tokens |
-| `MATRIX_USER_ID` | No | Matrix user ID for password login, for example `@nook:matrix.example.com` |
-| `MATRIX_PASSWORD` | No | Matrix password used to log back in and regenerate tokens |
-| `MATRIX_DEVICE_ID` | No | Optional stable Matrix device ID to reuse during re-login |
-| `MATRIX_ROOM_IDS` | No | Comma-separated room IDs |
-| `MATRIX_ROOM_ID` | No | Single room fallback |
-
-If `MATRIX_USER_ID` and `MATRIX_PASSWORD` are set, Nook will request refresh tokens on login and re-authenticate automatically when Matrix returns `M_UNKNOWN_TOKEN`.
-
-### ntfy Bootstrap
-
-| Variable | Required | Description |
-|---|---|---|
-| `NTFY_ENABLED` | No | Enable ntfy target bootstrap |
-| `NTFY_SERVER_URL` | No | ntfy base URL. Default: `https://ntfy.sh` |
-| `NTFY_TOPIC` | No | Topic name to publish to |
-| `NTFY_ACCESS_TOKEN` | No | Bearer token for protected topics |
-| `NTFY_PRIORITY` | No | Notification priority, usually `1` to `5` |
-| `NTFY_TAGS` | No | Comma-separated tags |
-| `NTFY_CLICK_URL` | No | Optional click-through URL |
-
-### Runtime Bootstrap
-
-| Variable | Required | Description |
-|---|---|---|
-| `TIMEOUT` | No | Default timeout in seconds |
-
-### Webhook Bootstrap
-
-| Variable | Required | Description |
-|---|---|---|
-| `WEBHOOK_ENABLED` | No | Global default for Uptime Kuma and DocuSeal providers |
-| `WEBHOOK_PORT` | No | Legacy port fallback if `PORT` is not set |
-| `WEBHOOK_SECRET` | No | Legacy shared secret for Uptime Kuma |
-| `UPTIME_KUMA_WEBHOOK_ENABLED` | No | Enable or disable Uptime Kuma provider |
-| `UPTIME_KUMA_WEBHOOK_PATH` | No | Default path: `/webhook/uptime-kuma` |
-| `UPTIME_KUMA_WEBHOOK_SECRET` | No | Uptime Kuma secret value |
-| `UPTIME_KUMA_WEBHOOK_SECRET_HEADER` | No | Default: `x-webhook-secret` |
-| `DOCUSEAL_WEBHOOK_ENABLED` | No | Enable or disable DocuSeal provider |
-| `DOCUSEAL_WEBHOOK_PATH` | No | Default path: `/webhook/docuseal` |
-| `DOCUSEAL_WEBHOOK_SECRET` | No | DocuSeal secret value |
-| `DOCUSEAL_WEBHOOK_SECRET_HEADER` | No | Default: `x-docuseal-secret` |
-| `DOKPLOY_WEBHOOK_ENABLED` | No | Enable or disable Dokploy provider |
-| `DOKPLOY_WEBHOOK_PATH` | No | Default path: `/webhook/dokploy` |
-| `DOKPLOY_WEBHOOK_SECRET` | No | Dokploy secret value |
-| `DOKPLOY_WEBHOOK_SECRET_HEADER` | No | Default: `x-dokploy-secret` |
-| `HTTP_WEBHOOK_INCLUDE_RAW_PAYLOAD` | No | Include raw provider payloads in HTTP deliveries. Default: `false`. |
-| `PERCEPTION_ENABLED` | No | Enable the Perception target bootstrap. Also enabled when `PERCEPTION_WEBHOOK_URL` is set. |
-| `PERCEPTION_WEBHOOK_URL` | No | Perception ingest URL, for example `https://perception.example.com/ingest`. |
-| `PERCEPTION_WORKSPACE` | No | Workspace ID to scope ingested events to. Required by Perception. |
-| `PERCEPTION_WEBHOOK_SECRET` | No | HMAC secret used to sign Perception event envelopes. |
-| `PERCEPTION_INCLUDE_RAW_PAYLOAD` | No | Include raw provider payloads in Perception deliveries. Default: `false`. |
-
-Saved dashboard settings use a single provider list. Each provider can be a website, IMAP inbox, or webhook source.
-Delivery target provider filters are explicit: an empty provider selection means the target receives nothing.
 
 ## Event Envelopes
 
@@ -135,20 +68,20 @@ The event envelope uses `schemaVersion: 1` but the TypeScript type is named `Noo
 
 ```sh
 bun install
-bun run dashboard:build
+bun run client:build
 bun run dev
 ```
 
 For dashboard-only work:
 
 ```sh
-bun run dashboard:dev
+bun run client:dev
 ```
 
 Before committing dashboard changes meant for deployment, rebuild the static bundle:
 
 ```sh
-bun run dashboard:build
+bun run client:build
 ```
 
 ## Docker
@@ -159,36 +92,21 @@ docker run -d \
   -p 9090:9090 \
   -e PORT=9090 \
   -e NOOK_ADMIN_PASSWORD=change-me \
-  -e MATRIX_HOMESERVER=https://matrix.example.com \
-  -e MATRIX_ACCESS_TOKEN=syt_xxx \
-  -e MATRIX_ROOM_IDS='!room:example.com' \
   -v ./data:/data \
   nook
 ```
 
-Then open `http://localhost:9090/dashboard`.
+Then open `http://localhost:9090/dashboard` to configure providers and delivery targets.
 
 Because the image copies the prebuilt dashboard bundle, rebuild `dashboard/.output/public` locally before shipping dashboard UI changes.
 
 ## Webhook Setup
 
-### Uptime Kuma
+Configure webhook providers via the dashboard. The default webhook paths are:
 
-- URL: `http://<nook-host>:9090/webhook/uptime-kuma`
-- header: `x-webhook-secret`
-- value: whatever you set in `UPTIME_KUMA_WEBHOOK_SECRET`
-
-### DocuSeal
-
-- URL: `https://<nook-host>/webhook/docuseal`
-- header: `x-docuseal-secret`
-- value: whatever you set in `DOCUSEAL_WEBHOOK_SECRET`
-
-### Dokploy
-
-- URL: `https://<nook-host>/webhook/dokploy`
-- header: `x-dokploy-secret`
-- value: whatever you set in `DOKPLOY_WEBHOOK_SECRET`
+- Uptime Kuma: `/webhook/uptime-kuma`
+- DocuSeal: `/webhook/docuseal`
+- Dokploy: `/webhook/dokploy`
 
 DocuSeal guide: [DOCUSEAL.md](DOCUSEAL.md)
 Uptime Kuma guide: [UPTIME-KUMA.md](UPTIME-KUMA.md)

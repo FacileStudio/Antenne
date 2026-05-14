@@ -6,12 +6,10 @@ import {
   isPerceptionDeliveryTarget,
   isSmtpDeliveryTarget,
 } from "./delivery-config";
-import { createDefaultDeliveryTarget } from "./delivery-config";
 import {
   hasDiscordDelivery,
   hasNtfyDelivery,
   hasSmtpDelivery,
-  normalizeNtfyPriority,
   sendDiscordAlert,
   sendNtfyAlert,
   sendSmtpAlert,
@@ -29,11 +27,6 @@ import type {
   DeliveryTarget,
   DeliveryTargetType,
   DeliveryMessage,
-  DiscordDeliveryTarget,
-  HttpDeliveryTarget,
-  MatrixDeliveryTarget,
-  NtfyDeliveryTarget,
-  PerceptionDeliveryTarget,
 } from "./types";
 
 export interface DeliveryRouteSummary {
@@ -92,59 +85,6 @@ export function canSendToDeliveryTarget(target: DeliveryTarget): boolean {
   }
 
   return hasHttpDelivery(target);
-}
-
-export function loadDeliveryConfigFromEnv(): DeliveryConfig {
-  const items: DeliveryTarget[] = [];
-  const roomIdsRaw = process.env.MATRIX_ROOM_IDS ?? process.env.MATRIX_ROOM_ID;
-  const roomIds = roomIdsRaw
-    ? roomIdsRaw.split(",").map((id) => id.trim()).filter(Boolean)
-    : [];
-
-  const matrix = createDefaultDeliveryTarget("matrix") as MatrixDeliveryTarget;
-  matrix.enabled = process.env.MATRIX_ENABLED !== "false";
-  matrix.homeserver = process.env.MATRIX_HOMESERVER ?? "";
-  matrix.accessToken = process.env.MATRIX_ACCESS_TOKEN ?? "";
-  matrix.refreshToken = process.env.MATRIX_REFRESH_TOKEN ?? null;
-  matrix.userId = process.env.MATRIX_USER_ID ?? "";
-  matrix.password = process.env.MATRIX_PASSWORD ?? null;
-  matrix.deviceId = process.env.MATRIX_DEVICE_ID ?? matrix.deviceId;
-  matrix.roomIds = roomIds;
-  items.push(matrix);
-
-  const discord = createDefaultDeliveryTarget("discord") as DiscordDeliveryTarget;
-  discord.enabled = process.env.DISCORD_ENABLED === "true" || Boolean(process.env.DISCORD_WEBHOOK_URL);
-  discord.webhookUrl = process.env.DISCORD_WEBHOOK_URL ?? "";
-  items.push(discord);
-
-  const webhook = createDefaultDeliveryTarget("webhook") as HttpDeliveryTarget;
-  webhook.enabled = process.env.HTTP_WEBHOOK_ENABLED === "true" || Boolean(process.env.HTTP_WEBHOOK_URL);
-  webhook.url = process.env.HTTP_WEBHOOK_URL ?? "";
-  webhook.secretValue = process.env.HTTP_WEBHOOK_SECRET ?? null;
-  webhook.includeRawPayload = process.env.HTTP_WEBHOOK_INCLUDE_RAW_PAYLOAD === "true";
-  items.push(webhook);
-
-  const perception = createDefaultDeliveryTarget("perception") as PerceptionDeliveryTarget;
-  perception.enabled = process.env.PERCEPTION_ENABLED === "true" || Boolean(process.env.PERCEPTION_WEBHOOK_URL);
-  perception.url = process.env.PERCEPTION_WEBHOOK_URL ?? "";
-  perception.workspace = process.env.PERCEPTION_WORKSPACE ?? "";
-  perception.secretValue = process.env.PERCEPTION_WEBHOOK_SECRET ?? null;
-  perception.includeRawPayload = process.env.PERCEPTION_INCLUDE_RAW_PAYLOAD === "true";
-  items.push(perception);
-
-  const ntfy = createDefaultDeliveryTarget("ntfy") as NtfyDeliveryTarget;
-  ntfy.enabled = process.env.NTFY_ENABLED === "true" || Boolean(process.env.NTFY_TOPIC);
-  ntfy.serverUrl = process.env.NTFY_SERVER_URL ?? "https://ntfy.sh";
-  ntfy.topic = process.env.NTFY_TOPIC ?? "";
-  ntfy.accessToken = process.env.NTFY_ACCESS_TOKEN ?? null;
-  ntfy.priority = normalizeNtfyPriority(process.env.NTFY_PRIORITY);
-  ntfy.tags = process.env.NTFY_TAGS
-    ? process.env.NTFY_TAGS.split(",").map((tag) => tag.trim()).filter(Boolean)
-    : ["rotating_light"];
-  ntfy.clickUrl = process.env.NTFY_CLICK_URL ?? null;
-  items.push(ntfy);
-
-  return { items };
 }
 
 function isKnownDeliveryTargetType(type: unknown): type is DeliveryTargetType {
