@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Pencil, BarChart2, Copy, Trash2, PlusCircle, GripVertical, PlugZap, Save } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 import { reactive, ref } from "vue";
 
 import ProviderEditorFields from "./ProviderEditorFields.vue";
@@ -187,7 +187,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
       </label>
 
       <button class="primary action-button add-button" type="button" @click="addProvider">
-        <PlusCircle :size="16" aria-hidden="true" />
+        <Icon icon="mdi:plus" :width="16" :height="16" aria-hidden="true" />
         <span>Add provider</span>
       </button>
     </div>
@@ -231,7 +231,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         @dragend="onDragEnd"
       >
         <div class="item-info">
-          <span class="drag-handle" title="Drag to reorder"><GripVertical :size="18" aria-hidden="true" /></span>
+          <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:hamburger-menu-linear" :width="18" :height="18" aria-hidden="true" /></span>
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
           <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>
@@ -247,17 +247,17 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 
         <div class="item-actions">
           <button class="ghost action-button" type="button" @click="openEditor(index)">
-            <Pencil :size="16" aria-hidden="true" />
+            <Icon icon="solar:pen-linear" :width="16" :height="16" aria-hidden="true" />
             <span>Edit</span>
           </button>
           <NuxtLink class="ghost action-button" :to="`/providers/${provider.id}`">
-            <BarChart2 :size="16" aria-hidden="true" />
+            <Icon icon="solar:chart-2-linear" :width="16" :height="16" aria-hidden="true" />
           </NuxtLink>
           <button class="ghost action-button" type="button" @click="duplicateProvider(index)">
-            <Copy :size="16" aria-hidden="true" />
+            <Icon icon="solar:copy-linear" :width="16" :height="16" aria-hidden="true" />
           </button>
           <button class="danger action-button" type="button" @click="removeProvider(index)">
-            <Trash2 :size="16" aria-hidden="true" />
+            <Icon icon="solar:trash-bin-trash-linear" :width="16" :height="16" aria-hidden="true" />
           </button>
         </div>
       </article>
@@ -287,11 +287,11 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           :disabled="testingProviders[editingProvider.id]"
           @click="runProviderConnectionTest(editingProvider)"
         >
-          <PlugZap :size="16" aria-hidden="true" />
+          <Icon icon="solar:plug-circle-linear" :width="16" :height="16" aria-hidden="true" />
           <span>{{ testingProviders[editingProvider.id] ? "Testing..." : "Test connection" }}</span>
         </button>
         <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">
-          <Save :size="16" aria-hidden="true" />
+          <Icon icon="solar:diskette-linear" :width="16" :height="16" aria-hidden="true" />
           <span>{{ saving ? "Saving..." : "Save" }}</span>
         </button>
       </template>

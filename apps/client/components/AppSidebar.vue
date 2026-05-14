@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import type { Component } from "vue";
 import { Icon } from "@iconify/vue";
 
 const route = useRoute();
 
 defineProps<{
-  sections: ReadonlyArray<{ href: string; label: string; icon: Component; activePaths?: string[] }>;
+  sections: ReadonlyArray<{ href: string; label: string; icon: string; activePaths?: string[] }>;
 }>();
 
 function isActive(section: { href: string; activePaths?: string[] }) {
@@ -17,10 +16,10 @@ function isActive(section: { href: string; activePaths?: string[] }) {
 </script>
 
 <template>
-  <aside class="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-background">
+  <aside class="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
     <div class="flex items-center gap-3 px-5 pt-8 pb-6">
-      <Icon icon="solar:translation-2-bold-duotone" class="shrink-0 text-foreground" :width="28" :height="28" aria-hidden="true" />
-      <span class="font-heading text-2xl font-bold tracking-tight">Nook</span>
+      <Icon icon="solar:translation-2-linear" class="shrink-0 text-foreground" :width="28" :height="28" aria-hidden="true" />
+      <span class="font-heading text-2xl font-bold">Nook</span>
     </div>
 
     <nav class="flex flex-1 flex-col gap-1 px-3" aria-label="Navigation">
@@ -30,15 +29,15 @@ function isActive(section: { href: string; activePaths?: string[] }) {
         :to="section.href"
         class="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors"
         :class="isActive(section)
-          ? 'bg-foreground text-background font-medium'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+          ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
+          : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'"
       >
-        <component :is="section.icon" :size="16" class="shrink-0" aria-hidden="true" />
+        <Icon :icon="section.icon" class="shrink-0" :width="16" :height="16" aria-hidden="true" />
         {{ section.label }}
       </NuxtLink>
     </nav>
 
-    <div class="border-t border-border p-4">
+    <div class="border-t border-sidebar-border p-4">
       <slot name="footer" />
     </div>
   </aside>

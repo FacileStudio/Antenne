@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { ArrowLeft, RotateCcw } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 
 import EventTimeline from "../../components/EventTimeline.vue";
 import { getDeliveryTargetLabel } from "../../types";
@@ -38,7 +38,7 @@ onMounted(async () => {
 <template>
   <div class="detail-page">
     <NuxtLink to="/delivery" class="back-link">
-      <ArrowLeft :size="16" />
+      <Icon icon="solar:arrow-left-linear" :width="16" :height="16" aria-hidden="true" />
       Back to delivery
     </NuxtLink>
 
@@ -66,7 +66,7 @@ onMounted(async () => {
       <div class="timeline-header">
         <h2>Delivery log</h2>
         <button class="ghost action-button" type="button" :disabled="loading" @click="refresh">
-          <RotateCcw :size="14" :class="{ spinning: loading }" />
+          <Icon icon="solar:refresh-linear" :width="14" :height="14" :class="{ spinning: loading }" aria-hidden="true" />
         </button>
       </div>
       <EventTimeline :events="events" />
@@ -127,10 +127,10 @@ onMounted(async () => {
 }
 
 .stat-value {
-  font-family: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Goga";
   font-size: 2rem;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .stat-value.success { color: #1CDB81; }

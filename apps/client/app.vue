@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { Send, Save, LogOut, Truck, Link, Activity, Settings } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 
 import AppSidebar from "./components/AppSidebar.vue";
 import ToastStack from "./components/ToastStack.vue";
@@ -20,10 +20,10 @@ const {
 } = useDashboardState();
 
 const sections = [
-  { href: "/delivery", label: "Delivery", icon: Truck, activePaths: ["/delivery", "/targets"] },
-  { href: "/providers", label: "Providers", icon: Link },
-  { href: "/activity", label: "Activity", icon: Activity },
-  { href: "/settings", label: "Settings", icon: Settings, activePaths: ["/settings", "/info"] },
+  { href: "/delivery", label: "Delivery", icon: "solar:delivery-linear", activePaths: ["/delivery", "/targets"] },
+  { href: "/providers", label: "Providers", icon: "solar:link-linear" },
+  { href: "/activity", label: "Activity", icon: "solar:chart-2-linear" },
+  { href: "/settings", label: "Settings", icon: "solar:settings-linear", activePaths: ["/settings", "/info"] },
 ];
 
 const route = useRoute();
@@ -50,7 +50,7 @@ onMounted(() => {
           class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
           @click="logout"
         >
-          <LogOut :size="16" class="shrink-0" aria-hidden="true" />
+          <Icon icon="solar:logout-2-linear" class="shrink-0" :width="16" :height="16" aria-hidden="true" />
           Logout
         </button>
       </template>
@@ -58,7 +58,7 @@ onMounted(() => {
 
     <div class="flex min-w-0 flex-1 flex-col gap-8 p-10 max-lg:p-6">
       <header class="flex items-end justify-between gap-6 max-sm:flex-col max-sm:items-stretch">
-        <h1 class="m-0 font-heading text-3xl font-semibold tracking-tight">{{ currentTitle }}</h1>
+        <h1 class="m-0 font-heading text-3xl font-semibold">{{ currentTitle }}</h1>
 
         <div class="flex flex-wrap items-center justify-end gap-3 max-sm:justify-start">
           <button
@@ -67,7 +67,7 @@ onMounted(() => {
             :disabled="testing || loading"
             @click="sendTestAlert"
           >
-            <Send :size="14" class="shrink-0" aria-hidden="true" />
+            <Icon icon="solar:plain-linear" class="shrink-0" :width="14" :height="14" aria-hidden="true" />
             {{ testing ? "Sending..." : "Send test alert" }}
           </button>
 
@@ -77,7 +77,7 @@ onMounted(() => {
             :disabled="saving || loading"
             @click="saveSettings"
           >
-            <Save :size="14" class="shrink-0" aria-hidden="true" />
+            <Icon icon="solar:diskette-linear" class="shrink-0" :width="14" :height="14" aria-hidden="true" />
             {{ saving ? "Saving..." : "Save settings" }}
           </button>
         </div>

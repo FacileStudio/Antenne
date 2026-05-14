@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Pencil, BarChart2, Copy, Trash2, PlusCircle, GripVertical, Send, Save } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 import { reactive, ref } from "vue";
 
 import DeliveryTargetEditorFields from "./DeliveryTargetEditorFields.vue";
@@ -175,7 +175,7 @@ async function runTargetTest(target: DeliveryTarget) {
       </label>
 
       <button class="primary action-button add-button" type="button" @click="addTarget">
-        <PlusCircle :size="16" aria-hidden="true" />
+        <Icon icon="mdi:plus" :width="16" :height="16" aria-hidden="true" />
         <span>Add target</span>
       </button>
     </div>
@@ -194,7 +194,7 @@ async function runTargetTest(target: DeliveryTarget) {
         @dragend="onDragEnd"
       >
         <div class="item-info">
-          <span class="drag-handle" title="Drag to reorder"><GripVertical :size="18" aria-hidden="true" /></span>
+          <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:hamburger-menu-linear" :width="18" :height="18" aria-hidden="true" /></span>
           <strong>{{ target.name || `${getDeliveryTargetLabel(target.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getDeliveryTargetLabel(target.type) }}</span>
           <span v-if="!target.enabled" class="item-chip item-chip--off">Off</span>
@@ -202,17 +202,17 @@ async function runTargetTest(target: DeliveryTarget) {
 
         <div class="item-actions">
           <button class="ghost action-button" type="button" @click="openEditor(index)">
-            <Pencil :size="16" aria-hidden="true" />
+            <Icon icon="solar:pen-linear" :width="16" :height="16" aria-hidden="true" />
             <span>Edit</span>
           </button>
           <NuxtLink class="ghost action-button" :to="`/targets/${target.id}`">
-            <BarChart2 :size="16" aria-hidden="true" />
+            <Icon icon="solar:chart-2-linear" :width="16" :height="16" aria-hidden="true" />
           </NuxtLink>
           <button class="ghost action-button" type="button" @click="duplicateTarget(index)">
-            <Copy :size="16" aria-hidden="true" />
+            <Icon icon="solar:copy-linear" :width="16" :height="16" aria-hidden="true" />
           </button>
           <button class="danger action-button" type="button" @click="removeTarget(index)">
-            <Trash2 :size="16" aria-hidden="true" />
+            <Icon icon="solar:trash-bin-trash-linear" :width="16" :height="16" aria-hidden="true" />
           </button>
         </div>
       </article>
@@ -241,11 +241,11 @@ async function runTargetTest(target: DeliveryTarget) {
           :disabled="testingTargets[editingTarget.id]"
           @click="runTargetTest(editingTarget)"
         >
-          <Send :size="16" aria-hidden="true" />
+          <Icon icon="solar:plain-linear" :width="16" :height="16" aria-hidden="true" />
           <span>{{ testingTargets[editingTarget.id] ? "Testing..." : "Test saved" }}</span>
         </button>
         <button class="primary action-button" type="button" :disabled="saving" @click="saveSettings">
-          <Save :size="16" aria-hidden="true" />
+          <Icon icon="solar:diskette-linear" :width="16" :height="16" aria-hidden="true" />
           <span>{{ saving ? "Saving..." : "Save" }}</span>
         </button>
       </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Icon } from "@iconify/vue";
+
 defineProps<{
   toasts: Array<{
     id: number;
@@ -25,7 +27,7 @@ const emit = defineEmits<{
       >
         <p>{{ toast.message }}</p>
         <button class="toast-dismiss" type="button" aria-label="Dismiss notification" @click="emit('dismiss', toast.id)">
-          Close
+          <Icon icon="solar:close-circle-linear" :width="16" :height="16" aria-hidden="true" />
         </button>
       </div>
     </TransitionGroup>
@@ -77,11 +79,16 @@ const emit = defineEmits<{
 
 .toast-dismiss {
   flex: none;
-  padding: 0.25rem 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
   border-radius: var(--radius-lg);
   border: 1px solid transparent;
   background: transparent;
   color: var(--nook-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toast-enter-active,

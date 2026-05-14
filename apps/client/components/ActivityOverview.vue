@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Clock, RotateCcw } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 
 import type { EventLogEntry, EventLogStats } from "../types";
 
@@ -49,11 +49,11 @@ const successRate = computed(() => {
 
     <div class="overview-meta">
       <div class="meta-pill">
-        <Clock :size="14" />
+        <Icon icon="solar:clock-circle-linear" :width="14" :height="14" aria-hidden="true" />
         <span>Last event {{ lastEventLabel }}</span>
       </div>
       <button class="ghost action-button refresh-button" type="button" :disabled="loading" @click="$emit('refresh')">
-        <RotateCcw :size="14" :class="{ spinning: loading }" />
+        <Icon icon="solar:refresh-linear" :width="14" :height="14" :class="{ spinning: loading }" aria-hidden="true" />
         <span>{{ loading ? "Refreshing..." : "Refresh feed" }}</span>
       </button>
     </div>
@@ -151,10 +151,10 @@ h2 {
 }
 
 .stat-value {
-  font-family: ui-monospace, "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-family: "Goga";
   font-size: 1.7rem;
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .stat-value.success {

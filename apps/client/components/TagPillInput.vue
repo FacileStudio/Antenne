@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { X } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 import { computed, ref } from "vue";
 
 import { getTagTone, sanitizeTags } from "../utils/provider-tags";
@@ -84,7 +84,7 @@ function onKeydown(event: KeyboardEvent) {
       >
         <span class="tag-pill__label">{{ tag }}</span>
         <button class="tag-pill__remove" type="button" :aria-label="`Remove ${tag}`" @click="removeTag(tag)">
-          <X :size="12" aria-hidden="true" />
+          <Icon icon="solar:close-circle-linear" :width="12" :height="12" aria-hidden="true" />
         </button>
       </span>
 

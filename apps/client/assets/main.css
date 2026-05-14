@@ -1,63 +1,37 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-heading: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --color-background: var(--nook-bg);
-  --color-foreground: var(--nook-text);
-  --color-muted: var(--nook-surface-strong);
-  --color-muted-foreground: var(--nook-muted);
-  --color-border: var(--nook-border);
-  --color-card: var(--nook-surface);
+  --font-sans: "Goga";
+  --font-heading: "Goga";
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
   --color-destructive: oklch(0.577 0.245 27.325);
-}
-
-@font-face {
-  font-family: "Helvetica Neue";
-  src: url("./fonts/HelveticaNeue-UltraLight.ttf") format("truetype");
-  font-weight: 100;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue";
-  src: url("./fonts/HelveticaNeue-Thin.ttf") format("truetype");
-  font-weight: 200;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue";
-  src: url("./fonts/HelveticaNeue-Light.ttf") format("truetype");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue";
-  src: url("./fonts/HelveticaNeue-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue";
-  src: url("./fonts/HelveticaNeue-Medium.ttf") format("truetype");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Helvetica Neue";
-  src: url("./fonts/HelveticaNeue-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-pill: 999px;
 }
 
 @font-face {
@@ -143,7 +117,30 @@
 @layer base {
   :root {
     color-scheme: light;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: "Goga";
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(0.985 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.145 0 0);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --border: oklch(0.9 0 0);
+    --input: oklch(0.9 0 0);
+    --ring: oklch(0.4 0 0);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.145 0 0);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.9 0 0);
+    --sidebar-ring: oklch(0.4 0 0);
     --nook-bg: oklch(1 0 0);
     --nook-surface: oklch(0.985 0 0);
     --nook-surface-strong: oklch(0.97 0 0);
@@ -164,8 +161,8 @@
     --space-6: 2.5rem;
     --space-7: 3rem;
     --space-8: 4rem;
-    color: var(--nook-text);
-    background: var(--nook-bg);
+    color: var(--foreground);
+    background: var(--background);
   }
 
   * {
@@ -175,8 +172,9 @@
   body {
     margin: 0;
     min-height: 100vh;
-    background: var(--nook-bg);
-    letter-spacing: -0.02em;
+    background: var(--background);
+    font-family: "Goga";
+    letter-spacing: 0;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
@@ -199,6 +197,7 @@
 
   button,
   input,
+  textarea,
   select {
     font: inherit;
   }
@@ -460,9 +459,9 @@ select {
 
 h1,
 h2 {
-  font-family: "Goga", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Goga";
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .toggle {

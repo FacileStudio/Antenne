@@ -7,10 +7,10 @@
     "build": "bunx nuxi generate"
   },
   "dependencies": {
+    "@iconify-json/mdi": "^1.2.3",
     "@iconify-json/solar": "^1.2.5",
     "@iconify/vue": "^5.0.0",
     "@tailwindcss/vite": "^4.2.4",
-    "lucide-vue-next": "^1.0.0",
     "tailwindcss": "^4.2.4",
     "vue": "^3.5.33"
   },

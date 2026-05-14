@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Clock, CheckCircle2, XCircle, RotateCcw } from "lucide-vue-next";
+import { Icon } from "@iconify/vue";
 
 import type { EventLogEntry } from "../types";
 
@@ -105,7 +105,7 @@ function previewFor(entry: EventLogEntry) {
         <div class="flex justify-between items-baseline gap-2 max-sm:flex-col max-sm:items-start">
           <span class="font-semibold leading-tight">{{ titleFor(entry) }}</span>
           <span class="flex-none inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock :size="12" />
+            <Icon icon="solar:clock-circle-linear" :width="12" :height="12" aria-hidden="true" />
             {{ formatTime(entry.timestamp) }}
           </span>
         </div>
@@ -134,13 +134,13 @@ function previewFor(entry: EventLogEntry) {
             ]"
             :title="d.error ?? `${d.durationMs}ms`"
           >
-            <CheckCircle2 v-if="d.status === 'success'" :size="12" />
-            <XCircle v-else :size="12" />
+            <Icon v-if="d.status === 'success'" icon="solar:check-circle-linear" :width="12" :height="12" aria-hidden="true" />
+            <Icon v-else icon="solar:close-circle-linear" :width="12" :height="12" aria-hidden="true" />
             {{ d.targetName }}
           </span>
         </div>
         <button v-if="entry.envelope" class="inline-flex items-center gap-1 px-2.5 py-1 border border-border rounded-full bg-transparent text-muted-foreground text-[0.73rem] cursor-pointer transition-colors mt-0.5 w-fit hover:text-foreground hover:border-[oklch(0.7_0.1_250)]" type="button" title="Replay this event" @click="emit('replay', entry.id)">
-          <RotateCcw :size="13" />
+          <Icon icon="solar:refresh-linear" :width="13" :height="13" aria-hidden="true" />
           Replay
         </button>
       </div>
