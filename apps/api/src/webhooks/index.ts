@@ -18,6 +18,7 @@ import { charlesWebhookProvider } from "./providers/charles";
 import { sablierWebhookProvider } from "./providers/sablier";
 import { perceptionWebhookProvider } from "./providers/perception";
 import { opusWebhookProvider } from "./providers/opus";
+import { visionWebhookProvider } from "./providers/vision";
 import { isWebhookProviderSettings } from "./types";
 
 const providerDefinitions = {
@@ -30,6 +31,7 @@ const providerDefinitions = {
   sablier: sablierWebhookProvider,
   perception: perceptionWebhookProvider,
   opus: opusWebhookProvider,
+  vision: visionWebhookProvider,
 } satisfies Record<WebhookProviderType, WebhookProviderDefinition>;
 
 function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhookProvider[] {

@@ -1,4 +1,4 @@
-export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier" | "perception" | "opus";
+export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier" | "perception" | "opus" | "vision";
 export type ProviderType = WebhookProviderType | "imap" | "website" | "rss";
 export type DeliveryTargetType = "matrix" | "discord" | "webhook" | "smtp" | "ntfy" | "perception";
 
@@ -173,7 +173,7 @@ export interface EventLogStats {
   deliveryErrorCount: number;
 }
 
-export const providerTypes = ["website", "imap", "rss", "charles", "docuseal", "dokploy", "git", "opus", "perception", "sablier", "uptime-kuma", "vikunja"] as const satisfies ProviderType[];
+export const providerTypes = ["website", "imap", "rss", "charles", "docuseal", "dokploy", "git", "opus", "perception", "sablier", "uptime-kuma", "vikunja", "vision"] as const satisfies ProviderType[];
 export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp", "ntfy", "perception"] as const satisfies DeliveryTargetType[];
 export const SYSTEM_PROVIDER_ID = "__nook_system__";
 
@@ -197,6 +197,7 @@ export function getProviderLabel(type: ProviderType) {
   if (type === "sablier") return "Sablier";
   if (type === "opus") return "Opus";
   if (type === "perception") return "Perception";
+  if (type === "vision") return "Vision";
   return "Uptime Kuma";
 }
 
@@ -258,8 +259,8 @@ export function createDefaultProvider(type: ProviderType): ProviderSettings {
     name: getProviderLabel(type),
     enabled: true,
     tags: [],
-    path: type === "dokploy" ? "/webhook/dokploy" : type === "docuseal" ? "/webhook/docuseal" : type === "git" ? "/webhook/git" : type === "vikunja" ? "/webhook/vikunja" : type === "charles" ? "/webhook/charles" : type === "sablier" ? "/webhook/sablier" : type === "perception" ? "/webhook/perception" : type === "opus" ? "/webhook/opus" : "/webhook/uptime-kuma",
-    secretHeader: type === "dokploy" ? "x-dokploy-secret" : type === "docuseal" ? "x-docuseal-secret" : type === "git" ? "x-hub-signature-256" : type === "vikunja" ? "x-vikunja-signature" : type === "charles" ? "x-charles-signature-256" : type === "sablier" ? "x-sablier-signature" : type === "perception" ? "x-perception-secret" : type === "opus" ? "x-opus-signature" : "x-webhook-secret",
+    path: type === "dokploy" ? "/webhook/dokploy" : type === "docuseal" ? "/webhook/docuseal" : type === "git" ? "/webhook/git" : type === "vikunja" ? "/webhook/vikunja" : type === "charles" ? "/webhook/charles" : type === "sablier" ? "/webhook/sablier" : type === "perception" ? "/webhook/perception" : type === "opus" ? "/webhook/opus" : type === "vision" ? "/webhook/vision" : "/webhook/uptime-kuma",
+    secretHeader: type === "dokploy" ? "x-dokploy-secret" : type === "docuseal" ? "x-docuseal-secret" : type === "git" ? "x-hub-signature-256" : type === "vikunja" ? "x-vikunja-signature" : type === "charles" ? "x-charles-signature-256" : type === "sablier" ? "x-sablier-signature" : type === "perception" ? "x-perception-secret" : type === "opus" ? "x-opus-signature" : type === "vision" ? "x-vision-signature-256" : "x-webhook-secret",
     secretValue: "",
   };
 }
