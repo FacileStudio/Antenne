@@ -15,7 +15,7 @@ export default defineNuxtConfig({
         { name: "viewport", content: "width=device-width, initial-scale=1" },
       ],
       link: [
-        { rel: "icon", type: "image/webp", href: "/dashboard/nook-avatar.webp" },
+        { rel: "icon", type: "image/svg+xml", href: "/dashboard/favicon.svg" },
       ],
     },
   },

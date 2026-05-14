@@ -16,7 +16,7 @@ export function renderLoginPage(session: DashboardSessionConfig, errorMessage?: 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Nook — Sign in</title>
-    <link rel="icon" type="image/webp" href="/dashboard/nook-avatar.webp">
+    <link rel="icon" type="image/svg+xml" href="/dashboard/favicon.svg">
     <style>
       @font-face {
         font-family: "Goga";
