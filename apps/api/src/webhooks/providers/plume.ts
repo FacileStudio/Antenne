@@ -24,10 +24,17 @@ interface PlumeSigner {
   viewed_at?: string | null;
 }
 
+interface PlumeOwner {
+  id: number;
+  name: string;
+  email: string;
+}
+
 interface PlumeEventPayload {
   event_id?: string;
   event_type: string;
   occurred_at?: string;
+  owner?: PlumeOwner | null;
   document: PlumeDocument;
   signer?: PlumeSigner | null;
 }
@@ -206,18 +213,26 @@ export const plumeWebhookProvider: WebhookProviderDefinition = {
         break;
     }
 
+    const actor = parsed.signer
+      ? {
+          id: String(parsed.signer.id),
+          name: parsed.signer.name,
+          email: parsed.signer.email,
+        }
+      : parsed.owner
+        ? {
+            id: String(parsed.owner.id),
+            name: parsed.owner.name,
+            email: parsed.owner.email,
+          }
+        : null;
+
     return {
       eventType: `plume.${parsed.event_type}`,
       eventTitle: docName,
       eventUrl: parsed.document.url ?? parsed.signer?.signing_url ?? null,
       occurredAt,
-      actor: parsed.signer
-        ? {
-            id: String(parsed.signer.id),
-            name: parsed.signer.name,
-            email: parsed.signer.email,
-          }
-        : null,
+      actor,
       subject: {
         type: "contract",
         id: String(parsed.document.id),
@@ -230,7 +245,13 @@ export const plumeWebhookProvider: WebhookProviderDefinition = {
         documentId: parsed.document.id,
         documentName: docName,
         documentStatus: parsed.document.status,
+        documentFileName: parsed.document.file_name ?? null,
+        documentCreatedAt: parsed.document.created_at ?? null,
+        documentUpdatedAt: parsed.document.updated_at ?? null,
         sequential: parsed.document.sequential ?? false,
+        ownerId: parsed.owner?.id ?? null,
+        ownerName: parsed.owner?.name ?? null,
+        ownerEmail: parsed.owner?.email ?? null,
         signerId: parsed.signer?.id ?? null,
         signerName: parsed.signer?.name ?? null,
         signerEmail: parsed.signer?.email ?? null,
