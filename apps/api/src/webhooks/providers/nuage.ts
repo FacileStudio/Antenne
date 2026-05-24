@@ -10,9 +10,11 @@ interface NuageActor {
 interface NuageWebhookPayload {
   event_type:
     | "file.uploaded"
+    | "file.updated"
     | "file.deleted"
     | "file.shared"
     | "folder.created"
+    | "folder.updated"
     | "folder.deleted"
     | "share.created"
     | "share.revoked";
@@ -72,12 +74,16 @@ function eventEmoji(eventType: string): string {
   switch (eventType) {
     case "file.uploaded":
       return "📁";
+    case "file.updated":
+      return "✏️";
     case "file.deleted":
       return "🗑️";
     case "file.shared":
       return "🔗";
     case "folder.created":
       return "📂";
+    case "folder.updated":
+      return "✏️";
     case "folder.deleted":
       return "🗑️";
     case "share.created":
@@ -120,6 +126,11 @@ export const nuageWebhookProvider: WebhookProviderDefinition = {
         if (!file) return null;
         return `${icon} <b>${actorName}</b> uploaded <b>${escapeHtml(file.name)}</b> (${formatSize(file.size)})`;
       }
+      case "file.updated": {
+        const file = parsed.data.file;
+        if (!file) return null;
+        return `${icon} <b>${actorName}</b> updated <b>${escapeHtml(file.name)}</b>`;
+      }
       case "file.deleted": {
         const file = parsed.data.file;
         if (!file) return null;
@@ -138,6 +149,11 @@ export const nuageWebhookProvider: WebhookProviderDefinition = {
         const folder = parsed.data.folder;
         if (!folder) return null;
         return `${icon} <b>${actorName}</b> created folder <b>${escapeHtml(folder.name)}</b>`;
+      }
+      case "folder.updated": {
+        const folder = parsed.data.folder;
+        if (!folder) return null;
+        return `${icon} <b>${actorName}</b> updated folder <b>${escapeHtml(folder.name)}</b>`;
       }
       case "folder.deleted": {
         const folder = parsed.data.folder;
