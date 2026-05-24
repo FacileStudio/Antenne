@@ -60,6 +60,10 @@ export function getProviderLabel(type: ProviderType) {
     return "Opus";
   }
 
+  if (type === "nuage") {
+    return "Nuage";
+  }
+
   return toTitleCase(type);
 }
 
@@ -96,6 +100,10 @@ export function getWebhookDefaultPath(type: WebhookProviderType) {
     return "/webhook/opus";
   }
 
+  if (type === "nuage") {
+    return "/webhook/nuage";
+  }
+
   return "/webhook/dokploy";
 }
 
@@ -130,6 +138,10 @@ export function getWebhookDefaultSecretHeader(type: WebhookProviderType) {
 
   if (type === "opus") {
     return "x-opus-signature";
+  }
+
+  if (type === "nuage") {
+    return "x-nuage-signature-256";
   }
 
   return "x-dokploy-secret";

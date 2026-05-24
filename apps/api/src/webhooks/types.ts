@@ -1,6 +1,6 @@
 import type { NookEventEnvelopeInput } from "../event-envelope";
 
-export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier" | "perception" | "opus" | "vision" | "plume";
+export type WebhookProviderType = "uptime-kuma" | "docuseal" | "dokploy" | "git" | "vikunja" | "charles" | "sablier" | "perception" | "opus" | "vision" | "plume" | "nuage";
 export type ProviderType = WebhookProviderType | "imap" | "website" | "rss";
 
 export interface BaseProviderSettings {
@@ -176,7 +176,7 @@ export interface ConfiguredWebhookProvider {
   settings: WebhookProviderSettings;
 }
 
-export const webhookProviderTypes = ["uptime-kuma", "docuseal", "dokploy", "git", "vikunja", "charles", "sablier", "perception", "opus", "vision", "plume"] as const satisfies WebhookProviderType[];
+export const webhookProviderTypes = ["uptime-kuma", "docuseal", "dokploy", "git", "vikunja", "charles", "sablier", "perception", "opus", "vision", "plume", "nuage"] as const satisfies WebhookProviderType[];
 export const providerTypes = [...webhookProviderTypes, "imap", "website", "rss"] as const satisfies ProviderType[];
 
 export function isWebhookProviderType(value: unknown): value is WebhookProviderType {
@@ -188,7 +188,7 @@ export function isProviderType(value: unknown): value is ProviderType {
 }
 
 export function isWebhookProviderSettings(provider: ProviderSettings): provider is WebhookProviderSettings {
-  return provider.type === "uptime-kuma" || provider.type === "docuseal" || provider.type === "dokploy" || provider.type === "git" || provider.type === "vikunja" || provider.type === "charles" || provider.type === "sablier" || provider.type === "perception" || provider.type === "opus" || provider.type === "vision" || provider.type === "plume";
+  return provider.type === "uptime-kuma" || provider.type === "docuseal" || provider.type === "dokploy" || provider.type === "git" || provider.type === "vikunja" || provider.type === "charles" || provider.type === "sablier" || provider.type === "perception" || provider.type === "opus" || provider.type === "vision" || provider.type === "plume" || provider.type === "nuage";
 }
 
 export function isImapProviderSettings(provider: ProviderSettings): provider is ImapProviderSettings {

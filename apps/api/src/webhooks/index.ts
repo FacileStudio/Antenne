@@ -20,6 +20,7 @@ import { perceptionWebhookProvider } from "./providers/perception";
 import { opusWebhookProvider } from "./providers/opus";
 import { visionWebhookProvider } from "./providers/vision";
 import { plumeWebhookProvider } from "./providers/plume";
+import { nuageWebhookProvider } from "./providers/nuage";
 import { isWebhookProviderSettings } from "./types";
 
 const providerDefinitions = {
@@ -34,6 +35,7 @@ const providerDefinitions = {
   opus: opusWebhookProvider,
   vision: visionWebhookProvider,
   plume: plumeWebhookProvider,
+  nuage: nuageWebhookProvider,
 } satisfies Record<WebhookProviderType, WebhookProviderDefinition>;
 
 function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhookProvider[] {
