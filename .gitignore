@@ -3,7 +3,6 @@ apps/*/node_modules
 
 apps/client/.nuxt
 apps/client/.output
-apps/api/dashboard/.output
 
 out
 dist
