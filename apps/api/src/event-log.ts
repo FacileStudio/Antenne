@@ -140,6 +140,40 @@ export function updateEventDeliveryRetry(
   scheduleFlush();
 }
 
+function buildSearchText(entry: EventLogEntry): string {
+  const parts: string[] = [];
+
+  if (entry.event) parts.push(entry.event);
+  if (entry.providerName) parts.push(entry.providerName);
+  if (entry.providerType) parts.push(entry.providerType);
+  parts.push(entry.source);
+
+  const env = entry.envelope;
+  if (env) {
+    if (env.event.type) parts.push(env.event.type);
+    if (env.event.title) parts.push(env.event.title);
+    if (env.event.messageText) parts.push(env.event.messageText);
+    if (env.event.url) parts.push(env.event.url);
+    if (env.actor?.name) parts.push(env.actor.name);
+    if (env.actor?.email) parts.push(env.actor.email);
+    if (env.subject.name) parts.push(env.subject.name);
+    if (env.subject.url) parts.push(env.subject.url);
+
+    for (const value of Object.values(env.payload.normalized)) {
+      if (typeof value === "string" && value) parts.push(value);
+    }
+  } else if (entry.message) {
+    parts.push(entry.message.replace(/<[^>]*>/g, ""));
+  }
+
+  for (const d of entry.deliveries) {
+    parts.push(d.targetName, d.targetType, d.status);
+    if (d.error) parts.push(d.error);
+  }
+
+  return parts.join(" ").toLowerCase();
+}
+
 export function getEvents(options?: {
   providerId?: string;
   targetId?: string;
@@ -164,12 +198,13 @@ export function getEvents(options?: {
   }
 
   if (options?.q) {
-    const query = options.q.toLowerCase();
-    result = result.filter((e) =>
-      e.event?.toLowerCase().includes(query) ||
-      e.providerName?.toLowerCase().includes(query) ||
-      e.message?.toLowerCase().includes(query)
-    );
+    const terms = options.q.toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length > 0) {
+      result = result.filter((e) => {
+        const text = buildSearchText(e);
+        return terms.every((term) => text.includes(term));
+      });
+    }
   }
 
   const reversed = [...result].reverse();
