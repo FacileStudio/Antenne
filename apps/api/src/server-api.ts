@@ -1,7 +1,103 @@
 import { hasConfiguredMatrixDelivery } from "./delivery";
 import { getEvents, getGlobalStats, getProviderStats, getTargetStats, onEventPushed, getEventById, type DeliveryAttempt } from "./event-log";
 import { createJsonResponse } from "./server-responses";
-import type { AlertContext, AppSettings, DashboardSessionConfig, RuntimeStatus } from "./types";
+import type { AlertContext, AppSettings, DashboardSessionConfig, DeliveryTarget, RuntimeStatus } from "./types";
+import type { ProviderSettings } from "./webhooks/types";
+
+const REDACTED = "••••••••";
+
+const DELIVERY_SENSITIVE_FIELDS: Record<string, string[]> = {
+  matrix: ["accessToken", "refreshToken", "password"],
+  discord: ["webhookUrl"],
+  webhook: ["secretValue"],
+  smtp: ["password"],
+  ntfy: ["accessToken"],
+  perception: ["secretValue"],
+};
+
+const PROVIDER_SENSITIVE_FIELDS: Record<string, string[]> = {
+  "uptime-kuma": ["secretValue"],
+  docuseal: ["secretValue"],
+  dokploy: ["secretValue"],
+  git: ["secretValue"],
+  vikunja: ["secretValue"],
+  charles: ["secretValue"],
+  sablier: ["secretValue"],
+  perception: ["secretValue"],
+  opus: ["secretValue"],
+  vision: ["secretValue"],
+  plume: ["secretValue"],
+  nuage: ["secretValue"],
+  imap: ["password"],
+};
+
+function redactSettings(settings: AppSettings): AppSettings {
+  const clone = structuredClone(settings);
+
+  for (const item of clone.delivery.items) {
+    const fields = DELIVERY_SENSITIVE_FIELDS[item.type];
+    if (!fields) continue;
+    for (const field of fields) {
+      if ((item as unknown as Record<string, unknown>)[field]) {
+        (item as unknown as Record<string, unknown>)[field] = REDACTED;
+      }
+    }
+  }
+
+  for (const item of clone.providers.items) {
+    const fields = PROVIDER_SENSITIVE_FIELDS[item.type];
+    if (!fields) continue;
+    for (const field of fields) {
+      if ((item as unknown as Record<string, unknown>)[field]) {
+        (item as unknown as Record<string, unknown>)[field] = REDACTED;
+      }
+    }
+  }
+
+  return clone;
+}
+
+function mergeSecrets(incoming: AppSettings, current: AppSettings): AppSettings {
+  if (Array.isArray(incoming.delivery?.items) && Array.isArray(current.delivery?.items)) {
+    const currentDeliveryById = new Map<string, DeliveryTarget>();
+    for (const item of current.delivery.items) {
+      currentDeliveryById.set(item.id, item);
+    }
+
+    for (const item of incoming.delivery.items) {
+      const fields = DELIVERY_SENSITIVE_FIELDS[item.type];
+      if (!fields) continue;
+      const match = currentDeliveryById.get(item.id);
+      if (!match) continue;
+      for (const field of fields) {
+        if ((item as unknown as Record<string, unknown>)[field] === REDACTED) {
+          (item as unknown as Record<string, unknown>)[field] = (match as unknown as Record<string, unknown>)[field];
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(incoming.providers?.items) && Array.isArray(current.providers?.items)) {
+    const currentProviderById = new Map<string, ProviderSettings>();
+    for (const item of current.providers.items) {
+      currentProviderById.set(item.id, item);
+    }
+
+    for (const item of incoming.providers.items) {
+      const fields = PROVIDER_SENSITIVE_FIELDS[item.type];
+      if (!fields) continue;
+      const match = currentProviderById.get(item.id);
+      if (!match) continue;
+      for (const field of fields) {
+        if ((item as unknown as Record<string, unknown>)[field] === REDACTED) {
+          (item as unknown as Record<string, unknown>)[field] = (match as unknown as Record<string, unknown>)[field];
+        }
+      }
+    }
+  }
+
+  return incoming;
+}
 
 function escapeHtml(value: string) {
   return value
@@ -39,19 +135,22 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
   }
 
   if (url.pathname === "/api/settings" && req.method === "GET") {
+    const settings = options.getSettings();
     return createJsonResponse({
-      settings: options.getSettings(),
+      settings: redactSettings(settings),
       runtime: options.getRuntimeStatus(),
-      matrixConfigured: hasConfiguredMatrixDelivery(options.getSettings().delivery),
+      matrixConfigured: hasConfiguredMatrixDelivery(settings.delivery),
     });
   }
 
   if (url.pathname === "/api/settings" && req.method === "PUT") {
     try {
       const body = await parseJson(req);
-      const settings = await options.updateSettings(body);
+      const merged = mergeSecrets(body as AppSettings, options.getSettings());
+      const settings = await options.updateSettings(merged);
+      console.log("[admin] settings updated");
       return createJsonResponse({
-        settings,
+        settings: redactSettings(settings),
         runtime: options.getRuntimeStatus(),
         matrixConfigured: hasConfiguredMatrixDelivery(settings.delivery),
       });

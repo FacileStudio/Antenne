@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { AppSettings } from "../types";
 import type { DeliveryAttempt } from "../event-log";
 import type { AlertContext } from "../types";
@@ -48,6 +49,14 @@ function getConfiguredProviders(config: ProvidersConfigInput): ConfiguredWebhook
     }));
 }
 
+function safeHeaderEquals(header: string | null, expected: string): boolean {
+  if (header === null) return false;
+  const a = Buffer.from(header);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 function authenticate(provider: ConfiguredWebhookProvider, req: Request, rawBody: string): boolean | Promise<boolean> {
   if (provider.definition.authenticate) {
     return provider.definition.authenticate(req, rawBody, provider.settings);
@@ -61,7 +70,7 @@ function authenticate(provider: ConfiguredWebhookProvider, req: Request, rawBody
     return false;
   }
 
-  return req.headers.get(provider.settings.secretHeader) === provider.settings.secretValue;
+  return safeHeaderEquals(req.headers.get(provider.settings.secretHeader), provider.settings.secretValue);
 }
 
 export function describeWebhookProviders(config: ProvidersConfigInput) {

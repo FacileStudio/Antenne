@@ -433,3 +433,9 @@ Bun.serve({
 });
 
 console.log(`[startup] listening on ${serverPort}`);
+
+if (!session.password) {
+  console.warn("[security] NOOK_ADMIN_PASSWORD is not set — dashboard and API are open to anyone who can reach this server");
+}
+
+console.warn("[security] rate limiting trusts x-forwarded-for — ensure your reverse proxy overwrites this header");

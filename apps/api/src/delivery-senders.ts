@@ -8,6 +8,14 @@ import type {
   SmtpDeliveryTarget,
 } from "./types";
 
+function sanitizeEmailAddress(address: string): string {
+  return address.replace(/[\r\n<>]/g, "");
+}
+
+function sanitizeHeaderValue(value: string): string {
+  return value.replace(/[\r\n]/g, "");
+}
+
 function normalizeNtfyServerUrl(serverUrl: string) {
   return serverUrl.endsWith("/") ? serverUrl : `${serverUrl}/`;
 }
@@ -117,11 +125,13 @@ export async function sendNtfyAlert(config: NtfyDeliveryTarget, message: string)
 
 export async function sendSmtpAlert(config: SmtpDeliveryTarget, message: string) {
   const plainText = htmlToPlainText(message);
-  const subject = config.subjectPrefix ? `${config.subjectPrefix} Nook Alert` : "Nook Alert";
+  const subject = config.subjectPrefix
+    ? `${sanitizeHeaderValue(config.subjectPrefix)} Nook Alert`
+    : "Nook Alert";
   const boundary = `nook-${Date.now()}`;
   const body = [
-    `From: ${config.fromAddress}`,
-    `To: ${config.toAddresses.join(", ")}`,
+    `From: ${sanitizeHeaderValue(config.fromAddress)}`,
+    `To: ${config.toAddresses.map(sanitizeHeaderValue).join(", ")}`,
     `Subject: ${subject}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
@@ -167,9 +177,9 @@ export async function sendSmtpAlert(config: SmtpDeliveryTarget, message: string)
       await smtpCommand(socket, `AUTH PLAIN ${credentials}`);
     }
 
-    await smtpCommand(socket, `MAIL FROM:<${config.fromAddress}>`);
+    await smtpCommand(socket, `MAIL FROM:<${sanitizeEmailAddress(config.fromAddress)}>`);
     for (const to of config.toAddresses) {
-      await smtpCommand(socket, `RCPT TO:<${to}>`);
+      await smtpCommand(socket, `RCPT TO:<${sanitizeEmailAddress(to)}>`);
     }
 
     await smtpCommand(socket, "DATA");

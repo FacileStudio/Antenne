@@ -14,6 +14,13 @@ import { renderLoginPage } from "./server-login-page";
 import { createJsonResponse } from "./server-responses";
 import { handleWebhookRequest } from "./webhooks";
 
+function getClientIp(req: Request) {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? req.headers.get("cf-connecting-ip")
+    ?? req.headers.get("x-real-ip")
+    ?? "unknown";
+}
+
 function unauthorizedResponse() {
   return createJsonResponse({ error: "unauthorized" }, { status: 401 });
 }
@@ -37,6 +44,7 @@ async function handleLoginForm(req: Request, options: AppServerOptions) {
   }
 
   if (isLoginRateLimited(req)) {
+    console.warn(`[auth] login rate-limited ip=${getClientIp(req)}`);
     return redirectTo("/dashboard?error=rate-limit", req, { status: 303 });
   }
 
@@ -45,10 +53,12 @@ async function handleLoginForm(req: Request, options: AppServerOptions) {
 
   if (!isValidSessionPassword(typeof password === "string" ? password : null, options.session)) {
     recordLoginFailure(req);
+    console.warn(`[auth] login failed ip=${getClientIp(req)}`);
     return redirectTo("/dashboard?error=invalid", req, { status: 303 });
   }
 
   clearLoginFailures(req);
+  console.log(`[auth] login success ip=${getClientIp(req)}`);
 
   return redirectTo("/dashboard/providers", req, {
     status: 303,
@@ -96,6 +106,7 @@ export function createAppServer(options: AppServerOptions) {
       }
 
       if (isLoginRateLimited(req)) {
+        console.warn(`[auth] api login rate-limited ip=${getClientIp(req)}`);
         return createJsonResponse({ error: "too many attempts" }, { status: 429 });
       }
 
@@ -108,10 +119,12 @@ export function createAppServer(options: AppServerOptions) {
 
       if (!isValidSessionPassword(body.password, options.session)) {
         recordLoginFailure(req);
+        console.warn(`[auth] api login failed ip=${getClientIp(req)}`);
         return createJsonResponse({ error: "invalid password" }, { status: 401 });
       }
 
       clearLoginFailures(req);
+      console.log(`[auth] api login success ip=${getClientIp(req)}`);
 
       return createJsonResponse(
         { ok: true },
