@@ -180,7 +180,8 @@ export function getEvents(options?: {
   source?: string;
   q?: string;
   limit?: number;
-}): EventLogEntry[] {
+  offset?: number;
+}): { events: EventLogEntry[]; total: number } {
   let result = entries;
 
   if (options?.providerId) {
@@ -208,7 +209,10 @@ export function getEvents(options?: {
   }
 
   const reversed = [...result].reverse();
-  return options?.limit ? reversed.slice(0, options.limit) : reversed;
+  const total = reversed.length;
+  const start = options?.offset ?? 0;
+  const end = options?.limit ? start + options.limit : undefined;
+  return { events: reversed.slice(start, end), total };
 }
 
 export function getEventById(id: string): EventLogEntry | null {

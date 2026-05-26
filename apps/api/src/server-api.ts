@@ -225,21 +225,27 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
 
   if (url.pathname === "/api/events" && req.method === "GET") {
     const limit = Number(url.searchParams.get("limit")) || 50;
+    const offset = Number(url.searchParams.get("offset")) || 0;
     const q = url.searchParams.get("q") || undefined;
     const source = url.searchParams.get("source") || undefined;
-    return createJsonResponse({ events: getEvents({ limit, q, source }), stats: getGlobalStats() });
+    const { events, total } = getEvents({ limit, offset, q, source });
+    return createJsonResponse({ events, total, stats: getGlobalStats() });
   }
 
   if (url.pathname.startsWith("/api/events/provider/") && req.method === "GET") {
     const providerId = url.pathname.replace("/api/events/provider/", "");
     const limit = Number(url.searchParams.get("limit")) || 50;
-    return createJsonResponse({ events: getEvents({ providerId, limit }), stats: getProviderStats(providerId) });
+    const offset = Number(url.searchParams.get("offset")) || 0;
+    const { events, total } = getEvents({ providerId, limit, offset });
+    return createJsonResponse({ events, total, stats: getProviderStats(providerId) });
   }
 
   if (url.pathname.startsWith("/api/events/target/") && req.method === "GET") {
     const targetId = url.pathname.replace("/api/events/target/", "");
     const limit = Number(url.searchParams.get("limit")) || 50;
-    return createJsonResponse({ events: getEvents({ targetId, limit }), stats: getTargetStats(targetId) });
+    const offset = Number(url.searchParams.get("offset")) || 0;
+    const { events, total } = getEvents({ targetId, limit, offset });
+    return createJsonResponse({ events, total, stats: getTargetStats(targetId) });
   }
 
   const replayMatch = url.pathname.match(/^\/api\/events\/([^/]+)\/replay$/);

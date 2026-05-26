@@ -274,10 +274,13 @@ export function useDashboardState() {
     }
   }
 
-  async function loadEvents(options?: { providerId?: string; targetId?: string; limit?: number }) {
+  async function loadEvents(options?: { providerId?: string; targetId?: string; limit?: number; offset?: number; q?: string; source?: string }) {
     let path = "/api/events";
     const params = new URLSearchParams();
     if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    if (options?.q) params.set("q", options.q);
+    if (options?.source) params.set("source", options.source);
 
     if (options?.providerId) {
       path = `/api/events/provider/${options.providerId}`;
@@ -286,7 +289,7 @@ export function useDashboardState() {
     }
 
     const query = params.toString();
-    return await apiFetch<{ events: EventLogEntry[]; stats: EventLogStats }>(`${path}${query ? `?${query}` : ""}`);
+    return await apiFetch<{ events: EventLogEntry[]; stats: EventLogStats; total: number }>(`${path}${query ? `?${query}` : ""}`);
   }
 
   return {
