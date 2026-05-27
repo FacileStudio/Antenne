@@ -134,6 +134,9 @@ export interface AppSettings {
     port: number;
     items: ProviderSettings[];
   };
+  pool?: {
+    secret?: string;
+  };
 }
 
 export interface RuntimeStatus {

@@ -314,6 +314,7 @@ async function updateSettings(input: unknown) {
   const previousSettings = store.getSettings();
   const settings = await store.update(input);
   applySettings();
+  poolServer.setSecret(settings.pool?.secret || process.env.POOL_SECRET || "pool");
 
   async function fireSystemEvent(message: string, event: string, eventType: string) {
     try {
@@ -420,7 +421,8 @@ if (hasAnyDelivery(settings.delivery) && settings.system.events.startup) {
 startRetryProcessor();
 
 const dataDir = settingsPath.includes("/") ? settingsPath.slice(0, settingsPath.lastIndexOf("/")) : ".";
-const poolServer = new PoolServer({ dataDir });
+const poolSecret = store.getSettings().pool?.secret || process.env.POOL_SECRET || "pool";
+const poolServer = new PoolServer({ dataDir, secret: poolSecret });
 
 Bun.serve({
   port: serverPort,

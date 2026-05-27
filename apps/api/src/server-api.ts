@@ -54,6 +54,10 @@ function redactSettings(settings: AppSettings): AppSettings {
     }
   }
 
+  if (clone.pool?.secret) {
+    clone.pool.secret = REDACTED;
+  }
+
   return clone;
 }
 
@@ -94,6 +98,11 @@ function mergeSecrets(incoming: AppSettings, current: AppSettings): AppSettings 
         }
       }
     }
+  }
+
+  if (incoming.pool?.secret === REDACTED && current.pool?.secret) {
+    if (!incoming.pool) incoming.pool = {};
+    incoming.pool.secret = current.pool.secret;
   }
 
   return incoming;

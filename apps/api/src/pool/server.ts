@@ -199,6 +199,10 @@ export class PoolServer {
     ws.send(JSON.stringify(err));
   }
 
+  setSecret(secret: string) {
+    this.poolSecret = secret;
+  }
+
   cleanup() {
     this.queue.cleanup();
   }

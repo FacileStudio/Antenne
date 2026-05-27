@@ -76,6 +76,7 @@ function cloneFromPayload(target: AppSettings, next: AppSettings) {
   target.timeout = next.timeout;
   target.providers.port = next.providers.port;
   target.providers.items = next.providers.items.map((provider) => ({ ...provider }));
+  target.pool = next.pool ? { ...next.pool } : undefined;
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

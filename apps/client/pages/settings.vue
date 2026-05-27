@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import SectionCard from "../components/SectionCard.vue";
 import StatusGrid from "../components/StatusGrid.vue";
@@ -8,6 +8,38 @@ import { useDashboardState } from "../composables/useDashboardState";
 const { runtime, settings, saving, exportConfig, importConfig, notifyError } = useDashboardState();
 
 const importInput = ref<HTMLInputElement | null>(null);
+
+type PoolStats = {
+  epoch: number;
+  connections: number;
+  apps: Array<{ app_id: string; app: string; channels: string[] }>;
+};
+
+const poolStats = ref<PoolStats | null>(null);
+
+async function loadPoolStats() {
+  try {
+    const res = await fetch("/api/pool/stats");
+    if (res.ok) {
+      poolStats.value = await res.json() as PoolStats;
+    }
+  } catch {}
+}
+
+onMounted(loadPoolStats);
+
+const poolSecret = computed({
+  get: () => settings.pool?.secret ?? "",
+  set: (value: string) => {
+    if (!settings.pool) settings.pool = {};
+    settings.pool.secret = value || undefined;
+  },
+});
+
+const poolSecretSource = computed(() => {
+  if (settings.pool?.secret && settings.pool.secret !== "••••••••") return "Dashboard config";
+  return "Environment variable or default";
+});
 
 async function handleImport(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
@@ -19,6 +51,19 @@ async function handleImport(event: Event) {
     if (importInput.value) importInput.value.value = "";
   }
 }
+
+const poolInfoItems = computed(() => {
+  const items: Array<{ label: string; value: string }> = [
+    { label: "Secret source", value: poolSecretSource.value },
+  ];
+  if (poolStats.value) {
+    items.push(
+      { label: "Connected apps", value: String(poolStats.value.connections) },
+      { label: "Epoch", value: String(poolStats.value.epoch) },
+    );
+  }
+  return items;
+});
 
 const infoItems = computed(() => [
   {
@@ -54,6 +99,16 @@ const infoItems = computed(() => [
           <input v-model.number="settings.providers.port" type="number" min="1" step="1">
         </label>
       </div>
+    </SectionCard>
+
+    <SectionCard eyebrow="Settings" title="Pool">
+      <div class="settings-grid">
+        <label class="field">
+          <span>Secret</span>
+          <input v-model="poolSecret" type="password" placeholder="pool">
+        </label>
+      </div>
+      <StatusGrid :items="poolInfoItems" />
     </SectionCard>
 
     <SectionCard eyebrow="Settings" title="System Events">

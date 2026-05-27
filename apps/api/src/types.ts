@@ -97,11 +97,16 @@ export interface ProvidersConfig {
   items: ProviderSettings[];
 }
 
+export interface PoolSettings {
+  secret?: string;
+}
+
 export interface AppSettings {
   delivery: DeliveryConfig;
   system: SystemSettings;
   timeout: number;
   providers: ProvidersConfig;
+  pool?: PoolSettings;
 }
 
 export interface DashboardSessionConfig {

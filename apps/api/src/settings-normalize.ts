@@ -10,6 +10,10 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
     throw new Error("Timeout must be a positive number.");
   }
 
+  const pool = candidate.pool && typeof candidate.pool === "object"
+    ? { secret: typeof candidate.pool.secret === "string" ? candidate.pool.secret : undefined }
+    : fallback.pool;
+
   return {
     delivery: normalizeDeliveryConfig(input, fallback.delivery),
     system: {
@@ -24,5 +28,6 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
     },
     timeout,
     providers: normalizeProvidersConfig(input, fallback),
+    pool,
   };
 }
