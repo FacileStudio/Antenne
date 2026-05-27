@@ -443,6 +443,8 @@ Bun.serve({
 });
 
 console.log(`[startup] pool: enabled (epoch=${poolServer.getStats().epoch})`);
+
+setInterval(() => poolServer.cleanup(), 24 * 60 * 60 * 1000);
 console.log(`[startup] listening on ${serverPort}`);
 
 if (!session.password) {

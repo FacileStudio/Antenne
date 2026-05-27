@@ -105,11 +105,6 @@ export class PoolServer {
     const raw = typeof message === "string" ? message : message.toString();
     const { app } = ws.data;
 
-    if (raw === "ping") {
-      ws.send("pong");
-      return;
-    }
-
     let parsed: { type: string };
     try {
       parsed = JSON.parse(raw);
@@ -122,11 +117,20 @@ export class PoolServer {
       case "subscribe":
         this.handleSubscribe(ws, app, parsed as SubscribeMessage);
         break;
-      case "event":
-        this.handleEvent(ws, app, parsed as EventMessage & { channel: string; payload: unknown });
+      case "event": {
+        const evt = parsed as Record<string, unknown>;
+        if (typeof evt.channel !== "string" || !evt.channel) {
+          this.sendError(ws, "INVALID_EVENT", "channel is required");
+          return;
+        }
+        this.handleEvent(ws, app, evt as unknown as EventMessage & { channel: string; payload: unknown });
         break;
+      }
       case "ack":
         this.handleAck(app, parsed as AckMessage);
+        break;
+      case "ping":
+        ws.send(JSON.stringify({ type: "pong" }));
         break;
       default:
         this.sendError(ws, "UNKNOWN_TYPE", `unknown message type: ${parsed.type}`);
@@ -134,7 +138,8 @@ export class PoolServer {
   };
 
   handleClose = (ws: ServerWebSocket<PoolWebSocketData>) => {
-    const { app } = ws.data;
+    const app = ws.data?.app;
+    if (!app) return;
     this.registry.remove(app.app_id);
     console.log(`[pool] disconnected app=${app.app} id=${app.app_id}`);
   };
@@ -162,7 +167,7 @@ export class PoolServer {
   }
 
   private handleEvent(ws: ServerWebSocket<PoolWebSocketData>, app: RegisteredApp, msg: { channel: string; payload: unknown }) {
-    const { id, offset, timestamp } = this.queue.pushEvent(msg.channel, msg.payload, app.app_id);
+    const { id, offset, timestamp } = this.queue.pushEvent(msg.channel, msg.payload, app.app);
 
     const eventMsg: EventMessage = {
       type: "event",
@@ -171,7 +176,7 @@ export class PoolServer {
       offset,
       payload: msg.payload,
       timestamp,
-      sender: app.app_id,
+      sender: app.app,
     };
 
     const subscribers = this.registry.getSubscribers(msg.channel);
@@ -192,6 +197,10 @@ export class PoolServer {
   private sendError(ws: ServerWebSocket<PoolWebSocketData>, code: string, message: string) {
     const err: ErrorMessage = { type: "error", code, message };
     ws.send(JSON.stringify(err));
+  }
+
+  cleanup() {
+    this.queue.cleanup();
   }
 
   getStats() {

@@ -99,14 +99,20 @@ export class EventQueue {
       "SELECT id, channel, offset_num, payload, sender, timestamp FROM events WHERE channel = ? AND offset_num > ? ORDER BY offset_num ASC LIMIT ?",
     ).all(channel, afterOffset, limit);
 
-    return rows.map((row) => ({
-      id: row.id,
-      channel: row.channel,
-      offset: row.offset_num,
-      payload: JSON.parse(row.payload),
-      sender: row.sender,
-      timestamp: row.timestamp,
-    }));
+    return rows.flatMap((row) => {
+      try {
+        return [{
+          id: row.id,
+          channel: row.channel,
+          offset: row.offset_num,
+          payload: JSON.parse(row.payload),
+          sender: row.sender,
+          timestamp: row.timestamp,
+        }];
+      } catch {
+        return [];
+      }
+    });
   }
 
   ack(subscriberId: string, channel: string, offset: number) {
