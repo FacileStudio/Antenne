@@ -13,6 +13,7 @@ import { isDashboardAssetPath, serveDashboardAsset } from "./server-dashboard";
 import { renderLoginPage } from "./server-login-page";
 import { createJsonResponse } from "./server-responses";
 import { handleWebhookRequest } from "./webhooks";
+import type { PoolServer } from "./pool/server";
 
 function getClientIp(req: Request) {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -80,10 +81,29 @@ function renderLoginResponse(options: AppServerOptions, errorMessage?: string) {
 
 export { createDashboardSessionConfig } from "./server-auth";
 
-export function createAppServer(options: AppServerOptions) {
-  return async (req: Request): Promise<Response> => {
+export function createAppServer(options: AppServerOptions & { poolServer?: PoolServer }) {
+  return async (req: Request, server: unknown): Promise<Response> => {
     const url = new URL(req.url);
     const dashboardBuilt = options.getRuntimeStatus().dashboardBuilt;
+
+    if (options.poolServer) {
+      if (url.pathname === "/api/pool/register" && req.method === "POST") {
+        return options.poolServer.handleRegister(req);
+      }
+
+      if (url.pathname === "/api/pool/ws" && req.headers.get("upgrade")?.toLowerCase() === "websocket") {
+        const result = options.poolServer.handleUpgrade(req, server as any);
+        if (!result) return new Response(null, { status: 101 });
+        return result;
+      }
+
+      if (url.pathname === "/api/pool/stats" && req.method === "GET") {
+        if (!isAuthenticated(req, options.session)) {
+          return unauthorizedResponse();
+        }
+        return createJsonResponse(options.poolServer.getStats());
+      }
+    }
 
     if (url.pathname === "/health") {
       return new Response("ok", { status: 200 });

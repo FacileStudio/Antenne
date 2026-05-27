@@ -18,6 +18,7 @@ import {
 import { SYSTEM_PROVIDER_ID, type AppSettings } from "./src/types";
 import type { AlertContext, DeliveryMessage } from "./src/types";
 import { createHash } from "node:crypto";
+import { PoolServer } from "./src/pool/server";
 
 const recentEventHashes = new Map<string, number>();
 const DEDUP_WINDOW_MS = 30_000;
@@ -418,6 +419,9 @@ if (hasAnyDelivery(settings.delivery) && settings.system.events.startup) {
 
 startRetryProcessor();
 
+const dataDir = settingsPath.includes("/") ? settingsPath.slice(0, settingsPath.lastIndexOf("/")) : ".";
+const poolServer = new PoolServer({ dataDir });
+
 Bun.serve({
   port: serverPort,
   fetch: createAppServer({
@@ -429,9 +433,16 @@ Bun.serve({
     replayEventToTarget,
     getRuntimeStatus: () => ({ ...runtimeStatus }),
     session,
+    poolServer,
   }),
+  websocket: {
+    open: poolServer.handleOpen,
+    message: poolServer.handleMessage,
+    close: poolServer.handleClose,
+  },
 });
 
+console.log(`[startup] pool: enabled (epoch=${poolServer.getStats().epoch})`);
 console.log(`[startup] listening on ${serverPort}`);
 
 if (!session.password) {
