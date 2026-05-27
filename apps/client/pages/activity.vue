@@ -112,19 +112,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="grid gap-5">
+  <div class="grid gap-8">
     <div class="grid grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] gap-3 max-lg:grid-cols-1">
       <ActivityOverview :events="events" :stats="stats" :loading="loading" @refresh="fetchEvents()" />
       <ActivityChart :events="events" />
     </div>
 
     <div class="grid gap-5">
-      <div class="flex items-center gap-3">
-        <div>
-          <p class="m-0 mb-1.5 text-muted-foreground text-xs">Recent feed</p>
-          <h2 class="m-0 text-xl font-semibold">Activity stream</h2>
-        </div>
+      <div>
+        <p class="m-0 mb-1.5 text-muted-foreground text-xs">Recent feed</p>
+        <h2 class="m-0 text-xl font-semibold">Activity stream</h2>
       </div>
+
       <div class="flex gap-2.5">
         <input v-model="searchQuery" class="!flex-1 min-w-0 !w-auto" type="text" placeholder="Search events..." @input="onSearchInput">
         <select v-model="sourceFilter" class="!w-auto flex-none">
@@ -137,26 +136,18 @@ onUnmounted(() => {
           <option value="test">Test</option>
         </select>
       </div>
+
       <EventTimeline :events="events" @replay="handleReplay" />
-      <button v-if="hasMore" class="ghost load-more" type="button" :disabled="loadingMore" @click="fetchEvents({ append: true })">
+
+      <button
+        v-if="hasMore"
+        class="w-full min-h-10 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
+        type="button"
+        :disabled="loadingMore"
+        @click="fetchEvents({ append: true })"
+      >
         {{ loadingMore ? "Loading\u2026" : "Load more" }}
       </button>
     </div>
   </div>
 </template>
-
-<style scoped>
-.load-more {
-  width: 100%;
-  min-height: 2.5rem;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-xl);
-  color: var(--muted-foreground);
-  font-size: 0.875rem;
-}
-
-.load-more:not(:disabled):hover {
-  background: var(--muted);
-  color: var(--foreground);
-}
-</style>

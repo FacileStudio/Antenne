@@ -42,153 +42,43 @@ const successRate = computed(() => {
 </script>
 
 <template>
-  <section class="overview-card panel">
-    <div class="overview-copy">
-      <h2>Stats</h2>
+  <section class="rounded-xl bg-card ring-1 ring-foreground/10 p-5 grid gap-5">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <h2 class="m-0 text-xl font-semibold">Stats</h2>
+      <div class="flex items-center gap-2.5">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground ring-1 ring-foreground/10">
+          <Icon icon="solar:clock-circle-linear" :width="13" :height="13" aria-hidden="true" />
+          Last event {{ lastEventLabel }}
+        </span>
+        <button
+          class="ghost action-button h-8"
+          type="button"
+          :disabled="loading"
+          @click="$emit('refresh')"
+        >
+          <Icon icon="solar:refresh-linear" :width="14" :height="14" :class="{ 'animate-spin': loading }" aria-hidden="true" />
+          <span>{{ loading ? "Refreshing..." : "Refresh" }}</span>
+        </button>
+      </div>
     </div>
 
-    <div class="overview-meta">
-      <div class="meta-pill">
-        <Icon icon="solar:clock-circle-linear" :width="14" :height="14" aria-hidden="true" />
-        <span>Last event {{ lastEventLabel }}</span>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="flex flex-col gap-1 rounded-xl bg-muted/50 px-4 py-3">
+        <span class="text-2xl font-bold tabular-nums">{{ stats?.totalEvents ?? events.length }}</span>
+        <span class="text-xs text-muted-foreground">Tracked</span>
       </div>
-      <button class="ghost action-button refresh-button" type="button" :disabled="loading" @click="$emit('refresh')">
-        <Icon icon="solar:refresh-linear" :width="14" :height="14" :class="{ spinning: loading }" aria-hidden="true" />
-        <span>{{ loading ? "Refreshing..." : "Refresh feed" }}</span>
-      </button>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-tile">
-        <span class="stat-value">{{ stats?.totalEvents ?? events.length }}</span>
-        <span class="stat-label">Tracked</span>
+      <div class="flex flex-col gap-1 rounded-xl bg-muted/50 px-4 py-3">
+        <span class="text-2xl font-bold tabular-nums text-green-700">{{ stats?.deliverySuccessCount ?? 0 }}</span>
+        <span class="text-xs text-muted-foreground">Success</span>
       </div>
-      <div class="stat-tile">
-        <span class="stat-value success">{{ stats?.deliverySuccessCount ?? 0 }}</span>
-        <span class="stat-label">Success</span>
+      <div class="flex flex-col gap-1 rounded-xl bg-muted/50 px-4 py-3">
+        <span class="text-2xl font-bold tabular-nums text-red-600">{{ stats?.deliveryErrorCount ?? 0 }}</span>
+        <span class="text-xs text-muted-foreground">Failed</span>
       </div>
-      <div class="stat-tile">
-        <span class="stat-value error">{{ stats?.deliveryErrorCount ?? 0 }}</span>
-        <span class="stat-label">Failed</span>
-      </div>
-      <div class="stat-tile">
-        <span class="stat-value">{{ successRate }}%</span>
-        <span class="stat-label">Hit rate</span>
+      <div class="flex flex-col gap-1 rounded-xl bg-muted/50 px-4 py-3">
+        <span class="text-2xl font-bold tabular-nums">{{ successRate }}%</span>
+        <span class="text-xs text-muted-foreground">Hit rate</span>
       </div>
     </div>
   </section>
 </template>
-
-<style scoped>
-.overview-card {
-  display: grid;
-  gap: 1.4rem;
-  padding: 1.5rem;
-  background: var(--nook-surface);
-  border-radius: var(--radius-xl);
-}
-
-.overview-copy {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.overview-eyebrow {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--nook-muted);
-}
-
-h2 {
-  margin: 0;
-  font-size: 1.55rem;
-}
-
-.overview-text {
-  margin: 0;
-  max-width: 34rem;
-  color: var(--nook-muted);
-  line-height: 1.55;
-}
-
-.overview-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.meta-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.25rem 0.625rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--nook-border);
-  background: oklch(0 0 0 / 3%);
-  color: var(--nook-muted);
-  font-size: 0.84rem;
-}
-
-.refresh-button {
-  height: 2rem;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.9rem;
-}
-
-.stat-tile {
-  display: grid;
-  gap: 0.3rem;
-  padding: 1rem 1.05rem;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--nook-border);
-  background: oklch(0 0 0 / 2.5%);
-}
-
-.stat-value {
-  font-family: "Goga";
-  font-size: 1.7rem;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.stat-value.success {
-  color: oklch(40% 0.16 155);
-}
-
-.stat-value.error {
-  color: oklch(45% 0.18 25);
-}
-
-.stat-label {
-  color: var(--nook-muted);
-  font-size: 0.82rem;
-}
-
-.spinning {
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (max-width: 960px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

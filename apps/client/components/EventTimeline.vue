@@ -21,6 +21,15 @@ function formatTime(iso: string) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function sourceIcon(source: string) {
+  if (source === "website") return "solar:global-linear";
+  if (source === "webhook") return "solar:link-round-angle-linear";
+  if (source === "imap") return "solar:letter-linear";
+  if (source === "rss") return "solar:rss-linear";
+  if (source === "test") return "solar:test-tube-linear";
+  return "solar:server-linear";
+}
+
 function sourceMeta(source: string) {
   if (source === "website") return { label: "Website", tone: "website" };
   if (source === "webhook") return { label: "Webhook", tone: "webhook" };
@@ -98,186 +107,77 @@ function previewFor(entry: EventLogEntry) {
 </script>
 
 <template>
-  <div class="event-list">
-    <p v-if="events.length === 0" class="empty-event">No events recorded yet.</p>
-    <article v-for="entry in events" :key="entry.id" class="event-card">
-      <div class="event-content">
-        <div class="event-heading">
-          <span class="event-title">{{ titleFor(entry) }}</span>
-          <span class="event-time">
-            <Icon icon="solar:clock-circle-linear" :width="12" :height="12" aria-hidden="true" />
-            {{ formatTime(entry.timestamp) }}
-          </span>
+  <div class="rounded-xl bg-card ring-1 ring-foreground/10 overflow-hidden">
+    <p v-if="events.length === 0" class="px-5 py-8 text-center text-muted-foreground text-sm m-0">
+      No events recorded yet.
+    </p>
+
+    <div v-else class="divide-y divide-border">
+      <div
+        v-for="entry in events"
+        :key="entry.id"
+        class="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
+      >
+        <div class="mt-0.5 flex-none rounded-lg bg-muted p-1.5 text-muted-foreground">
+          <Icon :icon="sourceIcon(entry.source)" :width="14" :height="14" aria-hidden="true" />
         </div>
-        <div class="pill-row">
-          <span
-            class="event-pill source-pill"
-            :data-tone="sourceMeta(entry.source).tone"
-          >{{ sourceMeta(entry.source).label }}</span>
-          <span v-if="entry.providerName && entry.providerName !== 'system' && entry.providerName !== 'Nook'" class="event-pill">{{ entry.providerName }}</span>
-        </div>
-        <p v-if="previewFor(entry)" class="event-preview">{{ previewFor(entry) }}</p>
-        <div v-if="entry.deliveries.length > 0" class="delivery-row">
-          <span
-            v-for="d in entry.deliveries"
-            :key="d.targetId"
-            class="delivery-pill"
-            :data-status="d.status"
-            :title="d.error ?? `${d.durationMs}ms`"
+
+        <div class="min-w-0 flex-1 grid gap-1">
+          <div class="flex items-baseline justify-between gap-2">
+            <span class="font-semibold text-sm leading-tight truncate">{{ titleFor(entry) }}</span>
+            <span class="flex-none text-xs text-muted-foreground tabular-nums whitespace-nowrap">{{ formatTime(entry.timestamp) }}</span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span
+              class="inline-flex items-center rounded-full px-2 py-0.5 text-[0.7rem] leading-none ring-1"
+              :class="{
+                'bg-blue-50 text-blue-700 ring-blue-200': sourceMeta(entry.source).tone === 'system',
+                'bg-green-50 text-green-700 ring-green-200': sourceMeta(entry.source).tone === 'website',
+                'bg-amber-50 text-amber-700 ring-amber-200': sourceMeta(entry.source).tone === 'webhook',
+                'bg-purple-50 text-purple-700 ring-purple-200': sourceMeta(entry.source).tone === 'imap',
+                'bg-orange-50 text-orange-700 ring-orange-200': sourceMeta(entry.source).tone === 'test',
+              }"
+            >{{ sourceMeta(entry.source).label }}</span>
+            <span
+              v-if="entry.providerName && entry.providerName !== 'system' && entry.providerName !== 'Nook'"
+              class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[0.7rem] leading-none text-muted-foreground ring-1 ring-foreground/10"
+            >{{ entry.providerName }}</span>
+          </div>
+
+          <p v-if="previewFor(entry)" class="m-0 text-sm text-muted-foreground leading-relaxed line-clamp-2">
+            {{ previewFor(entry) }}
+          </p>
+
+          <div v-if="entry.deliveries.length > 0" class="flex flex-wrap items-center gap-1.5 mt-0.5">
+            <span
+              v-for="d in entry.deliveries"
+              :key="d.targetId"
+              class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] leading-none ring-1"
+              :class="{
+                'bg-green-50 text-green-700 ring-green-200': d.status === 'success',
+                'bg-red-50 text-red-700 ring-red-200': d.status === 'error',
+              }"
+              :title="d.error ?? `${d.durationMs}ms`"
+            >
+              <Icon v-if="d.status === 'success'" icon="solar:check-circle-linear" :width="11" :height="11" aria-hidden="true" />
+              <Icon v-else icon="solar:close-circle-linear" :width="11" :height="11" aria-hidden="true" />
+              {{ d.targetName }}
+            </span>
+          </div>
+
+          <button
+            v-if="entry.envelope"
+            class="mt-1 inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            type="button"
+            title="Replay this event"
+            @click="emit('replay', entry.id)"
           >
-            <Icon v-if="d.status === 'success'" icon="solar:check-circle-linear" :width="12" :height="12" aria-hidden="true" />
-            <Icon v-else icon="solar:close-circle-linear" :width="12" :height="12" aria-hidden="true" />
-            {{ d.targetName }}
-          </span>
+            <Icon icon="solar:refresh-linear" :width="12" :height="12" aria-hidden="true" />
+            Replay
+          </button>
         </div>
-        <button v-if="entry.envelope" class="ghost action-button replay-button" type="button" title="Replay this event" @click="emit('replay', entry.id)">
-          <Icon icon="solar:refresh-linear" :width="13" :height="13" aria-hidden="true" />
-          Replay
-        </button>
       </div>
-    </article>
+    </div>
   </div>
 </template>
-
-<style scoped>
-.event-list,
-.event-content {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.empty-event,
-.event-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  background: var(--card);
-}
-
-.empty-event {
-  margin: 0;
-  padding: var(--space-5);
-  border-style: dashed;
-  color: var(--muted-foreground);
-  text-align: center;
-}
-
-.event-card {
-  padding: var(--space-4);
-}
-
-.event-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.event-title {
-  min-width: 0;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.event-time {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-}
-
-.pill-row,
-.delivery-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.event-pill,
-.delivery-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.25rem;
-  padding: 0.15rem 0.55rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
-  background: var(--muted);
-  color: var(--muted-foreground);
-  font-size: 0.73rem;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.source-pill[data-tone="system"] {
-  border-color: oklch(0.84 0.07 250);
-  background: oklch(0.95 0.04 250);
-  color: oklch(0.38 0.14 250);
-}
-
-.source-pill[data-tone="website"] {
-  border-color: var(--success-border);
-  background: var(--success-muted);
-  color: var(--success-foreground);
-}
-
-.source-pill[data-tone="webhook"] {
-  border-color: oklch(0.86 0.07 65);
-  background: oklch(0.96 0.04 65);
-  color: oklch(0.42 0.11 65);
-}
-
-.source-pill[data-tone="imap"] {
-  border-color: oklch(0.84 0.07 310);
-  background: oklch(0.95 0.04 310);
-  color: oklch(0.4 0.14 310);
-}
-
-.source-pill[data-tone="test"] {
-  border-color: oklch(0.86 0.07 45);
-  background: oklch(0.96 0.04 45);
-  color: oklch(0.44 0.12 45);
-}
-
-.event-preview {
-  margin: 0;
-  color: var(--muted-foreground);
-  font-size: 0.875rem;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.delivery-pill {
-  gap: 0.35rem;
-}
-
-.delivery-pill[data-status="success"] {
-  border-color: var(--success-border);
-  background: var(--success-muted);
-  color: var(--success-foreground);
-}
-
-.delivery-pill[data-status="error"] {
-  border-color: var(--danger-border);
-  background: var(--danger-muted);
-  color: var(--destructive);
-}
-
-.replay-button {
-  width: fit-content;
-  min-height: 1.75rem;
-  padding-inline: 0.6rem;
-  font-size: 0.73rem;
-}
-
-@media (max-width: 640px) {
-  .event-heading {
-    display: grid;
-  }
-}
-</style>
