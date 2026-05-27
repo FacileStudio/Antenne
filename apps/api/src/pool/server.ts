@@ -22,14 +22,21 @@ function json(body: unknown, status = 200) {
   });
 }
 
+type PoolEventLogger = (event: { type: string; app: string; detail: string }) => void;
+
 export class PoolServer {
   private queue: EventQueue;
   private registry = new ConnectionRegistry();
   private poolSecret: string;
+  private logger: PoolEventLogger | null = null;
 
   constructor(options: { dataDir: string; secret?: string }) {
     this.queue = new EventQueue(options.dataDir);
     this.poolSecret = options.secret ?? process.env.POOL_SECRET ?? "pool";
+  }
+
+  onPoolEvent(logger: PoolEventLogger) {
+    this.logger = logger;
   }
 
   async handleRegister(req: Request): Promise<Response> {
@@ -99,6 +106,7 @@ export class PoolServer {
 
     ws.send(JSON.stringify(welcome));
     console.log(`[pool] connected app=${app.app} id=${app.app_id}`);
+    this.logger?.({ type: "pool.connected", app: app.app, detail: `${app.app} joined the pool` });
   };
 
   handleMessage = (ws: ServerWebSocket<PoolWebSocketData>, message: string | Buffer) => {
@@ -142,6 +150,7 @@ export class PoolServer {
     if (!app) return;
     this.registry.remove(app.app_id);
     console.log(`[pool] disconnected app=${app.app} id=${app.app_id}`);
+    this.logger?.({ type: "pool.disconnected", app: app.app, detail: `${app.app} left the pool` });
   };
 
   private handleSubscribe(ws: ServerWebSocket<PoolWebSocketData>, app: RegisteredApp, msg: SubscribeMessage) {
@@ -188,6 +197,8 @@ export class PoolServer {
 
     const ack: AckMessage = { type: "ack", channel: msg.channel, offset };
     ws.send(JSON.stringify(ack));
+
+    this.logger?.({ type: "pool.event", app: app.app, detail: `${app.app} → ${msg.channel} (${subscribers.length - 1} recipients)` });
   }
 
   private handleAck(app: RegisteredApp, msg: AckMessage) {

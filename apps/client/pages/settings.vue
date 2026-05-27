@@ -65,8 +65,9 @@ async function handleImport(event: Event) {
 const poolInfoItems = computed(() => {
   const items: Array<{ label: string; value: string }> = [];
   if (poolStats.value) {
+    const epoch = String(poolStats.value.epoch);
     items.push(
-      { label: "Epoch", value: String(poolStats.value.epoch) },
+      { label: "Epoch", value: epoch.length > 8 ? epoch.slice(0, 8) : epoch },
       { label: "Total connections", value: String(poolStats.value.connections) },
     );
   }

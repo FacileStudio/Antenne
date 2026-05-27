@@ -424,6 +424,18 @@ const dataDir = settingsPath.includes("/") ? settingsPath.slice(0, settingsPath.
 const poolSecret = store.getSettings().pool?.secret || process.env.POOL_SECRET || "pool";
 const poolServer = new PoolServer({ dataDir, secret: poolSecret });
 
+poolServer.onPoolEvent(({ type, app, detail }) => {
+  pushEvent({
+    source: "system",
+    providerId: null,
+    providerName: app,
+    providerType: "pool",
+    event: type,
+    message: detail,
+    deliveries: [],
+  });
+});
+
 Bun.serve({
   port: serverPort,
   fetch: createAppServer({
