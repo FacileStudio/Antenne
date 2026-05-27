@@ -101,7 +101,7 @@ const tabs = [
 </script>
 
 <template>
-  <div class="mx-auto max-w-2xl space-y-8">
+  <div class="space-y-8 px-4 py-4 md:px-8 md:py-5">
     <div class="tab-bar">
       <button
         v-for="tab in tabs"
@@ -280,11 +280,13 @@ const tabs = [
   display: grid;
   gap: var(--space-3);
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 36rem;
 }
 
 .event-settings {
   display: grid;
   gap: 1rem;
+  max-width: 36rem;
 }
 
 .event-toggle {
