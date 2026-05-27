@@ -14,6 +14,7 @@ import { renderLoginPage } from "./server-login-page";
 import { createJsonResponse } from "./server-responses";
 import { handleWebhookRequest } from "./webhooks";
 import type { PoolServer } from "./pool/server";
+import { getPoolOpenAPISpec, SCALAR_HTML } from "./pool/openapi";
 
 function getClientIp(req: Request) {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -107,6 +108,17 @@ export function createAppServer(options: AppServerOptions & { poolServer?: PoolS
 
     if (url.pathname === "/health") {
       return new Response("ok", { status: 200 });
+    }
+
+    if (url.pathname === "/api/docs" && req.method === "GET") {
+      return new Response(SCALAR_HTML, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
+    if (url.pathname === "/api/openapi" && req.method === "GET") {
+      const spec = getPoolOpenAPISpec(`${url.protocol}//${url.host}`);
+      return Response.json(spec);
     }
 
     if (url.pathname === "/favicon.ico") {
