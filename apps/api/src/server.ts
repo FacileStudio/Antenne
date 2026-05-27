@@ -89,6 +89,10 @@ export function createAppServer(options: AppServerOptions) {
       return new Response("ok", { status: 200 });
     }
 
+    if (url.pathname === "/favicon.ico") {
+      return serveDashboardAsset("/dashboard/favicon.ico", dashboardBuilt);
+    }
+
     if (url.pathname === "/api/logout" && req.method === "POST") {
       return createJsonResponse(
         { ok: true },
