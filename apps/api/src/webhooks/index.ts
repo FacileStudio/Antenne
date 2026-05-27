@@ -15,7 +15,7 @@ import { dokployWebhookProvider } from "./providers/dokploy";
 import { gitWebhookProvider } from "./providers/git";
 import { uptimeKumaWebhookProvider } from "./providers/uptime-kuma";
 import { vikunjaWebhookProvider } from "./providers/vikunja";
-import { charlesWebhookProvider } from "./providers/charles";
+import { ardoiseWebhookProvider } from "./providers/ardoise";
 import { sablierWebhookProvider } from "./providers/sablier";
 import { perceptionWebhookProvider } from "./providers/perception";
 import { opusWebhookProvider } from "./providers/opus";
@@ -30,7 +30,7 @@ const providerDefinitions = {
   dokploy: dokployWebhookProvider,
   git: gitWebhookProvider,
   vikunja: vikunjaWebhookProvider,
-  charles: charlesWebhookProvider,
+  ardoise: ardoiseWebhookProvider,
   sablier: sablierWebhookProvider,
   perception: perceptionWebhookProvider,
   opus: opusWebhookProvider,
@@ -142,7 +142,7 @@ export async function handleWebhookRequest(
       normalizedPayload: event.normalizedPayload ?? {},
       rawPayload: payload,
       occurredAt: event.occurredAt ?? null,
-      containsPii: event.containsPii ?? (provider.settings.type === "docuseal" || provider.settings.type === "charles"),
+      containsPii: event.containsPii ?? (provider.settings.type === "docuseal" || provider.settings.type === "ardoise"),
       rawPayloadAllowed: event.rawPayloadAllowed ?? false,
     });
   }

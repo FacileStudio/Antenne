@@ -21,7 +21,7 @@ const PROVIDER_SENSITIVE_FIELDS: Record<string, string[]> = {
   dokploy: ["secretValue"],
   git: ["secretValue"],
   vikunja: ["secretValue"],
-  charles: ["secretValue"],
+  ardoise: ["secretValue"],
   sablier: ["secretValue"],
   perception: ["secretValue"],
   opus: ["secretValue"],

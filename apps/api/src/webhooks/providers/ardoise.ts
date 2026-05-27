@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { CharlesWebhookPayload, WebhookProviderDefinition, WebhookProviderSettings } from "../types";
+import type { ArdoiseWebhookPayload, WebhookProviderDefinition, WebhookProviderSettings } from "../types";
 
 function escapeHtml(value: string): string {
   return value
@@ -39,15 +39,15 @@ function verifySignature(rawBody: string, settings: WebhookProviderSettings, sig
   return equalsSignature(expected, signature);
 }
 
-function parsePayload(payload: unknown): CharlesWebhookPayload {
-  return (payload ?? {}) as CharlesWebhookPayload;
+function parsePayload(payload: unknown): ArdoiseWebhookPayload {
+  return (payload ?? {}) as ArdoiseWebhookPayload;
 }
 
-function formatActor(payload: CharlesWebhookPayload) {
+function formatActor(payload: ArdoiseWebhookPayload) {
   return payload.actor?.email ?? payload.actor?.id ?? "someone";
 }
 
-function formatAdminMessage(payload: CharlesWebhookPayload) {
+function formatAdminMessage(payload: ArdoiseWebhookPayload) {
   const event = payload.event ?? "admin.event";
   const [, entity = "record", action = "updated"] = event.split(".");
   const actor = escapeHtml(formatActor(payload));
@@ -56,7 +56,7 @@ function formatAdminMessage(payload: CharlesWebhookPayload) {
   const name = [payload.data?.record?.firstName, payload.data?.record?.lastName].filter(Boolean).join(" ");
   const email = payload.data?.record?.email;
   const parts = [
-    `<b>[Charles]</b> ${actor} ${escapeHtml(action)} ${entityLabel}`,
+    `<b>[Ardoise]</b> ${actor} ${escapeHtml(action)} ${entityLabel}`,
     entityId ? `ID: <code>${escapeHtml(String(entityId))}</code>` : null,
     name ? `Name: <b>${escapeHtml(name)}</b>` : null,
     email ? `Email: <code>${escapeHtml(email)}</code>` : null,
@@ -65,14 +65,14 @@ function formatAdminMessage(payload: CharlesWebhookPayload) {
   return parts.join("<br/>");
 }
 
-function formatSettingsMessage(payload: CharlesWebhookPayload) {
+function formatSettingsMessage(payload: ArdoiseWebhookPayload) {
   const event = payload.event ?? "settings.updated";
   if (event === "settings.logo.updated") {
-    return `🖼️ <b>[Charles]</b> logo updated`;
+    return `🖼️ <b>[Ardoise]</b> logo updated`;
   }
 
   const changedFields = Array.isArray(payload.data?.changedFields) ? payload.data.changedFields : [];
-  const parts = [`⚙️ <b>[Charles]</b> settings updated`];
+  const parts = [`⚙️ <b>[Ardoise]</b> settings updated`];
 
   if (changedFields.length > 0) {
     parts.push(`Fields: ${changedFields.map((field) => `<code>${escapeHtml(field)}</code>`).join(", ")}`);
@@ -81,18 +81,18 @@ function formatSettingsMessage(payload: CharlesWebhookPayload) {
   return parts.join("<br/>");
 }
 
-export const charlesWebhookProvider: WebhookProviderDefinition = {
-  type: "charles",
-  label: "Charles",
-  defaultPath: "/webhook/charles",
-  defaultSecretHeader: "x-charles-signature-256",
+export const ardoiseWebhookProvider: WebhookProviderDefinition = {
+  type: "ardoise",
+  label: "Ardoise",
+  defaultPath: "/webhook/ardoise",
+  defaultSecretHeader: "x-ardoise-signature-256",
   authenticate(req, rawBody, settings) {
-    return verifySignature(rawBody, settings, req.headers.get(settings.secretHeader ?? "x-charles-signature-256"));
+    return verifySignature(rawBody, settings, req.headers.get(settings.secretHeader ?? "x-ardoise-signature-256"));
   },
   formatMessage(payload) {
     const parsed = parsePayload(payload);
     if (!parsed.event) {
-      return "📡 <b>[Charles]</b> received an event";
+      return "📡 <b>[Ardoise]</b> received an event";
     }
 
     if (parsed.event.startsWith("admin.")) {
@@ -103,10 +103,10 @@ export const charlesWebhookProvider: WebhookProviderDefinition = {
       return formatSettingsMessage(parsed);
     }
 
-    return `📡 <b>[Charles]</b> ${escapeHtml(toTitle(parsed.event))}`;
+    return `📡 <b>[Ardoise]</b> ${escapeHtml(toTitle(parsed.event))}`;
   },
   describeEvent(payload) {
-    return parsePayload(payload).event ?? "charles event";
+    return parsePayload(payload).event ?? "ardoise event";
   },
   buildEvent(payload) {
     const parsed = parsePayload(payload);
@@ -114,8 +114,8 @@ export const charlesWebhookProvider: WebhookProviderDefinition = {
     const record = parsed.data?.record;
     const name = [record?.firstName, record?.lastName].filter(Boolean).join(" ") || null;
     return {
-      eventType: parsed.event ?? "charles.event",
-      eventTitle: parsed.event ? toTitle(parsed.event) : "Charles event",
+      eventType: parsed.event ?? "ardoise.event",
+      eventTitle: parsed.event ? toTitle(parsed.event) : "Ardoise event",
       occurredAt: parsed.createdAt ?? null,
       actor: {
         id: parsed.actor?.id ?? null,

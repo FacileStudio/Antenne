@@ -48,8 +48,8 @@ export function getProviderLabel(type: ProviderType) {
     return "Vikunja";
   }
 
-  if (type === "charles") {
-    return "Charles";
+  if (type === "ardoise") {
+    return "Ardoise";
   }
 
   if (type === "perception") {
@@ -84,8 +84,8 @@ export function getWebhookDefaultPath(type: WebhookProviderType) {
     return "/webhook/vikunja";
   }
 
-  if (type === "charles") {
-    return "/webhook/charles";
+  if (type === "ardoise") {
+    return "/webhook/ardoise";
   }
 
   if (type === "sablier") {
@@ -124,8 +124,8 @@ export function getWebhookDefaultSecretHeader(type: WebhookProviderType) {
     return "x-vikunja-signature";
   }
 
-  if (type === "charles") {
-    return "x-charles-signature-256";
+  if (type === "ardoise") {
+    return "x-ardoise-signature-256";
   }
 
   if (type === "sablier") {
