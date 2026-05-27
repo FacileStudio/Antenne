@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { Icon } from "@iconify/vue";
 
 import SectionCard from "../components/SectionCard.vue";
 import StatusGrid from "../components/StatusGrid.vue";
@@ -7,6 +8,7 @@ import { useDashboardState } from "../composables/useDashboardState";
 
 const { runtime, settings, saving, exportConfig, importConfig, notifyError } = useDashboardState();
 
+const activeTab = ref<"general" | "pool" | "events" | "advanced">("general");
 const importInput = ref<HTMLInputElement | null>(null);
 
 type PoolStats = {
@@ -16,6 +18,7 @@ type PoolStats = {
 };
 
 const poolStats = ref<PoolStats | null>(null);
+let poolStatsInterval: ReturnType<typeof setInterval> | null = null;
 
 async function loadPoolStats() {
   try {
@@ -26,7 +29,14 @@ async function loadPoolStats() {
   } catch {}
 }
 
-onMounted(loadPoolStats);
+onMounted(() => {
+  loadPoolStats();
+  poolStatsInterval = setInterval(loadPoolStats, 10000);
+});
+
+onUnmounted(() => {
+  if (poolStatsInterval) clearInterval(poolStatsInterval);
+});
 
 const poolSecret = computed({
   get: () => settings.pool?.secret ?? "",
@@ -53,13 +63,11 @@ async function handleImport(event: Event) {
 }
 
 const poolInfoItems = computed(() => {
-  const items: Array<{ label: string; value: string }> = [
-    { label: "Secret source", value: poolSecretSource.value },
-  ];
+  const items: Array<{ label: string; value: string }> = [];
   if (poolStats.value) {
     items.push(
-      { label: "Connected apps", value: String(poolStats.value.connections) },
       { label: "Epoch", value: String(poolStats.value.epoch) },
+      { label: "Total connections", value: String(poolStats.value.connections) },
     );
   }
   return items;
@@ -83,92 +91,187 @@ const infoItems = computed(() => [
     value: runtime.value?.lastReloadedAt ?? "Unknown",
   },
 ]);
+
+const tabs = [
+  { key: "general" as const, label: "General", icon: "solar:settings-linear" },
+  { key: "pool" as const, label: "Pool", icon: null },
+  { key: "events" as const, label: "Events", icon: "solar:bell-linear" },
+  { key: "advanced" as const, label: "Advanced", icon: "solar:tuning-2-linear" },
+];
 </script>
 
 <template>
-  <div class="settings-page">
-    <SectionCard eyebrow="Settings" title="System">
-      <div class="settings-grid">
-        <label class="field">
-          <span>Request timeout in seconds</span>
-          <input v-model.number="settings.timeout" type="number" min="1" step="1">
-        </label>
+  <div class="mx-auto max-w-2xl space-y-8">
+    <div class="tab-bar">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="tab-button"
+        :class="activeTab === tab.key ? 'tab-active' : 'tab-inactive'"
+        @click="activeTab = tab.key"
+      >
+        <Icon v-if="tab.icon" :icon="tab.icon" :width="16" :height="16" aria-hidden="true" />
+        <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" class="inline-block" aria-hidden="true">
+          <path fill="currentColor" d="M10.31 17.344c.767-.876 1.151-1.314 1.625-1.342q.065-.004.13 0c.474.028.858.466 1.625 1.342c1.67 1.906 2.505 2.858 2.271 3.68q-.03.107-.074.206C15.543 22 14.362 22 12 22s-3.543 0-3.887-.77a2 2 0 0 1-.074-.206c-.234-.822.6-1.774 2.27-3.68M14.5 12.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 0 1 5 0"/>
+          <path fill="currentColor" fill-rule="evenodd" d="M12 8.035c-2.697 0-4.884 2.151-4.884 4.806a4.75 4.75 0 0 0 1.43 3.398a.68.68 0 0 1 0 .97a.706.706 0 0 1-.986 0a6.1 6.1 0 0 1-1.84-4.368c0-3.413 2.812-6.18 6.28-6.18s6.279 2.767 6.279 6.18a6.1 6.1 0 0 1-1.84 4.369a.706.706 0 0 1-.986 0a.68.68 0 0 1 0-.971a4.75 4.75 0 0 0 1.43-3.398c0-2.655-2.186-4.806-4.883-4.806" clip-rule="evenodd" opacity=".7"/>
+          <path fill="currentColor" fill-rule="evenodd" d="M12 4.373c-4.752 0-8.605 3.791-8.605 8.468c0 2.338.963 4.454 2.52 5.987a.68.68 0 0 1 0 .97a.706.706 0 0 1-.986 0A9.73 9.73 0 0 1 2 12.842C2 7.406 6.477 3 12 3s10 4.406 10 9.84a9.73 9.73 0 0 1-2.929 6.959a.706.706 0 0 1-.987 0a.68.68 0 0 1 0-.971a8.37 8.37 0 0 0 2.52-5.987c0-4.677-3.852-8.468-8.604-8.468" clip-rule="evenodd" opacity=".4"/>
+        </svg>
+        {{ tab.label }}
+      </button>
+    </div>
 
-        <label class="field">
-          <span>Webhook listener port</span>
-          <input v-model.number="settings.providers.port" type="number" min="1" step="1">
-        </label>
-      </div>
-    </SectionCard>
+    <div v-if="activeTab === 'general'">
+      <SectionCard eyebrow="Settings" title="System">
+        <div class="settings-grid">
+          <label class="field">
+            <span>Request timeout in seconds</span>
+            <input v-model.number="settings.timeout" type="number" min="1" step="1">
+          </label>
 
-    <SectionCard eyebrow="Settings" title="Pool">
-      <div class="settings-grid">
-        <label class="field">
-          <span>Secret</span>
-          <input v-model="poolSecret" type="password" placeholder="pool">
-        </label>
-      </div>
-      <StatusGrid :items="poolInfoItems" />
-    </SectionCard>
-
-    <SectionCard eyebrow="Settings" title="System Events">
-      <div class="event-settings">
-        <label class="toggle event-toggle">
-          <input v-model="settings.system.events.startup" type="checkbox">
-          <span>Send startup events</span>
-        </label>
-
-        <label class="toggle event-toggle">
-          <input v-model="settings.system.events.providerEnabled" type="checkbox">
-          <span>Send events when a provider gets enabled</span>
-        </label>
-
-        <label class="toggle event-toggle">
-          <input v-model="settings.system.events.providerDisabled" type="checkbox">
-          <span>Send events when a provider gets disabled</span>
-        </label>
-
-        <label class="toggle event-toggle">
-          <input v-model="settings.system.events.providerAdded" type="checkbox">
-          <span>Send events when a provider is added</span>
-        </label>
-
-        <label class="toggle event-toggle">
-          <input v-model="settings.system.events.providerRemoved" type="checkbox">
-          <span>Send events when a provider is removed</span>
-        </label>
-
-        <label class="toggle event-toggle">
-          <input v-model="settings.system.events.deliveryFailure" type="checkbox">
-          <span>Send events when a delivery target fails</span>
-        </label>
-      </div>
-      <p class="field-hint">
-        Targets can opt into these Nook system events from their provider filter inside Delivery.
-      </p>
-    </SectionCard>
-
-    <SectionCard eyebrow="Config" title="Export / Import">
-      <div class="config-actions">
-        <div class="config-action">
-          <p class="field-hint">Download the current config as a <code>nook-config.json</code> file.</p>
-          <button class="btn" @click="exportConfig">Export config</button>
+          <label class="field">
+            <span>Webhook listener port</span>
+            <input v-model.number="settings.providers.port" type="number" min="1" step="1">
+          </label>
         </div>
-        <div class="config-action">
-          <p class="field-hint">Import a previously exported <code>nook-config.json</code>. This overwrites your current settings.</p>
-          <input ref="importInput" type="file" accept=".json,application/json" class="file-input" :disabled="saving" @change="handleImport">
-        </div>
-      </div>
-    </SectionCard>
+      </SectionCard>
+    </div>
 
-    <SectionCard eyebrow="Runtime" title="Status">
-      <StatusGrid :items="infoItems" />
-    </SectionCard>
+    <div v-else-if="activeTab === 'pool'" class="tab-content-stack">
+      <SectionCard eyebrow="Pool" title="Secret">
+        <div class="settings-grid">
+          <label class="field">
+            <span>Secret</span>
+            <input v-model="poolSecret" type="password" placeholder="pool">
+          </label>
+        </div>
+        <p class="field-hint">Source: {{ poolSecretSource }}</p>
+      </SectionCard>
+
+      <SectionCard eyebrow="Pool" title="Connected Apps">
+        <div v-if="!poolStats?.apps?.length" class="connected-apps-empty">
+          <p class="field-hint">No apps connected</p>
+        </div>
+        <div v-else class="connected-apps-list">
+          <div v-for="app in poolStats.apps" :key="app.app_id" class="connected-app">
+            <div class="connected-app-info">
+              <div class="connected-app-header">
+                <span class="connected-app-dot" />
+                <strong>{{ app.app }}</strong>
+              </div>
+              <span class="connected-app-channels">{{ app.channels.length }} channel{{ app.channels.length === 1 ? "" : "s" }}</span>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard v-if="poolInfoItems.length" eyebrow="Pool" title="Info">
+        <StatusGrid :items="poolInfoItems" />
+      </SectionCard>
+    </div>
+
+    <div v-else-if="activeTab === 'events'">
+      <SectionCard eyebrow="Settings" title="System Events">
+        <div class="event-settings">
+          <label class="toggle event-toggle">
+            <input v-model="settings.system.events.startup" type="checkbox">
+            <span>Send startup events</span>
+          </label>
+
+          <label class="toggle event-toggle">
+            <input v-model="settings.system.events.providerEnabled" type="checkbox">
+            <span>Send events when a provider gets enabled</span>
+          </label>
+
+          <label class="toggle event-toggle">
+            <input v-model="settings.system.events.providerDisabled" type="checkbox">
+            <span>Send events when a provider gets disabled</span>
+          </label>
+
+          <label class="toggle event-toggle">
+            <input v-model="settings.system.events.providerAdded" type="checkbox">
+            <span>Send events when a provider is added</span>
+          </label>
+
+          <label class="toggle event-toggle">
+            <input v-model="settings.system.events.providerRemoved" type="checkbox">
+            <span>Send events when a provider is removed</span>
+          </label>
+
+          <label class="toggle event-toggle">
+            <input v-model="settings.system.events.deliveryFailure" type="checkbox">
+            <span>Send events when a delivery target fails</span>
+          </label>
+        </div>
+        <p class="field-hint">
+          Targets can opt into these Nook system events from their provider filter inside Delivery.
+        </p>
+      </SectionCard>
+    </div>
+
+    <div v-else-if="activeTab === 'advanced'" class="tab-content-stack">
+      <SectionCard eyebrow="Config" title="Export / Import">
+        <div class="config-actions">
+          <div class="config-action">
+            <p class="field-hint">Download the current config as a <code>nook-config.json</code> file.</p>
+            <button class="btn" @click="exportConfig">Export config</button>
+          </div>
+          <div class="config-action">
+            <p class="field-hint">Import a previously exported <code>nook-config.json</code>. This overwrites your current settings.</p>
+            <input ref="importInput" type="file" accept=".json,application/json" class="file-input" :disabled="saving" @change="handleImport">
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard eyebrow="Runtime" title="Status">
+        <StatusGrid :items="infoItems" />
+      </SectionCard>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.settings-page {
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--nook-border);
+  padding-bottom: 1rem;
+}
+
+.tab-button {
+  display: inline-flex;
+  height: 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 150ms, background-color 150ms;
+  border: none;
+}
+
+.tab-active {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.tab-active:hover {
+  background: var(--foreground);
+  border-color: transparent;
+}
+
+.tab-inactive {
+  color: var(--muted-foreground);
+}
+
+.tab-inactive:hover {
+  background: var(--muted);
+  color: var(--foreground);
+  border-color: transparent;
+}
+
+.tab-content-stack {
   display: grid;
   gap: var(--space-5);
 }
@@ -239,15 +342,64 @@ const infoItems = computed(() => [
   cursor: not-allowed;
 }
 
+.connected-apps-empty {
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.connected-apps-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.connected-app {
+  display: flex;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-xl);
+  background: var(--nook-surface-strong);
+}
+
+.connected-app-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-3);
+}
+
+.connected-app-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.connected-app-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+.connected-app-channels {
+  color: var(--nook-muted);
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
 @media (max-width: 720px) {
   .config-actions {
     grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 720px) {
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tab-bar {
+    flex-wrap: wrap;
   }
 }
 </style>
