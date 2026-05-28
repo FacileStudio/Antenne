@@ -113,7 +113,7 @@ onUnmounted(() => {
 
 <template>
   <div class="grid gap-8">
-    <div class="grid grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] gap-3 max-lg:grid-cols-1">
+    <div class="grid gap-5">
       <ActivityOverview :events="events" :stats="stats" :loading="loading" @refresh="fetchEvents()" />
       <ActivityChart :events="events" />
     </div>
