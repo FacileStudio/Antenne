@@ -254,7 +254,12 @@ const tabs = [
       </SectionCard>
 
       <SectionCard eyebrow="Runtime" title="Status">
-        <StatusGrid :items="infoItems" />
+        <div class="status-list">
+          <div v-for="item in infoItems" :key="item.label" class="status-row">
+            <span class="status-label">{{ item.label }}</span>
+            <span class="status-value" :title="item.value">{{ item.value }}</span>
+          </div>
+        </div>
       </SectionCard>
     </div>
   </div>
@@ -425,6 +430,43 @@ const tabs = [
   color: var(--nook-muted);
   font-size: 0.84rem;
   white-space: nowrap;
+}
+
+.status-list {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.75rem 1rem;
+  min-width: 0;
+}
+
+.status-row + .status-row {
+  border-top: 1px solid var(--nook-border);
+}
+
+.status-label {
+  color: var(--nook-muted);
+  font-size: 0.84rem;
+  flex-shrink: 0;
+}
+
+.status-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 @media (max-width: 720px) {
