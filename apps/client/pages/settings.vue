@@ -59,6 +59,19 @@ const poolLogActivity = computed({
   },
 });
 
+const APP_ICONS: Record<string, string> = {
+  Opus: "solar:widget-2-bold-duotone",
+  Sablier: "solar:hourglass-bold-duotone",
+  Ardoise: "solar:bill-list-bold-duotone",
+  Plume: "solar:pen-new-square-bold-duotone",
+  Glouton: "solar:chef-hat-bold-duotone",
+  Vision: "solar:chart-2-bold-duotone",
+};
+
+function appIcon(name: string): string {
+  return APP_ICONS[name] ?? "solar:server-square-bold-duotone";
+}
+
 async function handleImport(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
@@ -172,6 +185,7 @@ const tabs = [
           <div v-for="app in poolStats.apps" :key="app.app_id" class="connected-app">
             <div class="connected-app-info">
               <div class="connected-app-header">
+                <Icon :icon="appIcon(app.app)" :width="18" :height="18" class="connected-app-icon" aria-hidden="true" />
                 <span class="connected-app-dot" />
                 <strong>{{ app.app }}</strong>
               </div>
@@ -392,6 +406,11 @@ const tabs = [
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.connected-app-icon {
+  color: var(--nook-muted);
+  flex-shrink: 0;
 }
 
 .connected-app-dot {
