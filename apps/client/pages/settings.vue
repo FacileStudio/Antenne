@@ -3,7 +3,6 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { Icon } from "@iconify/vue";
 
 import SectionCard from "../components/SectionCard.vue";
-import StatusGrid from "../components/StatusGrid.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 
 const { runtime, settings, saving, exportConfig, importConfig, notifyError } = useDashboardState();
@@ -196,7 +195,12 @@ const tabs = [
       </SectionCard>
 
       <SectionCard v-if="poolInfoItems.length" eyebrow="Pool" title="Info">
-        <StatusGrid :items="poolInfoItems" />
+        <div class="status-list">
+          <div v-for="item in poolInfoItems" :key="item.label" class="status-row">
+            <span class="status-label">{{ item.label }}</span>
+            <span class="status-value" :title="item.value">{{ item.value }}</span>
+          </div>
+        </div>
       </SectionCard>
     </div>
 
