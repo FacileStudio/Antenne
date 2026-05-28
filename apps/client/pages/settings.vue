@@ -51,6 +51,14 @@ const poolSecretSource = computed(() => {
   return "Environment variable or default";
 });
 
+const poolLogActivity = computed({
+  get: () => settings.pool?.logActivity !== false,
+  set: (value: boolean) => {
+    if (!settings.pool) settings.pool = {};
+    settings.pool.logActivity = value;
+  },
+});
+
 async function handleImport(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
@@ -146,6 +154,14 @@ const tabs = [
           </label>
         </div>
         <p class="field-hint">Source: {{ poolSecretSource }}</p>
+      </SectionCard>
+
+      <SectionCard eyebrow="Pool" title="Activity Log">
+        <label class="toggle event-toggle">
+          <input v-model="poolLogActivity" type="checkbox">
+          <span>Log pool events to activity feed</span>
+        </label>
+        <p class="field-hint">When enabled, pool connection and sync events appear in the activity log.</p>
       </SectionCard>
 
       <SectionCard eyebrow="Pool" title="Connected Apps">

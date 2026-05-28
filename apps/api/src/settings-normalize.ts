@@ -11,8 +11,11 @@ export function normalizeAppSettings(input: unknown, fallback: AppSettings): App
   }
 
   const pool = candidate.pool && typeof candidate.pool === "object"
-    ? { secret: typeof candidate.pool.secret === "string" ? candidate.pool.secret : undefined }
-    : fallback.pool;
+    ? {
+        secret: typeof candidate.pool.secret === "string" ? candidate.pool.secret : undefined,
+        logActivity: normalizeBoolean(candidate.pool.logActivity, fallback.pool?.logActivity ?? true),
+      }
+    : fallback.pool ?? { logActivity: true };
 
   return {
     delivery: normalizeDeliveryConfig(input, fallback.delivery),

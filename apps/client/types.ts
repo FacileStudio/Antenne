@@ -136,6 +136,7 @@ export interface AppSettings {
   };
   pool?: {
     secret?: string;
+    logActivity?: boolean;
   };
 }
 

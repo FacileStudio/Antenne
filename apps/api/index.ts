@@ -425,6 +425,7 @@ const poolSecret = store.getSettings().pool?.secret || process.env.POOL_SECRET |
 const poolServer = new PoolServer({ dataDir, secret: poolSecret });
 
 poolServer.onPoolEvent(({ type, app, detail }) => {
+  if (store.getSettings().pool?.logActivity === false) return;
   pushEvent({
     source: "system",
     providerId: null,

@@ -99,6 +99,7 @@ export interface ProvidersConfig {
 
 export interface PoolSettings {
   secret?: string;
+  logActivity?: boolean;
 }
 
 export interface AppSettings {
