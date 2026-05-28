@@ -22,6 +22,7 @@ const {
 const sections = [
   { href: "/delivery", label: "Delivery", icon: "solar:delivery-linear", activePaths: ["/delivery", "/targets"] },
   { href: "/providers", label: "Providers", icon: "solar:link-linear" },
+  { href: "/graph", label: "Flow", icon: "solar:share-linear" },
   { href: "/activity", label: "Activity", icon: "solar:chart-2-linear" },
   { href: "/settings", label: "Settings", icon: "solar:settings-linear", activePaths: ["/settings", "/info"] },
 ];
