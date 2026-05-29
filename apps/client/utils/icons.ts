@@ -14,7 +14,7 @@ export const PROVIDER_ICONS: Record<string, string> = {
   sablier: "solar:hourglass-bold-duotone",
   perception: "solar:eye-bold-duotone",
   opus: "solar:widget-2-bold-duotone",
-  vision: "solar:chart-2-bold-duotone",
+  vision: "solar:panorama-bold-duotone",
   plume: "solar:pen-new-square-bold-duotone",
   nuage: "solar:cloud-bold-duotone",
 };

@@ -64,7 +64,7 @@ const APP_ICONS: Record<string, string> = {
   Ardoise: "solar:bill-list-bold-duotone",
   Plume: "solar:pen-new-square-bold-duotone",
   Glouton: "solar:chef-hat-bold-duotone",
-  Vision: "solar:chart-2-bold-duotone",
+  Vision: "solar:panorama-bold-duotone",
 };
 
 function appIcon(name: string): string {
