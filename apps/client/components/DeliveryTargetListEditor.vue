@@ -73,26 +73,6 @@ function patchTarget(index: number, patch: Partial<DeliveryTarget>) {
   );
 }
 
-function duplicateTarget(index: number) {
-  const target = props.modelValue[index];
-  if (!target) {
-    return;
-  }
-
-  const duplicate = {
-    ...target,
-    id: globalThis.crypto.randomUUID(),
-    name: target.name ? `${target.name} copy` : getDeliveryTargetLabel(target.type),
-  } as DeliveryTarget;
-  const nextTargets = [...props.modelValue];
-  nextTargets.splice(index + 1, 0, duplicate);
-  updateTargets(nextTargets);
-
-  if (editingIndex.value !== null && editingIndex.value > index) {
-    editingIndex.value++;
-  }
-}
-
 const dragIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
 
@@ -222,9 +202,6 @@ async function runTargetTest(target: DeliveryTarget) {
           <NuxtLink class="ghost action-button" :to="`/targets/${target.id}`">
             <Icon icon="solar:chart-2-linear" :width="16" :height="16" aria-hidden="true" />
           </NuxtLink>
-          <button class="ghost action-button" type="button" @click="duplicateTarget(index)">
-            <Icon icon="solar:copy-linear" :width="16" :height="16" aria-hidden="true" />
-          </button>
           <button class="danger action-button" type="button" @click="removeTarget(index)">
             <Icon icon="solar:trash-bin-trash-linear" :width="16" :height="16" aria-hidden="true" />
           </button>
@@ -265,9 +242,6 @@ async function runTargetTest(target: DeliveryTarget) {
           <NuxtLink class="ghost action-button" :to="`/targets/${target.id}`" title="Activity">
             <Icon icon="solar:chart-2-linear" :width="15" :height="15" aria-hidden="true" />
           </NuxtLink>
-          <button class="ghost action-button" type="button" @click="duplicateTarget(index)" title="Duplicate">
-            <Icon icon="solar:copy-linear" :width="15" :height="15" aria-hidden="true" />
-          </button>
           <button class="danger action-button" type="button" @click="removeTarget(index)" title="Delete">
             <Icon icon="solar:trash-bin-trash-linear" :width="15" :height="15" aria-hidden="true" />
           </button>

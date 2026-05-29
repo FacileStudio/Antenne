@@ -129,26 +129,6 @@ function onDragEnd() {
   dragOverIndex.value = null;
 }
 
-function duplicateProvider(index: number) {
-  const provider = props.modelValue[index];
-  if (!provider) {
-    return;
-  }
-
-  const duplicate = {
-    ...provider,
-    id: globalThis.crypto.randomUUID(),
-    name: provider.name ? `${provider.name} copy` : getProviderLabel(provider.type),
-  } as ProviderSettings;
-  const nextProviders = [...props.modelValue];
-  nextProviders.splice(index + 1, 0, duplicate);
-  updateProviders(nextProviders);
-
-  if (editingIndex.value !== null && editingIndex.value > index) {
-    editingIndex.value++;
-  }
-}
-
 function toggleEnabled(index: number) {
   const provider = props.modelValue[index];
   if (!provider) return;
@@ -267,9 +247,6 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           <NuxtLink class="ghost action-button" :to="`/providers/${provider.id}`">
             <Icon icon="solar:chart-2-linear" :width="16" :height="16" aria-hidden="true" />
           </NuxtLink>
-          <button class="ghost action-button" type="button" @click="duplicateProvider(index)">
-            <Icon icon="solar:copy-linear" :width="16" :height="16" aria-hidden="true" />
-          </button>
           <button class="danger action-button" type="button" @click="removeProvider(index)">
             <Icon icon="solar:trash-bin-trash-linear" :width="16" :height="16" aria-hidden="true" />
           </button>
@@ -314,9 +291,6 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           <NuxtLink class="ghost action-button" :to="`/providers/${provider.id}`" title="Activity">
             <Icon icon="solar:chart-2-linear" :width="15" :height="15" aria-hidden="true" />
           </NuxtLink>
-          <button class="ghost action-button" type="button" @click="duplicateProvider(index)" title="Duplicate">
-            <Icon icon="solar:copy-linear" :width="15" :height="15" aria-hidden="true" />
-          </button>
           <button class="danger action-button" type="button" @click="removeProvider(index)" title="Delete">
             <Icon icon="solar:trash-bin-trash-linear" :width="15" :height="15" aria-hidden="true" />
           </button>
