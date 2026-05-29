@@ -4,6 +4,7 @@ import { reactive, ref } from "vue";
 
 import ProviderEditorFields from "./ProviderEditorFields.vue";
 import SideDrawer from "./SideDrawer.vue";
+import ToggleSwitch from "./ToggleSwitch.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 import { createTagToneMap, getTagTone } from "../utils/provider-tags";
 import {
@@ -145,6 +146,13 @@ function duplicateProvider(index: number) {
   }
 }
 
+function toggleEnabled(index: number) {
+  const provider = props.modelValue[index];
+  if (!provider) return;
+  patchProvider(index, { enabled: !provider.enabled });
+  saveSettings();
+}
+
 function toggleReveal(id: string) {
   revealedSecrets[id] = !revealedSecrets[id];
 }
@@ -232,9 +240,9 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
       >
         <div class="item-info">
           <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:hamburger-menu-linear" :width="18" :height="18" aria-hidden="true" /></span>
+          <ToggleSwitch :model-value="provider.enabled" size="sm" @update:model-value="toggleEnabled(index)" />
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
-          <span v-if="!provider.enabled" class="item-chip item-chip--off">Off</span>
           <span
             v-for="tag in provider.tags"
             :key="tag"
@@ -388,11 +396,6 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   border: 1px solid var(--nook-border);
   color: var(--nook-muted);
   font-size: 0.75rem;
-}
-
-.item-chip--off {
-  border-color: oklch(60% 0.15 25 / 60%);
-  color: oklch(45% 0.18 25);
 }
 
 .item-tag {

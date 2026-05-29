@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Handle, Position } from "@vue-flow/core";
 import { Icon } from "@iconify/vue";
+import ToggleSwitch from "./ToggleSwitch.vue";
 
 const props = defineProps<{
   data: {
@@ -21,11 +22,11 @@ const props = defineProps<{
       <span class="flow-card-name">{{ props.data.name }}</span>
       <span class="flow-card-label">{{ props.data.label }}</span>
     </div>
-    <button
-      class="flow-card-toggle nodrag"
-      :class="props.data.enabled ? 'flow-card-toggle--on' : 'flow-card-toggle--off'"
-      :title="props.data.enabled ? 'Disable' : 'Enable'"
-      @click.stop="props.data.onToggle(props.data.nodeId)"
+    <ToggleSwitch
+      :model-value="props.data.enabled"
+      size="sm"
+      class="nodrag"
+      @update:model-value="props.data.onToggle(props.data.nodeId)"
     />
     <Handle type="source" :position="Position.Right" class="flow-handle flow-handle--source" />
   </div>
@@ -36,7 +37,7 @@ const props = defineProps<{
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  width: 220px;
+  width: 240px;
   height: 56px;
   padding: 0 1rem;
   border: 1px solid var(--nook-border);
@@ -80,25 +81,6 @@ const props = defineProps<{
 .flow-card-label {
   font-size: 0.68rem;
   color: var(--nook-muted);
-}
-
-.flow-card-toggle {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  flex-shrink: 0;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: background 150ms;
-}
-
-.flow-card-toggle--on {
-  background: var(--success);
-}
-
-.flow-card-toggle--off {
-  background: var(--nook-border);
 }
 
 .flow-handle {

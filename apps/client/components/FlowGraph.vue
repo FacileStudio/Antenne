@@ -19,7 +19,7 @@ const { saveSettings, notifySuccess } = useDashboardState();
 
 const NODE_GAP = 72;
 const COL_LEFT_X = 50;
-const COL_RIGHT_X = 450;
+const COL_RIGHT_X = 470;
 
 const nodeTypes = {
   provider: markRaw(FlowProviderNode),

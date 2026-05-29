@@ -4,6 +4,7 @@ import { reactive, ref } from "vue";
 
 import DeliveryTargetEditorFields from "./DeliveryTargetEditorFields.vue";
 import SideDrawer from "./SideDrawer.vue";
+import ToggleSwitch from "./ToggleSwitch.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 import {
   createDefaultDeliveryTarget,
@@ -133,6 +134,13 @@ function removeTarget(index: number) {
   updateTargets(props.modelValue.filter((_, currentIndex) => currentIndex !== index));
 }
 
+function toggleEnabled(index: number) {
+  const target = props.modelValue[index];
+  if (!target) return;
+  patchTarget(index, { enabled: !target.enabled });
+  saveSettings();
+}
+
 function toggleReveal(id: string) {
   revealedSecrets[id] = !revealedSecrets[id];
 }
@@ -195,9 +203,9 @@ async function runTargetTest(target: DeliveryTarget) {
       >
         <div class="item-info">
           <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:hamburger-menu-linear" :width="18" :height="18" aria-hidden="true" /></span>
+          <ToggleSwitch :model-value="target.enabled" size="sm" @update:model-value="toggleEnabled(index)" />
           <strong>{{ target.name || `${getDeliveryTargetLabel(target.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getDeliveryTargetLabel(target.type) }}</span>
-          <span v-if="!target.enabled" class="item-chip item-chip--off">Off</span>
         </div>
 
         <div class="item-actions">
@@ -321,11 +329,6 @@ async function runTargetTest(target: DeliveryTarget) {
   border: 1px solid var(--nook-border);
   color: var(--nook-muted);
   font-size: 0.75rem;
-}
-
-.item-chip--off {
-  border-color: oklch(60% 0.15 25 / 60%);
-  color: oklch(45% 0.18 25);
 }
 
 .item-actions {
