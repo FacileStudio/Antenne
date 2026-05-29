@@ -8,6 +8,7 @@ import FlowTargetNode from "./FlowTargetNode.vue";
 import type { ProviderSettings, DeliveryTarget, ProviderType } from "../types";
 import { SYSTEM_PROVIDER_ID, getProviderLabel, getDeliveryTargetLabel } from "../types";
 import { useDashboardState } from "../composables/useDashboardState";
+import { pushUndo } from "../composables/useUndo";
 
 const props = defineProps<{
   providers: ProviderSettings[];
@@ -61,18 +62,28 @@ function providerLabel(type: string): string {
 function toggleProvider(nodeId: string) {
   if (nodeId === SYSTEM_PROVIDER_ID) return;
   const provider = props.providers.find((p) => p.id === nodeId);
-  if (provider) {
-    provider.enabled = !provider.enabled;
-    saveSettings();
-  }
+  if (!provider) return;
+
+  const was = provider.enabled;
+  provider.enabled = !was;
+  saveSettings();
+  pushUndo({
+    label: `${provider.enabled ? "Enabled" : "Disabled"} ${provider.name}`,
+    execute: () => { provider.enabled = was; saveSettings(); },
+  });
 }
 
 function toggleTarget(nodeId: string) {
   const target = props.targets.find((t) => t.id === nodeId);
-  if (target) {
-    target.enabled = !target.enabled;
-    saveSettings();
-  }
+  if (!target) return;
+
+  const was = target.enabled;
+  target.enabled = !was;
+  saveSettings();
+  pushUndo({
+    label: `${target.enabled ? "Enabled" : "Disabled"} ${target.name}`,
+    execute: () => { target.enabled = was; saveSettings(); },
+  });
 }
 
 interface VirtualProvider {
@@ -168,7 +179,16 @@ onConnect((connection: Connection) => {
 
   target.providerIds.push(providerId);
   saveSettings();
-  notifySuccess(`Connected ${allProviders.value.find((p) => p.id === providerId)?.name ?? "provider"} → ${target.name}`);
+
+  const providerName = allProviders.value.find((p) => p.id === providerId)?.name ?? "provider";
+  notifySuccess(`Connected ${providerName} → ${target.name}`);
+  pushUndo({
+    label: `Connected ${providerName} → ${target.name}`,
+    execute: () => {
+      target.providerIds = target.providerIds.filter((id) => id !== providerId);
+      saveSettings();
+    },
+  });
 });
 
 onEdgeClick(({ edge }) => {
@@ -181,7 +201,18 @@ onEdgeClick(({ edge }) => {
 
   target.providerIds = target.providerIds.filter((id) => id !== providerId);
   saveSettings();
-  notifySuccess(`Disconnected ${allProviders.value.find((p) => p.id === providerId)?.name ?? "provider"} from ${target.name}`);
+
+  const providerName = allProviders.value.find((p) => p.id === providerId)?.name ?? "provider";
+  notifySuccess(`Disconnected ${providerName} from ${target.name}`);
+  pushUndo({
+    label: `Disconnected ${providerName} from ${target.name}`,
+    execute: () => {
+      if (!target.providerIds.includes(providerId)) {
+        target.providerIds.push(providerId);
+        saveSettings();
+      }
+    },
+  });
 });
 
 watch([() => props.providers.length, () => props.targets.length], () => {
