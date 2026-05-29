@@ -484,9 +484,6 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: var(--radius-lg);
-  background: var(--nook-surface);
-  border: 1px solid var(--nook-border);
   color: var(--nook-muted);
 }
 
