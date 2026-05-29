@@ -65,11 +65,15 @@ function toggleProvider(nodeId: string) {
   if (!provider) return;
 
   const was = provider.enabled;
+  const name = provider.name;
   provider.enabled = !was;
   saveSettings();
   pushUndo({
-    label: `${provider.enabled ? "Enabled" : "Disabled"} ${provider.name}`,
-    execute: () => { provider.enabled = was; saveSettings(); },
+    label: `${!was ? "Enabled" : "Disabled"} ${name}`,
+    execute: () => {
+      const p = props.providers.find((p) => p.id === nodeId);
+      if (p) { p.enabled = was; saveSettings(); }
+    },
   });
 }
 
@@ -78,11 +82,15 @@ function toggleTarget(nodeId: string) {
   if (!target) return;
 
   const was = target.enabled;
+  const name = target.name;
   target.enabled = !was;
   saveSettings();
   pushUndo({
-    label: `${target.enabled ? "Enabled" : "Disabled"} ${target.name}`,
-    execute: () => { target.enabled = was; saveSettings(); },
+    label: `${!was ? "Enabled" : "Disabled"} ${name}`,
+    execute: () => {
+      const t = props.targets.find((t) => t.id === nodeId);
+      if (t) { t.enabled = was; saveSettings(); }
+    },
   });
 }
 
@@ -181,12 +189,16 @@ onConnect((connection: Connection) => {
   saveSettings();
 
   const providerName = allProviders.value.find((p) => p.id === providerId)?.name ?? "provider";
-  notifySuccess(`Connected ${providerName} → ${target.name}`);
+  const targetName = target.name;
+  notifySuccess(`Connected ${providerName} → ${targetName}`);
   pushUndo({
-    label: `Connected ${providerName} → ${target.name}`,
+    label: `Connected ${providerName} → ${targetName}`,
     execute: () => {
-      target.providerIds = target.providerIds.filter((id) => id !== providerId);
-      saveSettings();
+      const t = props.targets.find((t) => t.id === targetId);
+      if (t) {
+        t.providerIds = t.providerIds.filter((id) => id !== providerId);
+        saveSettings();
+      }
     },
   });
 });
@@ -203,12 +215,14 @@ onEdgeClick(({ edge }) => {
   saveSettings();
 
   const providerName = allProviders.value.find((p) => p.id === providerId)?.name ?? "provider";
-  notifySuccess(`Disconnected ${providerName} from ${target.name}`);
+  const targetName = target.name;
+  notifySuccess(`Disconnected ${providerName} from ${targetName}`);
   pushUndo({
-    label: `Disconnected ${providerName} from ${target.name}`,
+    label: `Disconnected ${providerName} from ${targetName}`,
     execute: () => {
-      if (!target.providerIds.includes(providerId)) {
-        target.providerIds.push(providerId);
+      const t = props.targets.find((t) => t.id === targetId);
+      if (t && !t.providerIds.includes(providerId)) {
+        t.providerIds.push(providerId);
         saveSettings();
       }
     },
