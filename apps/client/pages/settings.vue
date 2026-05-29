@@ -184,8 +184,8 @@ const tabs = [
           <div v-for="app in poolStats.apps" :key="app.app_id" class="connected-app">
             <div class="connected-app-info">
               <div class="connected-app-header">
-                <Icon :icon="appIcon(app.app)" :width="18" :height="18" class="connected-app-icon" aria-hidden="true" />
                 <span class="connected-app-dot" />
+                <Icon :icon="appIcon(app.app)" :width="18" :height="18" class="connected-app-icon" aria-hidden="true" />
                 <strong>{{ app.app }}</strong>
               </div>
               <span class="connected-app-channels">{{ app.channels.length }} channel{{ app.channels.length === 1 ? "" : "s" }}</span>
