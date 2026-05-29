@@ -20,8 +20,8 @@ export const PROVIDER_ICONS: Record<string, string> = {
 };
 
 export const DELIVERY_ICONS: Record<string, string> = {
-  matrix: "solar:chat-round-dots-bold-duotone",
-  discord: "solar:gamepad-bold-duotone",
+  matrix: "mdi:matrix",
+  discord: "mdi:discord",
   webhook: "solar:link-bold-duotone",
   smtp: "solar:letter-bold-duotone",
   ntfy: "solar:bell-bold-duotone",
