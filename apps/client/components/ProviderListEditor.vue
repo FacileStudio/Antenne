@@ -31,7 +31,7 @@ const nextProviderType = ref<ProviderType>("website");
 const testingProviders = reactive<Record<string, boolean>>({});
 const editingIndex = ref<number | null>(null);
 const selectedTags = ref<string[]>([]);
-const viewMode = ref<"list" | "card">("list");
+const viewMode = ref<"list" | "card">("card");
 
 const availableTags = computed(() =>
   [...new Set(props.modelValue.flatMap((provider) => provider.tags))]

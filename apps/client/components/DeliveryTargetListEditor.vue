@@ -32,7 +32,7 @@ const nextTargetType = ref<DeliveryTargetType>("matrix");
 const revealedSecrets = reactive<Record<string, boolean>>({});
 const testingTargets = reactive<Record<string, boolean>>({});
 const editingIndex = ref<number | null>(null);
-const viewMode = ref<"list" | "card">("list");
+const viewMode = ref<"list" | "card">("card");
 
 const editingTarget = computed(() =>
   editingIndex.value !== null ? props.modelValue[editingIndex.value] ?? null : null

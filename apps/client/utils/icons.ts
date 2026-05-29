@@ -4,7 +4,7 @@ export const PROVIDER_ICONS: Record<string, string> = {
   system: "solar:settings-bold-duotone",
   website: "solar:global-bold-duotone",
   imap: "solar:letter-bold-duotone",
-  rss: "solar:rss-bold-duotone",
+  rss: "solar:feed-bold-duotone",
   "uptime-kuma": "solar:heart-pulse-bold-duotone",
   docuseal: "solar:document-bold-duotone",
   dokploy: "solar:server-bold-duotone",
