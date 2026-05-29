@@ -6,5 +6,7 @@ const { settings } = useDashboardState();
 </script>
 
 <template>
-  <FlowGraph :providers="settings.providers.items" :targets="settings.delivery.items" />
+  <ClientOnly>
+    <FlowGraph :providers="settings.providers.items" :targets="settings.delivery.items" />
+  </ClientOnly>
 </template>

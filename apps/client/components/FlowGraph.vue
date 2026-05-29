@@ -1,24 +1,29 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
-import FlowNode from "./FlowNode.vue";
+import { computed, watch, markRaw } from "vue";
+import { VueFlow, useVueFlow, type Node, type Edge, type Connection, MarkerType } from "@vue-flow/core";
+import { Background } from "@vue-flow/background";
+import { Controls } from "@vue-flow/controls";
+import FlowProviderNode from "./FlowProviderNode.vue";
+import FlowTargetNode from "./FlowTargetNode.vue";
 import type { ProviderSettings, DeliveryTarget, ProviderType } from "../types";
 import { SYSTEM_PROVIDER_ID, getProviderLabel, getDeliveryTargetLabel } from "../types";
+import { useDashboardState } from "../composables/useDashboardState";
 
 const props = defineProps<{
   providers: ProviderSettings[];
   targets: DeliveryTarget[];
 }>();
 
-const NODE_H = 60;
-const NODE_GAP = 12;
-const NODE_W = 220;
-const PAD_X = 40;
-const TOP_PAD = 48;
-const BOTTOM_PAD = 40;
+const { saveSettings, notifySuccess } = useDashboardState();
 
-const graphEl = ref<HTMLElement | null>(null);
-const containerWidth = ref(900);
-const selectedId = ref<string | null>(null);
+const NODE_GAP = 72;
+const COL_LEFT_X = 50;
+const COL_RIGHT_X = 450;
+
+const nodeTypes = {
+  provider: markRaw(FlowProviderNode),
+  target: markRaw(FlowTargetNode),
+};
 
 const PROVIDER_ICONS: Record<string, string> = {
   system: "solar:settings-bold-duotone",
@@ -48,6 +53,28 @@ const DELIVERY_ICONS: Record<string, string> = {
   perception: "solar:eye-bold-duotone",
 };
 
+function providerLabel(type: string): string {
+  if (type === "system") return "System";
+  return getProviderLabel(type as ProviderType);
+}
+
+function toggleProvider(nodeId: string) {
+  if (nodeId === SYSTEM_PROVIDER_ID) return;
+  const provider = props.providers.find((p) => p.id === nodeId);
+  if (provider) {
+    provider.enabled = !provider.enabled;
+    saveSettings();
+  }
+}
+
+function toggleTarget(nodeId: string) {
+  const target = props.targets.find((t) => t.id === nodeId);
+  if (target) {
+    target.enabled = !target.enabled;
+    saveSettings();
+  }
+}
+
 interface VirtualProvider {
   id: string;
   type: string;
@@ -61,220 +88,272 @@ const allProviders = computed<VirtualProvider[]>(() => [
   ...props.providers,
 ]);
 
-function providerLabel(type: string): string {
-  if (type === "system") return "System";
-  return getProviderLabel(type as ProviderType);
+function buildNodes(): Node[] {
+  const providerNodes: Node[] = allProviders.value.map((p, i) => ({
+    id: `p-${p.id}`,
+    type: "provider",
+    position: { x: COL_LEFT_X, y: i * NODE_GAP },
+    data: {
+      icon: PROVIDER_ICONS[p.type] ?? "solar:widget-2-bold-duotone",
+      name: p.name,
+      label: providerLabel(p.type),
+      enabled: p.enabled,
+      nodeId: p.id,
+      onToggle: toggleProvider,
+    },
+    draggable: true,
+  }));
+
+  const targetNodes: Node[] = props.targets.map((t, i) => ({
+    id: `t-${t.id}`,
+    type: "target",
+    position: { x: COL_RIGHT_X, y: i * NODE_GAP },
+    data: {
+      icon: DELIVERY_ICONS[t.type] ?? "solar:widget-2-bold-duotone",
+      name: t.name,
+      label: getDeliveryTargetLabel(t.type),
+      enabled: t.enabled,
+      nodeId: t.id,
+      onToggle: toggleTarget,
+    },
+    draggable: true,
+  }));
+
+  return [...providerNodes, ...targetNodes];
 }
 
-interface FlowEdge {
-  id: string;
-  providerId: string;
-  targetId: string;
-  providerIndex: number;
-  targetIndex: number;
-  type: "direct" | "tag";
-}
+function buildEdges(): Edge[] {
+  const result: Edge[] = [];
 
-const edges = computed(() => {
-  const result: FlowEdge[] = [];
-  for (let ti = 0; ti < props.targets.length; ti++) {
-    const target = props.targets[ti];
-    for (let pi = 0; pi < allProviders.value.length; pi++) {
-      const provider = allProviders.value[pi];
+  for (const target of props.targets) {
+    for (const provider of allProviders.value) {
+      const isDirect = target.providerIds.includes(provider.id);
+      const isTag = !isDirect && target.providerTags.length > 0 && provider.tags?.length > 0 && provider.tags.some((t) => target.providerTags.includes(t));
 
-      if (target.providerIds.includes(provider.id)) {
-        result.push({ id: `${provider.id}--${target.id}`, providerId: provider.id, targetId: target.id, providerIndex: pi, targetIndex: ti, type: "direct" });
-      } else if (target.providerTags.length > 0 && provider.tags?.length > 0 && provider.tags.some((t) => target.providerTags.includes(t))) {
-        result.push({ id: `${provider.id}--${target.id}`, providerId: provider.id, targetId: target.id, providerIndex: pi, targetIndex: ti, type: "tag" });
+      if (isDirect || isTag) {
+        result.push({
+          id: `e-${provider.id}--${target.id}`,
+          source: `p-${provider.id}`,
+          target: `t-${target.id}`,
+          animated: false,
+          style: {
+            stroke: "var(--nook-border)",
+            strokeWidth: 1.5,
+          },
+          ...(isTag ? { style: { stroke: "var(--nook-border)", strokeWidth: 1.5, strokeDasharray: "6 4" } } : {}),
+          data: { type: isDirect ? "direct" : "tag", providerId: provider.id, targetId: target.id },
+        });
       }
     }
   }
+
   return result;
+}
+
+const nodes = computed(() => buildNodes());
+const edges = computed(() => buildEdges());
+
+const { onConnect, onEdgeClick, fitView } = useVueFlow({ id: "nook-flow" });
+
+onConnect((connection: Connection) => {
+  const providerId = connection.source.replace(/^p-/, "");
+  const targetId = connection.target.replace(/^t-/, "");
+
+  if (!connection.source.startsWith("p-") || !connection.target.startsWith("t-")) return;
+
+  const target = props.targets.find((t) => t.id === targetId);
+  if (!target) return;
+
+  if (target.providerIds.includes(providerId)) return;
+
+  target.providerIds.push(providerId);
+  saveSettings();
+  notifySuccess(`Connected ${allProviders.value.find((p) => p.id === providerId)?.name ?? "provider"} → ${target.name}`);
 });
 
-function colHeight(count: number) {
-  return count * NODE_H + Math.max(0, count - 1) * NODE_GAP;
-}
+onEdgeClick(({ edge }) => {
+  if (edge.data?.type !== "direct") return;
 
-const maxColH = computed(() => Math.max(colHeight(allProviders.value.length), colHeight(props.targets.length), 200));
-const providerOffY = computed(() => (maxColH.value - colHeight(allProviders.value.length)) / 2);
-const targetOffY = computed(() => (maxColH.value - colHeight(props.targets.length)) / 2);
-const totalHeight = computed(() => TOP_PAD + maxColH.value + BOTTOM_PAD);
+  const targetId = edge.data.targetId as string;
+  const providerId = edge.data.providerId as string;
+  const target = props.targets.find((t) => t.id === targetId);
+  if (!target) return;
 
-function nodeY(index: number, offset: number) {
-  return TOP_PAD + offset + index * (NODE_H + NODE_GAP);
-}
-
-const edgePaths = computed(() => {
-  const x1 = PAD_X + NODE_W;
-  const x2 = containerWidth.value - PAD_X - NODE_W;
-  const dx = Math.max((x2 - x1) * 0.4, 60);
-
-  return edges.value.map((e) => {
-    const sy = nodeY(e.providerIndex, providerOffY.value) + NODE_H / 2;
-    const ey = nodeY(e.targetIndex, targetOffY.value) + NODE_H / 2;
-    const highlighted = selectedId.value === e.providerId || selectedId.value === e.targetId;
-    const dimmed = selectedId.value !== null && !highlighted;
-
-    return {
-      ...e,
-      d: `M ${x1} ${sy} C ${x1 + dx} ${sy}, ${x2 - dx} ${ey}, ${x2} ${ey}`,
-      highlighted,
-      dimmed,
-    };
-  });
+  target.providerIds = target.providerIds.filter((id) => id !== providerId);
+  saveSettings();
+  notifySuccess(`Disconnected ${allProviders.value.find((p) => p.id === providerId)?.name ?? "provider"} from ${target.name}`);
 });
 
-function connectedTo(nodeId: string): Set<string> {
-  const ids = new Set<string>();
-  for (const e of edges.value) {
-    if (e.providerId === nodeId) ids.add(e.targetId);
-    if (e.targetId === nodeId) ids.add(e.providerId);
-  }
-  return ids;
-}
-
-function isNodeDimmed(nodeId: string) {
-  if (!selectedId.value) return false;
-  if (selectedId.value === nodeId) return false;
-  return !connectedTo(selectedId.value).has(nodeId);
-}
-
-function toggleSelect(id: string) {
-  selectedId.value = selectedId.value === id ? null : id;
-}
-
-let observer: ResizeObserver | null = null;
-
-onMounted(() => {
-  if (graphEl.value) {
-    containerWidth.value = graphEl.value.clientWidth;
-    observer = new ResizeObserver(([entry]) => {
-      containerWidth.value = entry.contentRect.width;
-    });
-    observer.observe(graphEl.value);
-  }
+watch([() => props.providers.length, () => props.targets.length], () => {
+  setTimeout(() => fitView({ padding: 0.2 }), 100);
 });
-
-onUnmounted(() => observer?.disconnect());
 </script>
 
 <template>
-  <div ref="graphEl" class="flow-graph" :style="{ height: `${totalHeight}px` }" @click.self="selectedId = null">
-    <span class="flow-col-label flow-col-label--left">Providers</span>
-    <span class="flow-col-label flow-col-label--right">Delivery</span>
-
-    <svg class="flow-svg" :width="containerWidth" :height="totalHeight" :viewBox="`0 0 ${containerWidth} ${totalHeight}`">
-      <path
-        v-for="ep in edgePaths"
-        :key="ep.id"
-        class="flow-edge"
-        :d="ep.d"
-        fill="none"
-        :stroke="ep.highlighted ? 'var(--foreground)' : 'var(--nook-border)'"
-        :stroke-width="ep.highlighted ? 1.5 : 1"
-        :stroke-dasharray="ep.type === 'tag' ? '6 4' : 'none'"
-        :opacity="ep.dimmed ? 0.08 : ep.highlighted ? 1 : 0.5"
-        stroke-linecap="round"
-      />
-    </svg>
-
-    <div
-      v-for="(p, i) in allProviders"
-      :key="p.id"
-      class="flow-node-slot flow-node-slot--left"
-      :style="{ top: `${nodeY(i, providerOffY)}px` }"
-      @click.stop="toggleSelect(p.id)"
+  <div class="flow-canvas">
+    <VueFlow
+      id="nook-flow"
+      :nodes="nodes"
+      :edges="edges"
+      :node-types="nodeTypes"
+      :default-viewport="{ x: 0, y: 0, zoom: 1 }"
+      :min-zoom="0.3"
+      :max-zoom="2"
+      :snap-to-grid="true"
+      :snap-grid="[12, 12]"
+      :connection-line-style="{ stroke: 'var(--foreground)', strokeWidth: 1.5 }"
+      :default-edge-options="{ type: 'smoothstep' }"
+      fit-view-on-init
+      :fit-view-on-init-options="{ padding: 0.2 }"
+      :nodes-draggable="true"
+      :nodes-connectable="true"
+      :edges-updatable="false"
+      :delete-key-code="null"
+      class="nook-vue-flow"
     >
-      <FlowNode
-        :icon="PROVIDER_ICONS[p.type] ?? 'solar:widget-2-bold-duotone'"
-        :name="p.name"
-        :label="providerLabel(p.type)"
-        :enabled="p.enabled"
-        :selected="selectedId === p.id"
-        :dimmed="isNodeDimmed(p.id)"
-      />
-    </div>
+      <Background :gap="20" :size="0.5" pattern-color="var(--nook-border)" />
+      <Controls :show-fit-view="true" :show-interactive="false" position="bottom-left" />
 
-    <div
-      v-for="(t, j) in targets"
-      :key="t.id"
-      class="flow-node-slot flow-node-slot--right"
-      :style="{ top: `${nodeY(j, targetOffY)}px` }"
-      @click.stop="toggleSelect(t.id)"
-    >
-      <FlowNode
-        :icon="DELIVERY_ICONS[t.type] ?? 'solar:widget-2-bold-duotone'"
-        :name="t.name"
-        :label="getDeliveryTargetLabel(t.type)"
-        :enabled="t.enabled"
-        :selected="selectedId === t.id"
-        :dimmed="isNodeDimmed(t.id)"
-      />
-    </div>
+      <template #edge-label="{ edge }">
+        <div v-if="edge.data?.type === 'tag'" class="flow-edge-badge">tag</div>
+      </template>
+    </VueFlow>
 
-    <p v-if="!targets.length" class="flow-empty flow-empty--right">No delivery targets configured</p>
+    <div class="flow-legend">
+      <span class="flow-legend-item">
+        <span class="flow-legend-line flow-legend-line--solid" />
+        Direct
+      </span>
+      <span class="flow-legend-item">
+        <span class="flow-legend-line flow-legend-line--dashed" />
+        Tag match
+      </span>
+      <span class="flow-legend-item flow-legend-hint">
+        Drag between handles to connect · Click edge to disconnect
+      </span>
+    </div>
   </div>
 </template>
 
+<style>
+@import "@vue-flow/core/dist/style.css";
+@import "@vue-flow/core/dist/theme-default.css";
+@import "@vue-flow/controls/dist/style.css";
+
+.nook-vue-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.nook-vue-flow .vue-flow__edge-path {
+  transition: stroke 150ms, stroke-width 150ms;
+}
+
+.nook-vue-flow .vue-flow__edge:hover .vue-flow__edge-path {
+  stroke: var(--foreground) !important;
+  stroke-width: 2.5 !important;
+  cursor: pointer;
+}
+
+.nook-vue-flow .vue-flow__connection-line path {
+  stroke: var(--foreground);
+  stroke-width: 1.5;
+}
+
+.nook-vue-flow .vue-flow__background {
+  opacity: 0.4;
+}
+
+.nook-vue-flow .vue-flow__controls {
+  background: var(--card);
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+.nook-vue-flow .vue-flow__controls-button {
+  background: transparent;
+  border: none;
+  color: var(--nook-muted);
+  fill: var(--nook-muted);
+  width: 28px;
+  height: 28px;
+}
+
+.nook-vue-flow .vue-flow__controls-button:hover {
+  background: var(--nook-surface);
+  color: var(--foreground);
+  fill: var(--foreground);
+}
+
+.nook-vue-flow .vue-flow__controls-button svg {
+  max-width: 14px;
+  max-height: 14px;
+}
+
+.nook-vue-flow .vue-flow__minimap {
+  background: var(--card);
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-lg);
+}
+</style>
+
 <style scoped>
-.flow-graph {
+.flow-canvas {
   position: relative;
   width: 100%;
-  min-width: 600px;
-  min-height: 300px;
+  height: calc(100vh - 120px);
+  min-height: 400px;
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--background);
 }
 
-.flow-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
+.flow-edge-badge {
+  font-size: 0.6rem;
+  padding: 1px 5px;
+  background: var(--nook-surface);
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-sm);
+  color: var(--nook-muted);
   pointer-events: none;
 }
 
-.flow-edge {
-  transition: stroke 200ms, stroke-width 200ms, opacity 200ms;
-}
-
-.flow-col-label {
+.flow-legend {
   position: absolute;
-  top: 14px;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-lg);
   font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--nook-muted);
-  pointer-events: none;
+  z-index: 10;
 }
 
-.flow-col-label--left {
-  left: 40px;
+.flow-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
 }
 
-.flow-col-label--right {
-  right: 40px;
+.flow-legend-hint {
+  opacity: 0.6;
 }
 
-.flow-node-slot {
-  position: absolute;
+.flow-legend-line {
+  display: inline-block;
+  width: 20px;
+  height: 0;
+  border-top: 1.5px solid var(--nook-border);
 }
 
-.flow-node-slot--left {
-  left: 40px;
-}
-
-.flow-node-slot--right {
-  right: 40px;
-}
-
-.flow-empty {
-  position: absolute;
-  top: 50%;
-  color: var(--nook-muted);
-  font-size: 0.84rem;
-}
-
-.flow-empty--right {
-  right: 40px;
+.flow-legend-line--dashed {
+  border-top-style: dashed;
 }
 </style>
