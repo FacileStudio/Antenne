@@ -5,7 +5,9 @@ import { reactive, ref } from "vue";
 import DeliveryTargetEditorFields from "./DeliveryTargetEditorFields.vue";
 import SideDrawer from "./SideDrawer.vue";
 import ToggleSwitch from "./ToggleSwitch.vue";
+import ViewToggle from "./ViewToggle.vue";
 import { useDashboardState } from "../composables/useDashboardState";
+import { getDeliveryIcon } from "../utils/icons";
 import {
   createDefaultDeliveryTarget,
   deliveryTargetTypes,
@@ -30,6 +32,7 @@ const nextTargetType = ref<DeliveryTargetType>("matrix");
 const revealedSecrets = reactive<Record<string, boolean>>({});
 const testingTargets = reactive<Record<string, boolean>>({});
 const editingIndex = ref<number | null>(null);
+const viewMode = ref<"list" | "card">("list");
 
 const editingTarget = computed(() =>
   editingIndex.value !== null ? props.modelValue[editingIndex.value] ?? null : null
@@ -186,11 +189,13 @@ async function runTargetTest(target: DeliveryTarget) {
         <Icon icon="mdi:plus" class="button-icon" :width="16" :height="16" aria-hidden="true" />
         <span>Add target</span>
       </button>
+
+      <ViewToggle v-if="modelValue.length > 0" v-model="viewMode" />
     </div>
 
     <div v-if="modelValue.length === 0" class="empty">No delivery targets configured.</div>
 
-    <div v-else class="items">
+    <div v-else-if="viewMode === 'list'" class="items">
       <article
         v-for="(target, index) in modelValue"
         :key="target.id"
@@ -204,6 +209,7 @@ async function runTargetTest(target: DeliveryTarget) {
         <div class="item-info">
           <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:hamburger-menu-linear" :width="18" :height="18" aria-hidden="true" /></span>
           <ToggleSwitch :model-value="target.enabled" size="sm" @update:model-value="toggleEnabled(index)" />
+          <Icon :icon="getDeliveryIcon(target.type)" :width="20" :height="20" class="item-icon" aria-hidden="true" />
           <strong>{{ target.name || `${getDeliveryTargetLabel(target.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getDeliveryTargetLabel(target.type) }}</span>
         </div>
@@ -221,6 +227,49 @@ async function runTargetTest(target: DeliveryTarget) {
           </button>
           <button class="danger action-button" type="button" @click="removeTarget(index)">
             <Icon icon="solar:trash-bin-trash-linear" :width="16" :height="16" aria-hidden="true" />
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div v-else class="card-grid">
+      <article
+        v-for="(target, index) in modelValue"
+        :key="target.id"
+        class="target-card"
+        :class="{ dimmed: !target.enabled }"
+      >
+        <div class="target-card-header">
+          <div class="target-card-icon-wrap">
+            <Icon :icon="getDeliveryIcon(target.type)" :width="24" :height="24" aria-hidden="true" />
+          </div>
+          <ToggleSwitch :model-value="target.enabled" size="sm" @update:model-value="toggleEnabled(index)" />
+        </div>
+
+        <div class="target-card-body">
+          <span class="target-card-name">{{ target.name || `${getDeliveryTargetLabel(target.type)} ${index + 1}` }}</span>
+          <span class="target-card-type">{{ getDeliveryTargetLabel(target.type) }}</span>
+        </div>
+
+        <div class="target-card-meta">
+          <span class="target-card-stat">
+            <Icon icon="solar:link-bold-duotone" :width="13" :height="13" aria-hidden="true" />
+            {{ target.providerIds.length }} sources
+          </span>
+        </div>
+
+        <div class="target-card-actions">
+          <button class="ghost action-button" type="button" @click="openEditor(index)" title="Edit">
+            <Icon icon="solar:pen-linear" :width="15" :height="15" aria-hidden="true" />
+          </button>
+          <NuxtLink class="ghost action-button" :to="`/targets/${target.id}`" title="Activity">
+            <Icon icon="solar:chart-2-linear" :width="15" :height="15" aria-hidden="true" />
+          </NuxtLink>
+          <button class="ghost action-button" type="button" @click="duplicateTarget(index)" title="Duplicate">
+            <Icon icon="solar:copy-linear" :width="15" :height="15" aria-hidden="true" />
+          </button>
+          <button class="danger action-button" type="button" @click="removeTarget(index)" title="Delete">
+            <Icon icon="solar:trash-bin-trash-linear" :width="15" :height="15" aria-hidden="true" />
           </button>
         </div>
       </article>
@@ -289,6 +338,11 @@ async function runTargetTest(target: DeliveryTarget) {
   border: 1px solid var(--nook-border);
   background: var(--nook-surface-strong);
   flex-wrap: wrap;
+  transition: border-color 150ms, opacity 150ms;
+}
+
+.item-card:hover {
+  border-color: oklch(0.8 0 0);
 }
 
 .item-card.dimmed {
@@ -320,6 +374,11 @@ async function runTargetTest(target: DeliveryTarget) {
   min-width: 0;
 }
 
+.item-icon {
+  color: var(--nook-muted);
+  flex-shrink: 0;
+}
+
 .item-chip {
   display: inline-flex;
   align-items: center;
@@ -338,30 +397,96 @@ async function runTargetTest(target: DeliveryTarget) {
   justify-content: flex-end;
 }
 
-.secret-field {
+.card-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-2);
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
 }
 
-.reveal-button {
-  height: 2rem;
-  padding-inline: 0.625rem;
-  display: inline-flex;
+.target-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface-strong);
+  transition: border-color 150ms, box-shadow 150ms, opacity 150ms;
+}
+
+.target-card:hover {
+  border-color: oklch(0.8 0 0);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.04);
+}
+
+.target-card.dimmed {
+  opacity: 0.5;
+}
+
+.target-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.target-card-icon-wrap {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  line-height: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-lg);
+  background: var(--nook-surface);
+  border: 1px solid var(--nook-border);
+  color: var(--nook-muted);
 }
 
-.reveal-button span {
+.target-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.target-card-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.target-card-type {
+  font-size: 0.72rem;
+  color: var(--nook-muted);
+}
+
+.target-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.target-card-stat {
   display: inline-flex;
   align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--nook-muted);
 }
 
-.reveal-button :deep(svg) {
-  flex: none;
+.target-card-actions {
+  display: flex;
+  gap: 0.25rem;
+  border-top: 1px solid var(--nook-border);
+  padding-top: 0.625rem;
+  margin-top: auto;
+}
+
+.target-card-actions .action-button {
+  flex: 1;
+  height: 1.75rem;
+  border-radius: var(--radius-md);
 }
 
 .action-button {
@@ -445,7 +570,7 @@ a.action-button:hover {
     justify-content: flex-start;
   }
 
-  .secret-field {
+  .card-grid {
     grid-template-columns: 1fr;
   }
 }

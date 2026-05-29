@@ -5,8 +5,10 @@ import { reactive, ref } from "vue";
 import ProviderEditorFields from "./ProviderEditorFields.vue";
 import SideDrawer from "./SideDrawer.vue";
 import ToggleSwitch from "./ToggleSwitch.vue";
+import ViewToggle from "./ViewToggle.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 import { createTagToneMap, getTagTone } from "../utils/provider-tags";
+import { getProviderIcon } from "../utils/icons";
 import {
   createDefaultProvider,
   getProviderLabel,
@@ -29,6 +31,7 @@ const nextProviderType = ref<ProviderType>("website");
 const testingProviders = reactive<Record<string, boolean>>({});
 const editingIndex = ref<number | null>(null);
 const selectedTags = ref<string[]>([]);
+const viewMode = ref<"list" | "card">("list");
 
 const availableTags = computed(() =>
   [...new Set(props.modelValue.flatMap((provider) => provider.tags))]
@@ -198,6 +201,8 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         <Icon icon="mdi:plus" class="button-icon" :width="16" :height="16" aria-hidden="true" />
         <span>Add provider</span>
       </button>
+
+      <ViewToggle v-if="modelValue.length > 0" v-model="viewMode" />
     </div>
 
     <div v-if="modelValue.length === 0" class="empty">No providers configured.</div>
@@ -227,7 +232,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 
     <div v-if="modelValue.length > 0 && visibleProviders.length === 0" class="empty">No providers match current tag filter.</div>
 
-    <div v-else-if="modelValue.length > 0" class="items">
+    <div v-else-if="modelValue.length > 0 && viewMode === 'list'" class="items">
       <article
         v-for="({ provider, index }) in visibleProviders"
         :key="provider.id"
@@ -241,6 +246,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
         <div class="item-info">
           <span class="drag-handle" title="Drag to reorder"><Icon icon="solar:hamburger-menu-linear" :width="18" :height="18" aria-hidden="true" /></span>
           <ToggleSwitch :model-value="provider.enabled" size="sm" @update:model-value="toggleEnabled(index)" />
+          <Icon :icon="getProviderIcon(provider.type)" :width="20" :height="20" class="item-icon" aria-hidden="true" />
           <strong>{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</strong>
           <span class="item-chip">{{ getProviderLabel(provider.type) }}</span>
           <span
@@ -266,6 +272,53 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
           </button>
           <button class="danger action-button" type="button" @click="removeProvider(index)">
             <Icon icon="solar:trash-bin-trash-linear" :width="16" :height="16" aria-hidden="true" />
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div v-else-if="modelValue.length > 0 && viewMode === 'card'" class="card-grid">
+      <article
+        v-for="({ provider, index }) in visibleProviders"
+        :key="provider.id"
+        class="provider-card"
+        :class="{ dimmed: !provider.enabled }"
+      >
+        <div class="provider-card-header">
+          <div class="provider-card-icon-wrap">
+            <Icon :icon="getProviderIcon(provider.type)" :width="24" :height="24" aria-hidden="true" />
+          </div>
+          <ToggleSwitch :model-value="provider.enabled" size="sm" @update:model-value="toggleEnabled(index)" />
+        </div>
+
+        <div class="provider-card-body">
+          <span class="provider-card-name">{{ provider.name || `${getProviderLabel(provider.type)} ${index + 1}` }}</span>
+          <span class="provider-card-type">{{ getProviderLabel(provider.type) }}</span>
+        </div>
+
+        <div v-if="provider.tags.length > 0" class="provider-card-tags">
+          <span
+            v-for="tag in provider.tags"
+            :key="tag"
+            class="tag-pill tag-pill--filled provider-card-tag"
+            :data-tag-tone="getTagTone(tag, tagToneMap)"
+          >
+            {{ tag }}
+          </span>
+        </div>
+
+        <div class="provider-card-actions">
+          <button class="ghost action-button" type="button" @click="openEditor(index)" title="Edit">
+            <Icon icon="solar:pen-linear" :width="15" :height="15" aria-hidden="true" />
+          </button>
+          <NuxtLink class="ghost action-button" :to="`/providers/${provider.id}`" title="Activity">
+            <Icon icon="solar:chart-2-linear" :width="15" :height="15" aria-hidden="true" />
+          </NuxtLink>
+          <button class="ghost action-button" type="button" @click="duplicateProvider(index)" title="Duplicate">
+            <Icon icon="solar:copy-linear" :width="15" :height="15" aria-hidden="true" />
+          </button>
+          <button class="danger action-button" type="button" @click="removeProvider(index)" title="Delete">
+            <Icon icon="solar:trash-bin-trash-linear" :width="15" :height="15" aria-hidden="true" />
           </button>
         </div>
       </article>
@@ -356,6 +409,11 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   border: 1px solid var(--nook-border);
   background: var(--nook-surface-strong);
   flex-wrap: wrap;
+  transition: border-color 150ms, opacity 150ms;
+}
+
+.item-card:hover {
+  border-color: oklch(0.8 0 0);
 }
 
 .item-card.dimmed {
@@ -387,6 +445,11 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   min-width: 0;
 }
 
+.item-icon {
+  color: var(--nook-muted);
+  flex-shrink: 0;
+}
+
 .item-chip {
   display: inline-flex;
   align-items: center;
@@ -409,30 +472,94 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   justify-content: flex-end;
 }
 
-.secret-field {
+.card-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-2);
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
 }
 
-.reveal-button {
-  height: 2rem;
-  padding-inline: 0.625rem;
-  display: inline-flex;
+.provider-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--nook-border);
+  background: var(--nook-surface-strong);
+  transition: border-color 150ms, box-shadow 150ms, opacity 150ms;
+}
+
+.provider-card:hover {
+  border-color: oklch(0.8 0 0);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.04);
+}
+
+.provider-card.dimmed {
+  opacity: 0.5;
+}
+
+.provider-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.provider-card-icon-wrap {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  line-height: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-lg);
+  background: var(--nook-surface);
+  border: 1px solid var(--nook-border);
+  color: var(--nook-muted);
 }
 
-.reveal-button span {
-  display: inline-flex;
-  align-items: center;
+.provider-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
 }
 
-.reveal-button :deep(svg) {
-  flex: none;
+.provider-card-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.provider-card-type {
+  font-size: 0.72rem;
+  color: var(--nook-muted);
+}
+
+.provider-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.provider-card-tag {
+  font-size: 0.68rem;
+  min-height: 1.25rem;
+  padding: 0.05rem 0.45rem;
+}
+
+.provider-card-actions {
+  display: flex;
+  gap: 0.25rem;
+  border-top: 1px solid var(--nook-border);
+  padding-top: 0.625rem;
+  margin-top: auto;
+}
+
+.provider-card-actions .action-button {
+  flex: 1;
+  height: 1.75rem;
+  border-radius: var(--radius-md);
 }
 
 .action-button {
@@ -478,7 +605,7 @@ a.action-button:hover {
     justify-content: flex-start;
   }
 
-  .secret-field {
+  .card-grid {
     grid-template-columns: 1fr;
   }
 }

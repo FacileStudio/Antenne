@@ -9,6 +9,7 @@ import type { ProviderSettings, DeliveryTarget, ProviderType } from "../types";
 import { SYSTEM_PROVIDER_ID, getProviderLabel, getDeliveryTargetLabel } from "../types";
 import { useDashboardState } from "../composables/useDashboardState";
 import { pushUndo } from "../composables/useUndo";
+import { getProviderIcon, getDeliveryIcon } from "../utils/icons";
 
 const props = defineProps<{
   providers: ProviderSettings[];
@@ -24,34 +25,6 @@ const COL_RIGHT_X = 470;
 const nodeTypes = {
   provider: markRaw(FlowProviderNode),
   target: markRaw(FlowTargetNode),
-};
-
-const PROVIDER_ICONS: Record<string, string> = {
-  system: "solar:settings-bold-duotone",
-  website: "solar:global-bold-duotone",
-  imap: "solar:letter-bold-duotone",
-  rss: "solar:rss-bold-duotone",
-  "uptime-kuma": "solar:heart-pulse-bold-duotone",
-  docuseal: "solar:document-bold-duotone",
-  dokploy: "solar:server-bold-duotone",
-  git: "solar:code-bold-duotone",
-  vikunja: "solar:checklist-bold-duotone",
-  ardoise: "solar:bill-list-bold-duotone",
-  sablier: "solar:hourglass-bold-duotone",
-  perception: "solar:eye-bold-duotone",
-  opus: "solar:widget-2-bold-duotone",
-  vision: "solar:chart-2-bold-duotone",
-  plume: "solar:pen-new-square-bold-duotone",
-  nuage: "solar:cloud-bold-duotone",
-};
-
-const DELIVERY_ICONS: Record<string, string> = {
-  matrix: "solar:chat-round-dots-bold-duotone",
-  discord: "solar:gamepad-bold-duotone",
-  webhook: "solar:link-bold-duotone",
-  smtp: "solar:letter-bold-duotone",
-  ntfy: "solar:bell-bold-duotone",
-  perception: "solar:eye-bold-duotone",
 };
 
 function providerLabel(type: string): string {
@@ -113,7 +86,7 @@ function buildNodes(): Node[] {
     type: "provider",
     position: { x: COL_LEFT_X, y: i * NODE_GAP },
     data: {
-      icon: PROVIDER_ICONS[p.type] ?? "solar:widget-2-bold-duotone",
+      icon: getProviderIcon(p.type),
       name: p.name,
       label: providerLabel(p.type),
       enabled: p.enabled,
@@ -128,7 +101,7 @@ function buildNodes(): Node[] {
     type: "target",
     position: { x: COL_RIGHT_X, y: i * NODE_GAP },
     data: {
-      icon: DELIVERY_ICONS[t.type] ?? "solar:widget-2-bold-duotone",
+      icon: getDeliveryIcon(t.type),
       name: t.name,
       label: getDeliveryTargetLabel(t.type),
       enabled: t.enabled,
