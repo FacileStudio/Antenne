@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
+import SpaceSwitcher from "./SpaceSwitcher.vue";
 
 const route = useRoute();
 
@@ -20,6 +21,10 @@ function isActive(section: { href: string; activePaths?: string[] }) {
     <div class="flex items-center gap-3 px-5 pt-8 pb-6">
       <Icon icon="solar:translation-2-bold-duotone" class="shrink-0 text-foreground" :width="28" :height="28" aria-hidden="true" />
       <span class="font-heading text-2xl font-bold">Nook</span>
+    </div>
+
+    <div class="px-3 pb-3">
+      <SpaceSwitcher />
     </div>
 
     <nav class="flex flex-1 flex-col gap-1 px-3" aria-label="Navigation">

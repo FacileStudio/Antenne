@@ -24,6 +24,7 @@ const sections = [
   { href: "/providers", label: "Providers", icon: "solar:link-linear" },
   { href: "/graph", label: "Flow", icon: "solar:share-linear" },
   { href: "/activity", label: "Activity", icon: "solar:chart-2-linear" },
+  { href: "/spaces", label: "Spaces", icon: "solar:buildings-2-linear" },
   { href: "/settings", label: "Settings", icon: "solar:settings-linear", activePaths: ["/settings", "/info"] },
 ];
 
@@ -32,6 +33,7 @@ const route = useRoute();
 const currentTitle = computed(() => {
   if (route.path.startsWith("/providers/")) return "Provider";
   if (route.path.startsWith("/targets/")) return "Delivery Target";
+  if (route.path.startsWith("/spaces/") && route.params.id) return "Space";
   if (route.path === "/info") return "Settings";
   return sections.find((s) => route.path === s.href || route.path.startsWith(s.href + "/"))?.label ?? "Settings";
 });

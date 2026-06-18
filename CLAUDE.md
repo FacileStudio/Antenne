@@ -73,6 +73,10 @@ apps/
 - `POST /api/test-alert` — send a test alert
 - `POST /api/login` / `POST /api/logout` — dashboard auth
 - `POST /webhook/<provider>` — incoming webhook endpoints
+- `GET /api/spaces` / `POST /api/spaces` — list/create spaces
+- `GET /api/spaces/:id` / `PUT /api/spaces/:id` / `DELETE /api/spaces/:id` — space CRUD
+- `GET /api/spaces/:id/members` / `POST /api/spaces/:id/members` — list/add members
+- `PUT /api/spaces/:id/members/:userId` / `DELETE /api/spaces/:id/members/:userId` — update/remove members
 
 ## Environment Variables
 

@@ -1,6 +1,7 @@
 import { hasConfiguredMatrixDelivery } from "./delivery";
 import { getEvents, getGlobalStats, getProviderStats, getTargetStats, onEventPushed, getEventById, type DeliveryAttempt } from "./event-log";
 import { createJsonResponse } from "./server-responses";
+import { handleSpacesApiRequest } from "./server-api-spaces";
 import type { AlertContext, AppSettings, DashboardSessionConfig, DeliveryTarget, RuntimeStatus } from "./types";
 import type { ProviderSettings } from "./webhooks/types";
 
@@ -271,6 +272,9 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
       return createJsonResponse({ error: error instanceof Error ? error.message : "replay failed" }, { status: 400 });
     }
   }
+
+  const spacesResponse = await handleSpacesApiRequest(req, url);
+  if (spacesResponse) return spacesResponse;
 
   return createJsonResponse({ error: "not found" }, { status: 404 });
 }

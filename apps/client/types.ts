@@ -177,6 +177,23 @@ export interface EventLogStats {
   deliveryErrorCount: number;
 }
 
+export type SpaceRole = "owner" | "admin" | "member";
+
+export interface Space {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SpaceMember {
+  spaceId: string;
+  userId: string;
+  role: SpaceRole;
+  joinedAt: string;
+}
+
 export const providerTypes = ["website", "imap", "rss", "ardoise", "docuseal", "dokploy", "git", "nuage", "opus", "perception", "plume", "sablier", "uptime-kuma", "vikunja", "vision"] as const satisfies ProviderType[];
 export const deliveryTargetTypes = ["matrix", "discord", "webhook", "smtp", "ntfy", "perception"] as const satisfies DeliveryTargetType[];
 export const SYSTEM_PROVIDER_ID = "__nook_system__";

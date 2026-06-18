@@ -7,6 +7,7 @@ import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { buildNookEventEnvelope } from "./src/event-envelope";
 import { createAppServer, createDashboardSessionConfig } from "./src/server";
 import { initEventLog, pushEvent, updateEventDeliveries, getEventById, type DeliveryAttempt } from "./src/event-log";
+import { initSpaces } from "./src/spaces";
 import { isImapProviderSettings, isRssProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
 import {
   createInitialRuntimeStatus,
@@ -37,7 +38,9 @@ function isDuplicateEvent(message: string, providerId: string): boolean {
 
 const settingsPath = getSettingsPath();
 const eventLogPath = settingsPath.replace(/\.json$/, "-events.json");
+const spacesPath = settingsPath.replace(/\.json$/, "-spaces.json");
 await initEventLog(eventLogPath);
+await initSpaces(spacesPath);
 const defaults = await loadDefaultSettings();
 const persistedSettings = await loadPersistedSettings(settingsPath);
 const initialSettings = persistedSettings ?? defaults;
