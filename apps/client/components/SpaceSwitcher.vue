@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { Icon } from "@iconify/vue";
 import { useSpaces } from "../composables/useSpaces";
 
 const { spaces, currentSpace, loading, loadSpaces, switchSpace } = useSpaces();
 
 const open = ref(false);
-
-onMounted(() => {
-  loadSpaces();
-});
 
 function toggle() {
   open.value = !open.value;
@@ -28,7 +24,12 @@ function onClickOutside(event: MouseEvent) {
 }
 
 onMounted(() => {
+  loadSpaces();
   document.addEventListener("click", onClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", onClickOutside);
 });
 </script>
 
