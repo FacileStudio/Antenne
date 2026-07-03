@@ -183,7 +183,7 @@ export class PoolServer {
   private handleSubscribe(ws: ServerWebSocket<PoolWebSocketData>, app: RegisteredApp, msg: SubscribeMessage) {
     const confirmed: Record<string, { offset: number }> = {};
 
-    for (const [channel, opts] of Object.entries(msg.channels)) {
+    for (const [channel, opts] of Object.entries(msg.channels ?? {})) {
       this.registry.subscribe(app.app_id, channel);
 
       // Resume from the client's offset, or from the server-side ack cursor
@@ -191,9 +191,8 @@ export class PoolServer {
       let cursor = Math.max(opts.last_offset ?? 0, this.queue.getLastAcked(app.app_id, channel));
 
       while (true) {
-        const missed = this.queue.getEventsAfter(channel, cursor, PoolServer.REPLAY_BATCH);
-        for (const event of missed) {
-          cursor = event.offset;
+        const batch = this.queue.getEventsAfter(channel, cursor, PoolServer.REPLAY_BATCH);
+        for (const event of batch.events) {
           if (event.sender === app.app) continue;
           const eventMsg: EventMessage = {
             type: "event",
@@ -206,7 +205,8 @@ export class PoolServer {
           };
           ws.send(JSON.stringify(eventMsg));
         }
-        if (missed.length < PoolServer.REPLAY_BATCH) break;
+        cursor = batch.lastOffset;
+        if (batch.scanned < PoolServer.REPLAY_BATCH) break;
       }
 
       confirmed[channel] = { offset: cursor };

@@ -97,7 +97,11 @@ export class EventQueue {
     return { id, offset, timestamp };
   }
 
-  getEventsAfter(channel: string, afterOffset: number, limit = 100): Array<{ id: string; channel: string; offset: number; payload: unknown; sender: string; timestamp: number }> {
+  getEventsAfter(channel: string, afterOffset: number, limit = 100): {
+    events: Array<{ id: string; channel: string; offset: number; payload: unknown; sender: string; timestamp: number }>;
+    scanned: number;
+    lastOffset: number;
+  } {
     const rows = this.db.query<
       { id: string; channel: string; offset_num: number; payload: string; sender: string; timestamp: number },
       [string, number, number]
@@ -105,7 +109,7 @@ export class EventQueue {
       "SELECT id, channel, offset_num, payload, sender, timestamp FROM events WHERE channel = ? AND offset_num > ? ORDER BY offset_num ASC LIMIT ?",
     ).all(channel, afterOffset, limit);
 
-    return rows.flatMap((row) => {
+    const events = rows.flatMap((row) => {
       try {
         return [{
           id: row.id,
@@ -119,6 +123,13 @@ export class EventQueue {
         return [];
       }
     });
+
+    const lastRow = rows[rows.length - 1];
+    return {
+      events,
+      scanned: rows.length,
+      lastOffset: lastRow ? lastRow.offset_num : afterOffset,
+    };
   }
 
   ack(subscriberId: string, channel: string, offset: number) {
@@ -214,23 +225,45 @@ export class EventQueue {
       "SELECT DISTINCT channel FROM events",
     ).all();
 
+    const appById = new Map(apps.map((a) => [a.app_id, a]));
+
     for (const { channel } of channels) {
-      const listeners = apps.filter((a) => {
+      // Interest = declared listeners UNION apps that actually subscribed
+      // (clients may listen() on channels beyond their declared list, and
+      // their ack cursors must pin retention too).
+      const interested = new Map<string, number>();
+      for (const a of apps) {
         try {
           const listen = JSON.parse(a.listen_channels) as string[];
-          return listen.includes(channel) || listen.includes("*");
+          if (listen.includes(channel) || listen.includes("*")) {
+            interested.set(a.app_id, this.getLastAcked(a.app_id, channel));
+          }
         } catch {
-          return false;
+          // unreadable declaration — fall through to subscription rows
         }
-      });
+      }
+      const subRows = this.db.query<{ subscriber_id: string; last_acked: number }, [string]>(
+        "SELECT subscriber_id, last_acked FROM subscriptions WHERE channel = ?",
+      ).all(channel);
+      for (const row of subRows) {
+        if (!interested.has(row.subscriber_id)) {
+          interested.set(row.subscriber_id, row.last_acked);
+        }
+      }
 
-      const active = listeners.filter((a) => now - a.last_seen_at < EventQueue.INACTIVE_APP_MS);
-      for (const stale of listeners.filter((a) => !active.includes(a))) {
-        console.warn(`[pool] listener ${stale.app} inactive >14d — no longer pins retention for ${channel}`);
+      const active: Array<{ app: string; acked: number }> = [];
+      for (const [appId, acked] of interested) {
+        const app = appById.get(appId);
+        if (!app) continue;
+        if (now - app.last_seen_at < EventQueue.INACTIVE_APP_MS) {
+          active.push({ app: app.app, acked });
+        } else if (app.last_seen_at > 0) {
+          console.warn(`[pool] listener ${app.app} inactive >14d — no longer pins retention for ${channel}`);
+        }
       }
       if (active.length === 0) continue;
 
-      const watermark = Math.min(...active.map((a) => this.getLastAcked(a.app_id, channel)));
+      const watermark = Math.min(...active.map((a) => a.acked));
       if (watermark > 0) {
         this.db.run(
           "DELETE FROM events WHERE channel = ? AND offset_num <= ? AND timestamp < ?",
@@ -244,10 +277,9 @@ export class EventQueue {
       ).get(channel, ceiling);
       if (doomed?.max_offset) {
         for (const a of active) {
-          const acked = this.getLastAcked(a.app_id, channel);
-          if (acked < doomed.max_offset) {
+          if (a.acked < doomed.max_offset) {
             console.warn(
-              `[pool] retention ceiling: ${a.app} loses ${channel} events ${acked + 1}..${doomed.max_offset}`,
+              `[pool] retention ceiling: ${a.app} loses ${channel} events ${a.acked + 1}..${doomed.max_offset}`,
             );
           }
         }
