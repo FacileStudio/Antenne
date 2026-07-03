@@ -42,6 +42,7 @@ export interface ErrorMessage extends PoolMessage {
 
 export interface RegistrationRequest {
   app: string;
+  instance_id?: string;
   secret: string;
   events?: {
     emit?: string[];

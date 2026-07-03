@@ -67,9 +67,13 @@ export class PoolServer {
       return json({ error: "invalid secret" }, 403);
     }
 
+    const instanceId = typeof body.instance_id === "string" ? body.instance_id.trim() : "";
+    const identity = instanceId ? `${body.app}:${instanceId}` : body.app;
+
     const emitChannels = body.events?.emit ?? ["*"];
     const listenChannels = body.events?.listen ?? ["*"];
-    const registered = this.queue.registerApp(body.app, body.secret, emitChannels, listenChannels);
+    const registered = this.queue.registerApp(identity, body.secret, emitChannels, listenChannels);
+    this.queue.touchApp(registered.app_id);
 
     console.log(`[pool] registered app=${registered.app} id=${registered.app_id}`);
 
@@ -240,6 +244,7 @@ export class PoolServer {
 
   private handleAck(app: RegisteredApp, msg: AckMessage) {
     this.queue.ack(app.app_id, msg.channel, msg.offset);
+    this.queue.touchApp(app.app_id);
   }
 
   private sendError(ws: ServerWebSocket<PoolWebSocketData>, code: string, message: string) {

@@ -57,6 +57,12 @@ export class EventQueue {
 
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_events_channel_offset ON events (channel, offset_num)");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_apps_token ON apps (token)");
+
+    try {
+      this.db.exec("ALTER TABLE apps ADD COLUMN last_seen_at INTEGER NOT NULL DEFAULT 0");
+    } catch {
+      // column already exists
+    }
   }
 
   getEpoch(): string {
@@ -130,6 +136,10 @@ export class EventQueue {
     return row?.last_acked ?? 0;
   }
 
+  touchApp(appId: string) {
+    this.db.run("UPDATE apps SET last_seen_at = ? WHERE app_id = ?", [Date.now(), appId]);
+  }
+
   registerApp(app: string, secret: string, emitChannels: string[], listenChannels: string[]): RegisteredApp {
     const existing = this.db.query<{ app_id: string; token: string; registered_at: string }, [string]>(
       "SELECT app_id, token, registered_at FROM apps WHERE app = ?",
@@ -183,8 +193,67 @@ export class EventQueue {
     };
   }
 
-  cleanup(olderThanMs = 7 * 24 * 60 * 60 * 1000) {
-    const cutoff = Date.now() - olderThanMs;
-    this.db.run("DELETE FROM events WHERE timestamp < ?", [cutoff]);
+  private static readonly RETENTION_CEILING_MS = 30 * 24 * 60 * 60 * 1000;
+  private static readonly RETENTION_FLOOR_MS = 48 * 60 * 60 * 1000;
+  private static readonly INACTIVE_APP_MS = 14 * 24 * 60 * 60 * 1000;
+
+  // Interest-based retention: events acked by every active listener of a
+  // channel are deleted (past a 48h floor kept for replay/debugging). Apps
+  // not seen for 14 days stop pinning the log, NATS-InactiveThreshold style.
+  // A 30-day hard ceiling backstops everything; crossing it while a listener
+  // is still behind is data loss, so it logs loudly.
+  cleanup() {
+    const now = Date.now();
+
+    const apps = this.db.query<
+      { app_id: string; app: string; listen_channels: string; last_seen_at: number },
+      []
+    >("SELECT app_id, app, listen_channels, last_seen_at FROM apps").all();
+
+    const channels = this.db.query<{ channel: string }, []>(
+      "SELECT DISTINCT channel FROM events",
+    ).all();
+
+    for (const { channel } of channels) {
+      const listeners = apps.filter((a) => {
+        try {
+          const listen = JSON.parse(a.listen_channels) as string[];
+          return listen.includes(channel) || listen.includes("*");
+        } catch {
+          return false;
+        }
+      });
+
+      const active = listeners.filter((a) => now - a.last_seen_at < EventQueue.INACTIVE_APP_MS);
+      for (const stale of listeners.filter((a) => !active.includes(a))) {
+        console.warn(`[pool] listener ${stale.app} inactive >14d — no longer pins retention for ${channel}`);
+      }
+      if (active.length === 0) continue;
+
+      const watermark = Math.min(...active.map((a) => this.getLastAcked(a.app_id, channel)));
+      if (watermark > 0) {
+        this.db.run(
+          "DELETE FROM events WHERE channel = ? AND offset_num <= ? AND timestamp < ?",
+          [channel, watermark, now - EventQueue.RETENTION_FLOOR_MS],
+        );
+      }
+
+      const ceiling = now - EventQueue.RETENTION_CEILING_MS;
+      const doomed = this.db.query<{ max_offset: number | null }, [string, number]>(
+        "SELECT MAX(offset_num) AS max_offset FROM events WHERE channel = ? AND timestamp < ?",
+      ).get(channel, ceiling);
+      if (doomed?.max_offset) {
+        for (const a of active) {
+          const acked = this.getLastAcked(a.app_id, channel);
+          if (acked < doomed.max_offset) {
+            console.warn(
+              `[pool] retention ceiling: ${a.app} loses ${channel} events ${acked + 1}..${doomed.max_offset}`,
+            );
+          }
+        }
+      }
+    }
+
+    this.db.run("DELETE FROM events WHERE timestamp < ?", [now - EventQueue.RETENTION_CEILING_MS]);
   }
 }
