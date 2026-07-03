@@ -29,6 +29,11 @@ export interface SubscribeMessage extends PoolMessage {
   channels: Record<string, { last_offset: number }>;
 }
 
+export interface SubscribedMessage extends PoolMessage {
+  type: "subscribed";
+  channels: Record<string, { offset: number }>;
+}
+
 export interface ErrorMessage extends PoolMessage {
   type: "error";
   code: string;

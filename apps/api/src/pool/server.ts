@@ -1,4 +1,5 @@
 import type { Server as BunServer, ServerWebSocket } from "bun";
+import { timingSafeEqual } from "node:crypto";
 import { EventQueue } from "./queue";
 import { ConnectionRegistry } from "./registry";
 import type {
@@ -7,6 +8,7 @@ import type {
   RegisteredApp,
   RegistrationRequest,
   SubscribeMessage,
+  SubscribedMessage,
   WelcomeMessage,
   ErrorMessage,
 } from "./types";
@@ -24,6 +26,13 @@ function json(body: unknown, status = 200) {
 
 type PoolEventLogger = (event: { type: string; app: string; detail: string }) => void;
 
+function safeSecretEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 export class PoolServer {
   private queue: EventQueue;
   private registry = new ConnectionRegistry();
@@ -33,6 +42,9 @@ export class PoolServer {
   constructor(options: { dataDir: string; secret?: string }) {
     this.queue = new EventQueue(options.dataDir);
     this.poolSecret = options.secret ?? process.env.POOL_SECRET ?? "pool";
+    if (this.poolSecret === "pool") {
+      console.warn("[pool] using default secret 'pool' — set POOL_SECRET in production");
+    }
   }
 
   onPoolEvent(logger: PoolEventLogger) {
@@ -51,7 +63,7 @@ export class PoolServer {
       return json({ error: "app is required" }, 400);
     }
 
-    if (body.secret !== this.poolSecret) {
+    if (typeof body.secret !== "string" || !safeSecretEqual(body.secret, this.poolSecret)) {
       return json({ error: "invalid secret" }, 403);
     }
 
@@ -90,6 +102,12 @@ export class PoolServer {
 
   handleOpen = (ws: ServerWebSocket<PoolWebSocketData>) => {
     const { app } = ws.data;
+
+    const stale = this.registry.get(app.app_id);
+    if (stale && stale.ws !== ws) {
+      this.registry.remove(app.app_id);
+      (stale.ws as ServerWebSocket<PoolWebSocketData>).close(1000, "replaced by new connection");
+    }
 
     this.registry.add({
       app_id: app.app_id,
@@ -148,31 +166,50 @@ export class PoolServer {
   handleClose = (ws: ServerWebSocket<PoolWebSocketData>) => {
     const app = ws.data?.app;
     if (!app) return;
+    // Only drop the registry entry if it still belongs to this socket —
+    // a newer connection for the same app may have replaced it.
+    if (this.registry.get(app.app_id)?.ws !== ws) return;
     this.registry.remove(app.app_id);
     console.log(`[pool] disconnected app=${app.app} id=${app.app_id}`);
     this.logger?.({ type: "pool.disconnected", app: app.app, detail: `${app.app} left the pool` });
   };
 
+  private static readonly REPLAY_BATCH = 100;
+
   private handleSubscribe(ws: ServerWebSocket<PoolWebSocketData>, app: RegisteredApp, msg: SubscribeMessage) {
+    const confirmed: Record<string, { offset: number }> = {};
+
     for (const [channel, opts] of Object.entries(msg.channels)) {
       this.registry.subscribe(app.app_id, channel);
 
-      const lastOffset = opts.last_offset ?? 0;
-      const missed = this.queue.getEventsAfter(channel, lastOffset);
+      // Resume from the client's offset, or from the server-side ack cursor
+      // when the client lost its in-memory offsets (e.g. after a restart).
+      let cursor = Math.max(opts.last_offset ?? 0, this.queue.getLastAcked(app.app_id, channel));
 
-      for (const event of missed) {
-        const eventMsg: EventMessage = {
-          type: "event",
-          id: event.id,
-          channel: event.channel,
-          offset: event.offset,
-          payload: event.payload,
-          timestamp: event.timestamp,
-          sender: event.sender,
-        };
-        ws.send(JSON.stringify(eventMsg));
+      while (true) {
+        const missed = this.queue.getEventsAfter(channel, cursor, PoolServer.REPLAY_BATCH);
+        for (const event of missed) {
+          cursor = event.offset;
+          if (event.sender === app.app) continue;
+          const eventMsg: EventMessage = {
+            type: "event",
+            id: event.id,
+            channel: event.channel,
+            offset: event.offset,
+            payload: event.payload,
+            timestamp: event.timestamp,
+            sender: event.sender,
+          };
+          ws.send(JSON.stringify(eventMsg));
+        }
+        if (missed.length < PoolServer.REPLAY_BATCH) break;
       }
+
+      confirmed[channel] = { offset: cursor };
     }
+
+    const reply: SubscribedMessage = { type: "subscribed", channels: confirmed };
+    ws.send(JSON.stringify(reply));
   }
 
   private handleEvent(ws: ServerWebSocket<PoolWebSocketData>, app: RegisteredApp, msg: { channel: string; payload: unknown }) {
