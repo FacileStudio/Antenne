@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, markRaw } from "vue";
+import { computed, ref, watch, markRaw } from "vue";
 import { VueFlow, useVueFlow, type Node, type Edge, type Connection, MarkerType } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
 import { Controls } from "@vue-flow/controls";
@@ -18,9 +18,9 @@ const props = defineProps<{
 
 const { saveSettings, notifySuccess } = useDashboardState();
 
-const NODE_GAP = 72;
-const COL_LEFT_X = 50;
-const COL_RIGHT_X = 470;
+const NODE_GAP = 76;
+const COL_LEFT_X = 40;
+const COL_RIGHT_X = 580;
 
 const nodeTypes = {
   provider: markRaw(FlowProviderNode),
@@ -80,11 +80,19 @@ const allProviders = computed<VirtualProvider[]>(() => [
   ...props.providers,
 ]);
 
+const nodePositions = new Map<string, { x: number; y: number }>();
+const hoveredNodeId = ref<string | null>(null);
+
 function buildNodes(): Node[] {
+  const providerCount = allProviders.value.length;
+  const targetCount = props.targets.length;
+  const providerOffset = Math.max(0, ((targetCount - providerCount) * NODE_GAP) / 2);
+  const targetOffset = Math.max(0, ((providerCount - targetCount) * NODE_GAP) / 2);
+
   const providerNodes: Node[] = allProviders.value.map((p, i) => ({
     id: `p-${p.id}`,
     type: "provider",
-    position: { x: COL_LEFT_X, y: i * NODE_GAP },
+    position: nodePositions.get(`p-${p.id}`) ?? { x: COL_LEFT_X, y: providerOffset + i * NODE_GAP },
     data: {
       icon: getProviderIcon(p.type),
       name: p.name,
@@ -99,7 +107,7 @@ function buildNodes(): Node[] {
   const targetNodes: Node[] = props.targets.map((t, i) => ({
     id: `t-${t.id}`,
     type: "target",
-    position: { x: COL_RIGHT_X, y: i * NODE_GAP },
+    position: nodePositions.get(`t-${t.id}`) ?? { x: COL_RIGHT_X, y: targetOffset + i * NODE_GAP },
     data: {
       icon: getDeliveryIcon(t.type),
       name: t.name,
@@ -116,6 +124,7 @@ function buildNodes(): Node[] {
 
 function buildEdges(): Edge[] {
   const result: Edge[] = [];
+  const hovered = hoveredNodeId.value;
 
   for (const target of props.targets) {
     for (const provider of allProviders.value) {
@@ -123,16 +132,24 @@ function buildEdges(): Edge[] {
       const isTag = !isDirect && target.providerTags.length > 0 && provider.tags?.length > 0 && provider.tags.some((t) => target.providerTags.includes(t));
 
       if (isDirect || isTag) {
+        const isConnected = hovered === `p-${provider.id}` || hovered === `t-${target.id}`;
         result.push({
           id: `e-${provider.id}--${target.id}`,
           source: `p-${provider.id}`,
           target: `t-${target.id}`,
           animated: false,
           style: {
-            stroke: "var(--nook-border)",
-            strokeWidth: 1.5,
+            stroke: isConnected ? "var(--foreground)" : "var(--nook-border)",
+            strokeWidth: isConnected ? 2 : 1.5,
+            opacity: hovered && !isConnected ? 0.25 : 1,
+            ...(isTag ? { strokeDasharray: "6 4" } : {}),
           },
-          ...(isTag ? { style: { stroke: "var(--nook-border)", strokeWidth: 1.5, strokeDasharray: "6 4" } } : {}),
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 16,
+            height: 16,
+            color: isConnected ? "#3f3f46" : "#c4c4c4",
+          },
           data: { type: isDirect ? "direct" : "tag", providerId: provider.id, targetId: target.id },
         });
       }
@@ -145,7 +162,19 @@ function buildEdges(): Edge[] {
 const nodes = computed(() => buildNodes());
 const edges = computed(() => buildEdges());
 
-const { onConnect, onEdgeClick, fitView } = useVueFlow({ id: "nook-flow" });
+const { onConnect, onEdgeClick, onNodeDragStop, onNodeMouseEnter, onNodeMouseLeave, fitView } = useVueFlow({ id: "nook-flow" });
+
+onNodeDragStop(({ node }) => {
+  nodePositions.set(node.id, { ...node.position });
+});
+
+onNodeMouseEnter(({ node }) => {
+  hoveredNodeId.value = node.id;
+});
+
+onNodeMouseLeave(() => {
+  hoveredNodeId.value = null;
+});
 
 onConnect((connection: Connection) => {
   const providerId = connection.source.replace(/^p-/, "");
@@ -220,7 +249,7 @@ watch([() => props.providers.length, () => props.targets.length], () => {
       :snap-to-grid="true"
       :snap-grid="[12, 12]"
       :connection-line-style="{ stroke: 'var(--foreground)', strokeWidth: 1.5 }"
-      :default-edge-options="{ type: 'smoothstep' }"
+      :default-edge-options="{ type: 'default' }"
       fit-view-on-init
       :fit-view-on-init-options="{ padding: 0.2 }"
       :nodes-draggable="true"
@@ -320,7 +349,7 @@ watch([() => props.providers.length, () => props.targets.length], () => {
 .flow-canvas {
   position: relative;
   width: 100%;
-  height: calc(100vh - 120px);
+  height: calc(100dvh - 120px);
   min-height: 400px;
   border: 1px solid var(--nook-border);
   border-radius: var(--radius-xl);

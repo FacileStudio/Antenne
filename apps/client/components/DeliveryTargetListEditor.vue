@@ -231,7 +231,7 @@ async function runTargetTest(target: DeliveryTarget) {
         <div class="target-card-meta">
           <span class="target-card-stat">
             <Icon icon="solar:link-bold-duotone" :width="13" :height="13" aria-hidden="true" />
-            {{ target.providerIds.length }} sources
+            {{ target.providerIds.length }} {{ target.providerIds.length === 1 ? "source" : "sources" }}
           </span>
         </div>
 
@@ -407,9 +407,12 @@ async function runTargetTest(target: DeliveryTarget) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   color: var(--nook-muted);
+  background: var(--card);
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-lg);
 }
 
 .target-card-body {
@@ -420,7 +423,7 @@ async function runTargetTest(target: DeliveryTarget) {
 }
 
 .target-card-name {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -457,7 +460,32 @@ async function runTargetTest(target: DeliveryTarget) {
 .target-card-actions .action-button {
   flex: 1;
   height: 1.75rem;
+  padding: 0;
+  border-color: transparent;
   border-radius: var(--radius-md);
+  color: var(--nook-muted);
+}
+
+.target-card-actions .action-button:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, var(--nook-surface-strong));
+  border-color: transparent;
+  color: var(--nook-text);
+}
+
+.target-card-actions .danger:hover {
+  background: var(--danger-muted);
+  border-color: transparent;
+  color: var(--destructive);
+}
+
+.item-actions a.action-button {
+  border-color: transparent;
+  color: var(--nook-muted);
+}
+
+.item-actions .action-button:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, var(--nook-surface-strong));
+  color: var(--nook-text);
 }
 
 .action-button {

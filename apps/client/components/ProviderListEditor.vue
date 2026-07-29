@@ -482,9 +482,12 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   color: var(--nook-muted);
+  background: var(--card);
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-lg);
 }
 
 .provider-card-body {
@@ -495,7 +498,7 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 }
 
 .provider-card-name {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -530,7 +533,32 @@ async function runProviderConnectionTest(provider: ProviderSettings) {
 .provider-card-actions .action-button {
   flex: 1;
   height: 1.75rem;
+  padding: 0;
+  border-color: transparent;
   border-radius: var(--radius-md);
+  color: var(--nook-muted);
+}
+
+.provider-card-actions .action-button:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, var(--nook-surface-strong));
+  border-color: transparent;
+  color: var(--nook-text);
+}
+
+.provider-card-actions .danger:hover {
+  background: var(--danger-muted);
+  border-color: transparent;
+  color: var(--destructive);
+}
+
+.item-actions a.action-button {
+  border-color: transparent;
+  color: var(--nook-muted);
+}
+
+.item-actions .action-button:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, var(--nook-surface-strong));
+  color: var(--nook-text);
 }
 
 .action-button {

@@ -46,22 +46,36 @@ function toggle() {
   transition: background 150ms ease;
 }
 
+.toggle-switch:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 .toggle-switch--md {
-  width: 2rem;
-  height: 1.125rem;
+  width: 2.25rem;
+  height: 1.25rem;
 }
 
 .toggle-switch--sm {
-  width: 1.625rem;
-  height: 0.875rem;
+  width: 1.75rem;
+  height: 1rem;
 }
 
 .toggle-switch--on {
-  background: oklch(0.65 0.2 155);
+  background: var(--success);
+}
+
+.toggle-switch--on:hover {
+  background: color-mix(in oklab, var(--success) 88%, var(--foreground));
 }
 
 .toggle-switch--off {
   background: var(--nook-border);
+  box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.04);
+}
+
+.toggle-switch--off:hover {
+  background: color-mix(in oklab, var(--nook-muted) 20%, var(--nook-border));
 }
 
 .toggle-switch--disabled {
@@ -73,22 +87,22 @@ function toggle() {
   display: block;
   border-radius: 9999px;
   background: white;
-  box-shadow: 0 1px 2px oklch(0 0 0 / 0.12);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.15);
   transition: transform 150ms ease;
 }
 
 .toggle-switch--md .toggle-switch-thumb {
-  width: 0.875rem;
-  height: 0.875rem;
+  width: 1rem;
+  height: 1rem;
 }
 
 .toggle-switch--sm .toggle-switch-thumb {
-  width: 0.625rem;
-  height: 0.625rem;
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 .toggle-switch--on.toggle-switch--md .toggle-switch-thumb {
-  transform: translateX(0.875rem);
+  transform: translateX(1rem);
 }
 
 .toggle-switch--on.toggle-switch--sm .toggle-switch-thumb {

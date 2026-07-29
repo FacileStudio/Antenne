@@ -26,7 +26,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --radius-sm: calc(var(--radius) * 0.75);
@@ -143,6 +143,7 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.9 0 0);
     --sidebar-ring: oklch(0.4 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
     --success: oklch(0.62 0.17 153);
     --success-foreground: oklch(0.25 0.09 153);
     --success-muted: oklch(0.96 0.04 153);
@@ -500,38 +501,51 @@ h2 {
 
 .toggle input {
   appearance: none;
-  width: 2.75rem;
-  height: 1.5rem;
+  width: 2.25rem;
+  height: 1.25rem;
   border-radius: 999px;
-  border: 1px solid var(--nook-border);
-  background: var(--nook-surface);
+  border: none;
+  background: var(--nook-border);
+  box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.04);
   position: relative;
   cursor: pointer;
   padding: 0;
   flex: none;
-  transition: background-color 150ms, border-color 150ms;
+  transition: background-color 150ms;
+}
+
+.toggle input:hover {
+  background: color-mix(in oklab, var(--nook-muted) 20%, var(--nook-border));
 }
 
 .toggle input::after {
   content: "";
   position: absolute;
-  top: 0.19rem;
-  left: 0.19rem;
+  top: 2px;
+  left: 2px;
   width: 1rem;
   height: 1rem;
   border-radius: 50%;
-  background: var(--nook-muted);
-  transition: transform 150ms, background-color 150ms;
+  background: oklch(1 0 0);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.15);
+  transition: transform 150ms;
 }
 
 .toggle input:checked {
   background: var(--success);
-  border-color: var(--success);
+}
+
+.toggle input:checked:hover {
+  background: color-mix(in oklab, var(--success) 88%, var(--foreground));
 }
 
 .toggle input:checked::after {
-  transform: translateX(1.25rem);
-  background: oklch(1 0 0);
+  transform: translateX(1rem);
+}
+
+.toggle input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .toggle span {
@@ -570,6 +584,12 @@ h2 {
 .danger {
   background: transparent;
   color: var(--nook-text);
+}
+
+.danger:hover {
+  background: var(--danger-muted);
+  border-color: var(--danger-border);
+  color: var(--destructive);
 }
 
 @media (max-width: 960px) {

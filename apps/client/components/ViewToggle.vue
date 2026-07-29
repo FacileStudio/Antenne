@@ -40,35 +40,41 @@ const emit = defineEmits<{
 <style scoped>
 .view-toggle {
   display: inline-flex;
+  gap: 2px;
+  padding: 2px;
   border: 1px solid var(--nook-border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  background: var(--nook-surface-strong);
 }
 
 .view-toggle-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.625rem;
+  padding: 0;
   border: none;
+  border-radius: calc(var(--radius-lg) - 2px);
   background: transparent;
   color: var(--nook-muted);
   cursor: pointer;
-  transition: background 150ms, color 150ms;
+  transition: background 150ms, color 150ms, box-shadow 150ms;
 }
 
 .view-toggle-btn:hover {
-  background: var(--nook-surface-strong);
+  background: color-mix(in oklab, var(--foreground) 6%, var(--nook-surface-strong));
   color: var(--nook-text);
 }
 
-.view-toggle-btn.active {
-  background: var(--nook-text);
-  color: var(--nook-bg);
+.view-toggle-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
 
-.view-toggle-btn + .view-toggle-btn {
-  border-left: 1px solid var(--nook-border);
+.view-toggle-btn.active {
+  background: var(--nook-bg);
+  color: var(--nook-text);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.08), inset 0 0 0 1px oklch(0 0 0 / 0.05);
 }
 </style>

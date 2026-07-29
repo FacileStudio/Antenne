@@ -51,6 +51,8 @@ const buckets = computed<Bucket[]>(() => {
 
 const maxCount = computed(() => Math.max(...buckets.value.map((bucket) => bucket.count), 1));
 
+const halfCount = computed(() => Math.ceil(maxCount.value / 2));
+
 const peakBucket = computed(() =>
   buckets.value.reduce((best, bucket) => bucket.count > best.count ? bucket : best, buckets.value[0] ?? { key: "", label: "--", count: 0, errorCount: 0 }),
 );
@@ -58,7 +60,7 @@ const peakBucket = computed(() =>
 const recentCount = computed(() => buckets.value.slice(-6).reduce((sum, bucket) => sum + bucket.count, 0));
 
 function barHeight(count: number) {
-  return `${Math.max((count / maxCount.value) * 100, count > 0 ? 10 : 4)}%`;
+  return `${(count / maxCount.value) * 100}%`;
 }
 
 function errorHeight(bucket: Bucket) {
@@ -66,7 +68,7 @@ function errorHeight(bucket: Bucket) {
     return "0%";
   }
 
-  return `${Math.max((bucket.errorCount / bucket.count) * 100, 18)}%`;
+  return `${(bucket.errorCount / bucket.count) * 100}%`;
 }
 </script>
 
@@ -79,24 +81,48 @@ function errorHeight(bucket: Bucket) {
       </div>
 
       <div class="chart-summary">
-        <span>{{ recentCount }} events in 6h</span>
+        <span>{{ recentCount }} {{ recentCount === 1 ? "event" : "events" }} in 6h</span>
         <span>Peak {{ peakBucket.count }} at {{ peakBucket.label }}</span>
       </div>
     </div>
 
-    <div class="chart-bars" aria-label="Activity graph">
-      <div
-        v-for="bucket in buckets"
-        :key="bucket.key"
-        class="chart-column"
-        :title="`${bucket.label}: ${bucket.count} events${bucket.errorCount ? `, ${bucket.errorCount} with errors` : ''}`"
-      >
-        <div class="chart-bar-track">
-          <div class="chart-bar" :style="{ height: barHeight(bucket.count) }">
+    <div class="chart-plot" aria-label="Hourly event volume for the last 24 hours">
+      <div class="chart-gridline chart-gridline--max">
+        <span class="chart-gridline-label">{{ maxCount }}</span>
+      </div>
+      <div v-if="halfCount < maxCount" class="chart-gridline chart-gridline--half">
+        <span class="chart-gridline-label">{{ halfCount }}</span>
+      </div>
+
+      <div class="chart-bars">
+        <div
+          v-for="bucket in buckets"
+          :key="bucket.key"
+          class="chart-column"
+        >
+          <div
+            v-if="bucket.count > 0"
+            class="chart-bar"
+            :style="{ height: barHeight(bucket.count) }"
+          >
             <div v-if="bucket.errorCount > 0" class="chart-bar-error" :style="{ height: errorHeight(bucket) }" />
+          </div>
+
+          <div class="chart-tip" role="tooltip">
+            <span class="chart-tip-time">{{ bucket.label }}</span>
+            <span>{{ bucket.count }} {{ bucket.count === 1 ? "event" : "events" }}</span>
+            <span v-if="bucket.errorCount > 0" class="chart-tip-error">{{ bucket.errorCount }} with errors</span>
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="chart-labels">
+      <span>{{ buckets[0]?.label }}</span>
+      <span>{{ buckets[6]?.label }}</span>
+      <span>{{ buckets[12]?.label }}</span>
+      <span>{{ buckets[18]?.label }}</span>
+      <span>{{ buckets[23]?.label }}</span>
     </div>
 
     <div class="chart-footer">
@@ -106,14 +132,7 @@ function errorHeight(bucket: Bucket) {
       </div>
       <div class="chart-legend">
         <span class="legend-swatch legend-swatch--error" />
-        <span>Error hit</span>
-      </div>
-      <div class="chart-labels">
-        <span>{{ buckets[0]?.label }}</span>
-        <span>{{ buckets[6]?.label }}</span>
-        <span>{{ buckets[12]?.label }}</span>
-        <span>{{ buckets[18]?.label }}</span>
-        <span>{{ buckets[23]?.label }}</span>
+        <span>With errors</span>
       </div>
     </div>
   </section>
@@ -121,8 +140,10 @@ function errorHeight(bucket: Bucket) {
 
 <style scoped>
 .chart-card {
+  --chart-bar: var(--success);
+  --chart-error: var(--destructive);
   display: grid;
-  gap: 1.2rem;
+  gap: 1rem;
   padding: 1.5rem;
   background: var(--nook-surface);
   border-radius: var(--radius-xl);
@@ -154,32 +175,64 @@ h3 {
   font-size: 0.84rem;
 }
 
+.chart-plot {
+  position: relative;
+  min-height: 11rem;
+  padding-top: 0.9rem;
+}
+
+.chart-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed color-mix(in oklab, var(--nook-border) 70%, transparent);
+  pointer-events: none;
+}
+
+.chart-gridline--max {
+  top: 0.9rem;
+}
+
+.chart-gridline--half {
+  top: calc(0.9rem + (100% - 0.9rem) / 2);
+}
+
+.chart-gridline-label {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  font-size: 0.68rem;
+  color: var(--nook-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .chart-bars {
   display: grid;
   grid-template-columns: repeat(24, minmax(0, 1fr));
-  gap: 0.45rem;
+  gap: 0.4rem;
   align-items: end;
-  min-height: 11rem;
+  height: 100%;
+  min-height: calc(11rem - 0.9rem);
+  border-bottom: 1px solid var(--nook-border);
 }
 
-.chart-column,
-.chart-bar-track {
+.chart-column {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   height: 100%;
 }
 
-.chart-bar-track {
-  border-radius: 999px;
-  background: oklch(0 0 0 / 4%);
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
+.chart-column:hover .chart-bar {
+  filter: brightness(1.08);
 }
 
 .chart-bar {
   width: 100%;
-  min-height: 0.25rem;
-  border-radius: 999px;
-  background: #1cdb81;
+  min-height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-bar);
   position: relative;
   overflow: hidden;
 }
@@ -187,12 +240,62 @@ h3 {
 .chart-bar-error {
   position: absolute;
   inset: auto 0 0;
-  background: rgb(255 131 131 / 0.92);
+  min-height: 2px;
+  background: var(--chart-error);
+}
+
+.chart-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--card);
+  border: 1px solid var(--nook-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.08);
+  font-size: 0.74rem;
+  white-space: nowrap;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.chart-column:hover .chart-tip {
+  display: flex;
+}
+
+.chart-column:nth-child(-n+3) .chart-tip {
+  left: 0;
+  transform: none;
+}
+
+.chart-column:nth-last-child(-n+3) .chart-tip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.chart-tip-time {
+  color: var(--nook-muted);
+}
+
+.chart-tip-error {
+  color: var(--chart-error);
+}
+
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--nook-muted);
+  font-size: 0.76rem;
 }
 
 .chart-footer {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
+  display: flex;
   gap: 1rem;
   align-items: center;
 }
@@ -206,31 +309,22 @@ h3 {
 }
 
 .legend-swatch {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 999px;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
   flex: none;
 }
 
 .legend-swatch--activity {
-  background: #1cdb81;
+  background: var(--chart-bar);
 }
 
 .legend-swatch--error {
-  background: rgb(255 131 131);
-}
-
-.chart-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  color: var(--nook-muted);
-  font-size: 0.76rem;
+  background: var(--chart-error);
 }
 
 @media (max-width: 720px) {
-  .chart-header,
-  .chart-footer {
+  .chart-header {
     display: grid;
     grid-template-columns: 1fr;
   }
@@ -240,7 +334,11 @@ h3 {
   }
 
   .chart-bars {
-    gap: 0.3rem;
+    gap: 0.25rem;
+    min-height: 8rem;
+  }
+
+  .chart-plot {
     min-height: 9rem;
   }
 }
