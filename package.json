@@ -6,6 +6,6 @@
     "client:dev": "cd apps/client && bun run dev",
     "client:build": "cd apps/client && bun run build",
     "test": "bun test apps/api/src/*.test.ts",
-    "typecheck": "cd apps/api && tsc --noEmit"
+    "typecheck": "cd apps/api && bun run typecheck"
   }
 }
