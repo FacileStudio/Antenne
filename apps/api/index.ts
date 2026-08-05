@@ -5,7 +5,7 @@ import { createRssManager } from "./src/rss";
 import { DeliveryError, getDeliveryRouteSummary, hasAnyDelivery, sendAlert, sendAlertToTarget } from "./src/delivery";
 import { isMatrixDeliveryTarget } from "./src/delivery-config";
 import { buildNookEventEnvelope } from "./src/event-envelope";
-import { createAppServer, createDashboardSessionConfig } from "./src/server";
+import { createAppServer, createDashboardSessionConfig, describeError } from "./src/server";
 import { initEventLog, pushEvent, updateEventDeliveries, getEventById, type DeliveryAttempt } from "./src/event-log";
 import { initSpaces } from "./src/spaces";
 import { isImapProviderSettings, isRssProviderSettings, isWebhookProviderSettings, isWebsiteProviderSettings } from "./src/webhooks/types";
@@ -20,6 +20,16 @@ import { SYSTEM_PROVIDER_ID, type AppSettings } from "./src/types";
 import type { AlertContext, DeliveryMessage } from "./src/types";
 import { createHash } from "node:crypto";
 import { PoolServer } from "./src/pool/server";
+
+process.on("unhandledRejection", (reason) => {
+  console.error(`[process] unhandled promise rejection: ${describeError(reason)}`);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error(`[process] uncaught exception: ${describeError(error)}`);
+  console.error("[process] exiting so the supervisor can restart a known-good instance");
+  process.exit(1);
+});
 
 const recentEventHashes = new Map<string, number>();
 const DEDUP_WINDOW_MS = 30_000;
@@ -457,6 +467,13 @@ Bun.serve({
     open: poolServer.handleOpen,
     message: poolServer.handleMessage,
     close: poolServer.handleClose,
+  },
+  error(error) {
+    console.error(`[server] request failed outside the handler: ${describeError(error)}`);
+    return new Response(JSON.stringify({ error: "internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   },
 });
 

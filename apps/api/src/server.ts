@@ -82,7 +82,7 @@ function renderLoginResponse(options: AppServerOptions, errorMessage?: string) {
 
 export { createDashboardSessionConfig } from "./server-auth";
 
-export function createAppServer(options: AppServerOptions & { poolServer?: PoolServer }) {
+function createRequestHandler(options: AppServerOptions & { poolServer?: PoolServer }) {
   return async (req: Request, server: unknown): Promise<Response> => {
     const url = new URL(req.url);
     const dashboardBuilt = options.getRuntimeStatus().dashboardBuilt;
@@ -214,5 +214,31 @@ export function createAppServer(options: AppServerOptions & { poolServer?: PoolS
     }
 
     return new Response("not found", { status: 404 });
+  };
+}
+
+export function describeError(error: unknown) {
+  if (error instanceof Error) return error.stack ?? `${error.name}: ${error.message}`;
+  return String(error);
+}
+
+function describeRequest(req: Request) {
+  try {
+    return `${req.method} ${new URL(req.url).pathname}`;
+  } catch {
+    return `${req.method} ${req.url}`;
+  }
+}
+
+export function createAppServer(options: AppServerOptions & { poolServer?: PoolServer }) {
+  const handleRequest = createRequestHandler(options);
+
+  return async (req: Request, server: unknown): Promise<Response> => {
+    try {
+      return await handleRequest(req, server);
+    } catch (error) {
+      console.error(`[server] unhandled error ${describeRequest(req)}: ${describeError(error)}`);
+      return createJsonResponse({ error: "internal server error" }, { status: 500 });
+    }
   };
 }
