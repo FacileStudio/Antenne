@@ -1,70 +1,50 @@
 # Nook
 
-Nook is a Bun service that watches modular providers, forwards alerts to Matrix, Discord, HTTP webhooks, SMTP, ntfy, and Perception, and ships with a Nuxt dashboard for configuring everything.
+Alert aggregation and the suite's event bus — Nook watches providers, routes what they emit to
+delivery targets, and hosts the Nook Pool that other Facile apps sync through.
 
-The Docker image is runtime-only and serves a prebuilt dashboard from `dashboard/.output/public`, so container builds do not need to install npm packages.
+It is a Bun service with no HTTP framework: one `Bun.serve` handler, a hand-written router, and a
+prebuilt Nuxt dashboard served as static files. Provider and delivery target configuration lives
+entirely in `/data/nook.json`, edited through that dashboard — environment variables cover only
+core server settings and dashboard auth.
 
-## What It Does
+Live at [nook.facile.studio](https://nook.facile.studio).
 
-- monitors websites on intervals
-- polls IMAP inboxes for newly received emails
-- receives Uptime Kuma, DocuSeal, and Dokploy webhooks
-- delivers alerts to Matrix, Discord webhooks, HTTP webhooks, SMTP, ntfy, and Perception
-- can send signed structured event envelopes for downstream memory/reasoning systems
-- serves a dashboard at `/dashboard`
+## What it does
 
-## Config Model
+- Monitors websites on an interval and reports up and down transitions
+- Polls IMAP inboxes and RSS feeds for new items
+- Receives webhooks from Uptime Kuma, DocuSeal, Dokploy, Git forges and Vikunja, and from the
+  suite apps Ardoise, Sablier, Perception, Opus, Vision, Plume and Nuage
+- Delivers alerts to Matrix, Discord, HTTP webhooks, SMTP, ntfy and Perception, routed per target
+  by provider id or provider tag
+- Signs structured event envelopes with HMAC-SHA256 for HTTP and Perception targets
+- Retries failed deliveries three times with backoff, and keeps a replayable event log
+- Hosts the Nook Pool: a WebSocket bus with a persistent offset-based queue that other suite apps
+  register with and sync through
+- Serves a dashboard at `/dashboard` covering every provider, target, space and event
 
-All provider and delivery target configuration is managed through the dashboard and persisted in `/data/nook.json`. Environment variables are only used for core server settings and dashboard auth.
+## Stack
 
-## Environment Variables
+| Layer | Tech |
+|---|---|
+| API | Bun 1, `Bun.serve` with a hand-written router, no framework |
+| Client | Nuxt 4 with SSR off, statically generated, Vue 3, Tailwind CSS 4, Vue Flow |
+| Storage | `nook.json` plus sibling JSON files for events and spaces, SQLite (`bun:sqlite`) for the pool queue |
+| Deploy | Docker Compose, single container, prebuilt dashboard baked into the image |
 
-### Core
+## Quick start
 
-| Variable | Required | Description |
-|---|---|---|
-| `PORT` | No | HTTP port for API, dashboard, health, and webhooks. Default: `9090`. |
-| `NOOK_SETTINGS_PATH` | No | JSON settings file path. Default: `/data/nook.json` |
-| `TIMEOUT` | No | Default timeout in seconds |
-
-### Dashboard Auth
-
-| Variable | Required | Description |
-|---|---|---|
-| `NOOK_ADMIN_PASSWORD` | No | If set, dashboard API requires login |
-| `NOOK_ADMIN_USERNAME` | No | Login label only. Default: `admin` |
-
-## Event Envelopes
-
-HTTP webhook targets and the dedicated Perception target both send the structured event envelope.
-
-Envelope deliveries use fixed signing headers:
-
-- `x-nook-event-id`
-- `x-nook-timestamp`
-- `x-nook-schema-version`
-- `x-nook-signature-256`
-
-The signature is HMAC-SHA256 over:
-
-```text
-<timestamp>.<event_id>.<raw_body>
+```sh
+docker compose up -d
 ```
 
-The event envelope uses `schemaVersion: 1` but the TypeScript type is named `NookEventEnvelope` so callers do not carry version suffix noise around the codebase.
+The service listens on `PORT` (default `9090`) and serves the API, dashboard, health check and
+webhook receivers from that single port. Open `http://localhost:9090/dashboard` to configure
+providers and delivery targets. The compose file uses `expose` rather than `ports`, so publish the
+port or put Traefik in front of it.
 
-## Routes
-
-- `GET /health`
-- `GET /dashboard`
-- `GET /api/settings`
-- `PUT /api/settings`
-- `POST /api/test-alert`
-- `POST /api/login`
-- `POST /api/logout`
-- `POST <provider webhook path>`
-
-## Local Development
+### Local development
 
 ```sh
 bun install
@@ -72,41 +52,45 @@ bun run client:build
 bun run dev
 ```
 
-For dashboard-only work:
+For dashboard-only work, `bun run client:dev` runs Nuxt in dev mode. The static bundle has to be
+rebuilt with `bun run client:build` before any dashboard change can ship — the runtime image does
+not build it.
 
-```sh
-bun run client:dev
+## Configuration
+
+| Variable | What it does |
+|---|---|
+| `PORT` | HTTP port for the API, dashboard, health check and webhooks. Default `9090` |
+| `NOOK_SETTINGS_PATH` | Path to the settings file. Default `/data/nook.json` |
+| `NOOK_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Unset leaves both open |
+| `NOOK_SESSION_SECRET` | Signing key for the dashboard session cookie; random per boot when unset |
+| `POOL_SECRET` | Shared secret apps present when registering with the pool |
+
+Everything else — providers, delivery targets, credentials, routing — lives in the settings file
+and is edited through the dashboard.
+
+Full reference: [docs/configuration.md](docs/configuration.md).
+
+## Structure
+
+```
+apps/
+  api/       Bun service — src/ holds the router, providers, delivery, pool and settings
+  client/    Nuxt dashboard, generated into apps/api/dashboard/.output/public
+docs/        Architecture, configuration, development, deployment, API
 ```
 
-Before committing dashboard changes meant for deployment, rebuild the static bundle:
+## Documentation
 
-```sh
-bun run client:build
-```
+| Doc | What's in it |
+|---|---|
+| [Architecture](docs/architecture.md) | Runtime topology, the alert pipeline, the pool protocol, the settings model |
+| [Configuration](docs/configuration.md) | Every environment variable, and the `nook.json` model |
+| [Development](docs/development.md) | Local setup, the dashboard build step, tests |
+| [Deployment](docs/deployment.md) | Docker, the variable port trap, volumes, Traefik routing |
+| [API](docs/api.md) | HTTP endpoints, webhook receivers, the pool WebSocket protocol |
 
-## Docker
+---
 
-```sh
-docker build -t nook .
-docker run -d \
-  -p 9090:9090 \
-  -e PORT=9090 \
-  -e NOOK_ADMIN_PASSWORD=change-me \
-  -v ./data:/data \
-  nook
-```
-
-Then open `http://localhost:9090/dashboard` to configure providers and delivery targets.
-
-Because the image copies the prebuilt dashboard bundle, rebuild `dashboard/.output/public` locally before shipping dashboard UI changes.
-
-## Webhook Setup
-
-Configure webhook providers via the dashboard. The default webhook paths are:
-
-- Uptime Kuma: `/webhook/uptime-kuma`
-- DocuSeal: `/webhook/docuseal`
-- Dokploy: `/webhook/dokploy`
-
-DocuSeal guide: [DOCUSEAL.md](DOCUSEAL.md)
-Uptime Kuma guide: [UPTIME-KUMA.md](UPTIME-KUMA.md)
+Part of the [Facile Suite](https://facile.studio) — self-hosted tools for creative studios
+and freelancers. One login, zero cloud dependency.
