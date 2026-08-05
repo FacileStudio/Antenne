@@ -11,7 +11,7 @@ import {
 import { handleDashboardApiRequest, type AppServerOptions } from "./server-api";
 import { isDashboardAssetPath, serveDashboardAsset } from "./server-dashboard";
 import { renderLoginPage } from "./server-login-page";
-import { createJsonResponse } from "./server-responses";
+import { createErrorResponse, createJsonResponse } from "./server-responses";
 import { handleWebhookRequest } from "./webhooks";
 import type { PoolServer } from "./pool/server";
 import { getPoolOpenAPISpec, SCALAR_HTML } from "./pool/openapi";
@@ -24,7 +24,7 @@ function getClientIp(req: Request) {
 }
 
 function unauthorizedResponse() {
-  return createJsonResponse({ error: "unauthorized" }, { status: 401 });
+  return createErrorResponse("unauthenticated", "unauthorized");
 }
 
 function redirectTo(path: string, req: Request, init?: ResponseInit) {
@@ -107,7 +107,7 @@ function createRequestHandler(options: AppServerOptions & { poolServer?: PoolSer
     }
 
     if (url.pathname === "/health") {
-      return new Response("ok", { status: 200 });
+      return createJsonResponse({ status: "ok" });
     }
 
     if (url.pathname === "/api/docs" && req.method === "GET") {
@@ -143,20 +143,20 @@ function createRequestHandler(options: AppServerOptions & { poolServer?: PoolSer
 
       if (isLoginRateLimited(req)) {
         console.warn(`[auth] api login rate-limited ip=${getClientIp(req)}`);
-        return createJsonResponse({ error: "too many attempts" }, { status: 429 });
+        return createErrorResponse("rate_limited", "too many attempts");
       }
 
       let body: { password?: string };
       try {
         body = await req.json() as { password?: string };
       } catch {
-        return createJsonResponse({ error: "Invalid JSON body." }, { status: 400 });
+        return createErrorResponse("invalid_argument", "Invalid JSON body.");
       }
 
       if (!isValidSessionPassword(body.password, options.session)) {
         recordLoginFailure(req);
         console.warn(`[auth] api login failed ip=${getClientIp(req)}`);
-        return createJsonResponse({ error: "invalid password" }, { status: 401 });
+        return createErrorResponse("unauthenticated", "invalid password");
       }
 
       clearLoginFailures(req);
@@ -213,7 +213,7 @@ function createRequestHandler(options: AppServerOptions & { poolServer?: PoolSer
       return handleWebhookRequest(req, options.getSettings(), (message, context) => options.sendConfiguredAlert(message, context));
     }
 
-    return new Response("not found", { status: 404 });
+    return createErrorResponse("not_found", "not found");
   };
 }
 
@@ -238,7 +238,7 @@ export function createAppServer(options: AppServerOptions & { poolServer?: PoolS
       return await handleRequest(req, server);
     } catch (error) {
       console.error(`[server] unhandled error ${describeRequest(req)}: ${describeError(error)}`);
-      return createJsonResponse({ error: "internal server error" }, { status: 500 });
+      return createErrorResponse("internal", "internal server error");
     }
   };
 }

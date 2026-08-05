@@ -1,6 +1,6 @@
 import { hasConfiguredMatrixDelivery } from "./delivery";
 import { getEvents, getGlobalStats, getProviderStats, getTargetStats, onEventPushed, getEventById, type DeliveryAttempt } from "./event-log";
-import { createJsonResponse } from "./server-responses";
+import { createErrorResponse, createJsonResponse } from "./server-responses";
 import { handleSpacesApiRequest } from "./server-api-spaces";
 import type { AlertContext, AppSettings, DashboardSessionConfig, DeliveryTarget, RuntimeStatus } from "./types";
 import type { ProviderSettings } from "./webhooks/types";
@@ -165,7 +165,7 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
         matrixConfigured: hasConfiguredMatrixDelivery(settings.delivery),
       });
     } catch (error) {
-      return createJsonResponse({ error: error instanceof Error ? error.message : "failed to save" }, { status: 400 });
+      return createErrorResponse("invalid_argument", error instanceof Error ? error.message : "failed to save");
     }
   }
 
@@ -177,7 +177,7 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
       await options.sendConfiguredAlert(`🧪 <b>Nook test alert</b><br/>Dashboard config for <b>${escapeHtml(label)}</b> is live.`);
       return createJsonResponse({ ok: true });
     } catch (error) {
-      return createJsonResponse({ error: error instanceof Error ? error.message : "failed to send alert" }, { status: 400 });
+      return createErrorResponse("invalid_argument", error instanceof Error ? error.message : "failed to send alert");
     }
   }
 
@@ -185,13 +185,13 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
     try {
       const body = await parseJson(req) as { targetId?: string };
       if (!body.targetId) {
-        return createJsonResponse({ error: "targetId is required" }, { status: 400 });
+        return createErrorResponse("invalid_argument", "targetId is required");
       }
 
       await options.sendTestAlertToTarget(body.targetId);
       return createJsonResponse({ ok: true });
     } catch (error) {
-      return createJsonResponse({ error: error instanceof Error ? error.message : "failed to test target" }, { status: 400 });
+      return createErrorResponse("invalid_argument", error instanceof Error ? error.message : "failed to test target");
     }
   }
 
@@ -199,13 +199,13 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
     try {
       const body = await parseJson(req) as { providerId?: string };
       if (!body.providerId) {
-        return createJsonResponse({ error: "providerId is required" }, { status: 400 });
+        return createErrorResponse("invalid_argument", "providerId is required");
       }
 
       await options.testProviderConnection(body.providerId);
       return createJsonResponse({ ok: true });
     } catch (error) {
-      return createJsonResponse({ error: error instanceof Error ? error.message : "failed to test provider" }, { status: 400 });
+      return createErrorResponse("invalid_argument", error instanceof Error ? error.message : "failed to test provider");
     }
   }
 
@@ -263,18 +263,18 @@ export async function handleDashboardApiRequest(req: Request, url: URL, options:
     const eventId = replayMatch[1]!;
     const body = await parseJson(req) as { targetId?: string };
     if (!body.targetId) {
-      return createJsonResponse({ error: "targetId is required" }, { status: 400 });
+      return createErrorResponse("invalid_argument", "targetId is required");
     }
     try {
       await options.replayEventToTarget(eventId, body.targetId);
       return createJsonResponse({ ok: true });
     } catch (error) {
-      return createJsonResponse({ error: error instanceof Error ? error.message : "replay failed" }, { status: 400 });
+      return createErrorResponse("invalid_argument", error instanceof Error ? error.message : "replay failed");
     }
   }
 
   const spacesResponse = await handleSpacesApiRequest(req, url);
   if (spacesResponse) return spacesResponse;
 
-  return createJsonResponse({ error: "not found" }, { status: 404 });
+  return createErrorResponse("not_found", "not found");
 }

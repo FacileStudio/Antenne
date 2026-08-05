@@ -1,4 +1,4 @@
-import { createJsonResponse } from "./server-responses";
+import { createErrorResponse, createJsonResponse } from "./server-responses";
 import {
   listSpaces,
   getSpace,
@@ -30,7 +30,7 @@ export async function handleSpacesApiRequest(req: Request, url: URL): Promise<Re
   if (url.pathname === "/api/spaces" && req.method === "POST") {
     const body = await parseJson(req) as { name?: string; description?: string; ownerUserId?: string };
     if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
-      return createJsonResponse({ error: "name is required" }, { status: 400 });
+      return createErrorResponse("invalid_argument", "name is required");
     }
     const space = createSpace(
       body.name.trim(),
@@ -47,7 +47,7 @@ export async function handleSpacesApiRequest(req: Request, url: URL): Promise<Re
 
     if (req.method === "GET") {
       const space = getSpace(spaceId);
-      if (!space) return createJsonResponse({ error: "space not found" }, { status: 404 });
+      if (!space) return createErrorResponse("not_found", "space not found");
       const members = getSpaceMembers(spaceId);
       return createJsonResponse({ space, members });
     }
@@ -58,14 +58,14 @@ export async function handleSpacesApiRequest(req: Request, url: URL): Promise<Re
         name: typeof body.name === "string" ? body.name.trim() : undefined,
         description: typeof body.description === "string" ? body.description.trim() : undefined,
       });
-      if (!space) return createJsonResponse({ error: "space not found" }, { status: 404 });
+      if (!space) return createErrorResponse("not_found", "space not found");
       console.log(`[spaces] updated space "${space.name}" (${space.id})`);
       return createJsonResponse({ space });
     }
 
     if (req.method === "DELETE") {
       const deleted = deleteSpace(spaceId);
-      if (!deleted) return createJsonResponse({ error: "space not found" }, { status: 404 });
+      if (!deleted) return createErrorResponse("not_found", "space not found");
       console.log(`[spaces] deleted space ${spaceId}`);
       return createJsonResponse({ ok: true });
     }
@@ -76,20 +76,20 @@ export async function handleSpacesApiRequest(req: Request, url: URL): Promise<Re
     const spaceId = membersMatch[1]!;
 
     if (req.method === "GET") {
-      if (!getSpace(spaceId)) return createJsonResponse({ error: "space not found" }, { status: 404 });
+      if (!getSpace(spaceId)) return createErrorResponse("not_found", "space not found");
       return createJsonResponse({ members: getSpaceMembers(spaceId) });
     }
 
     if (req.method === "POST") {
       const body = await parseJson(req) as { userId?: string; role?: string };
       if (!body.userId || typeof body.userId !== "string") {
-        return createJsonResponse({ error: "userId is required" }, { status: 400 });
+        return createErrorResponse("invalid_argument", "userId is required");
       }
       const role = (typeof body.role === "string" && VALID_ROLES.includes(body.role as SpaceRole))
         ? body.role as SpaceRole
         : "member";
       const member = addSpaceMember(spaceId, body.userId, role);
-      if (!member) return createJsonResponse({ error: "space not found" }, { status: 404 });
+      if (!member) return createErrorResponse("not_found", "space not found");
       console.log(`[spaces] added member "${body.userId}" to space ${spaceId} as ${role}`);
       return createJsonResponse({ member }, { status: 201 });
     }
@@ -103,17 +103,17 @@ export async function handleSpacesApiRequest(req: Request, url: URL): Promise<Re
     if (req.method === "PUT") {
       const body = await parseJson(req) as { role?: string };
       if (!body.role || !VALID_ROLES.includes(body.role as SpaceRole)) {
-        return createJsonResponse({ error: "valid role is required (owner, admin, member)" }, { status: 400 });
+        return createErrorResponse("invalid_argument", "valid role is required (owner, admin, member)");
       }
       const member = updateMemberRole(spaceId, userId, body.role as SpaceRole);
-      if (!member) return createJsonResponse({ error: "member not found" }, { status: 404 });
+      if (!member) return createErrorResponse("not_found", "member not found");
       console.log(`[spaces] updated role for "${userId}" in space ${spaceId} to ${body.role}`);
       return createJsonResponse({ member });
     }
 
     if (req.method === "DELETE") {
       const removed = removeSpaceMember(spaceId, userId);
-      if (!removed) return createJsonResponse({ error: "member not found" }, { status: 404 });
+      if (!removed) return createErrorResponse("not_found", "member not found");
       console.log(`[spaces] removed member "${userId}" from space ${spaceId}`);
       return createJsonResponse({ ok: true });
     }

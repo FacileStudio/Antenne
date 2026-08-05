@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { createErrorResponse } from "../server-responses";
 import type { AppSettings } from "../types";
 import type { DeliveryAttempt } from "../event-log";
 import type { AlertContext } from "../types";
@@ -97,7 +98,7 @@ export async function handleWebhookRequest(
   sendAlert: (message: string, context: WebhookAlertContext) => Promise<DeliveryAttempt[]>,
 ): Promise<Response> {
   if (req.method !== "POST") {
-    return new Response("not found", { status: 404 });
+    return createErrorResponse("not_found", "not found");
   }
 
   const providersByPath = new Map(
@@ -107,20 +108,20 @@ export async function handleWebhookRequest(
   const provider = providersByPath.get(url.pathname);
 
   if (!provider) {
-    return new Response("not found", { status: 404 });
+    return createErrorResponse("not_found", "not found");
   }
 
   const rawBody = await req.text();
 
   if (!(await authenticate(provider, req, rawBody))) {
-    return new Response(`${provider.definition.label} unauthorized`, { status: 401 });
+    return createErrorResponse("unauthenticated", `${provider.definition.label} unauthorized`);
   }
 
   let payload: unknown;
   try {
     payload = JSON.parse(rawBody);
   } catch {
-    return new Response("bad request", { status: 400 });
+    return createErrorResponse("invalid_argument", "bad request");
   }
 
   const eventDescription = provider.definition.describeEvent(payload);

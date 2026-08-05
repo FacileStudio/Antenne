@@ -59,7 +59,7 @@ describe("createAppServer error boundary", () => {
     const response = await handler(new Request("http://localhost/webhook/git", { method: "POST" }), null);
 
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: "internal server error" });
+    expect(await response.json()).toEqual({ error: { code: "internal", message: "internal server error" } });
     expect(logged.some((line) => line.includes("[server] unhandled error POST /webhook/git") && line.includes("runtime status exploded"))).toBe(true);
   });
 
@@ -75,7 +75,7 @@ describe("createAppServer error boundary", () => {
     const response = await handler(new Request("http://localhost/api/pool/register", { method: "POST" }), null);
 
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: "internal server error" });
+    expect(await response.json()).toEqual({ error: { code: "internal", message: "internal server error" } });
     expect(logged.some((line) => line.includes("[server] unhandled error POST /api/pool/register") && line.includes("pool register exploded"))).toBe(true);
   });
 
@@ -85,6 +85,29 @@ describe("createAppServer error boundary", () => {
     const response = await handler(new Request("http://localhost/health"), null);
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toBe("ok");
+    expect(response.headers.get("content-type")).toBe("application/json");
+    expect(await response.json()).toEqual({ status: "ok" });
+  });
+});
+
+describe("error envelope", () => {
+  test("every error response carries {error:{code,message}}", async () => {
+    const handler = createAppServer(createOptions({
+      session: { enabled: true, username: "admin", password: "secret", cookieName: "nook_session" },
+    }));
+
+    const cases = [
+      { request: new Request("http://localhost/api/settings"), status: 401, code: "unauthenticated" },
+      { request: new Request("http://localhost/nope"), status: 404, code: "not_found" },
+      { request: new Request("http://localhost/api/login", { method: "POST" }), status: 400, code: "invalid_argument" },
+    ];
+
+    for (const { request, status, code } of cases) {
+      const response = await handler(request, null);
+      expect(response.status).toBe(status);
+      const body = await response.json() as { error?: { code?: string; message?: string } };
+      expect(body.error?.code).toBe(code);
+      expect(typeof body.error?.message).toBe("string");
+    }
   });
 });
