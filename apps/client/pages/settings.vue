@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { Icon } from "@iconify/vue";
 
 import SectionCard from "../components/SectionCard.vue";
+import ToggleSwitch from "../components/ToggleSwitch.vue";
 import { useDashboardState } from "../composables/useDashboardState";
 
 const { runtime, settings, saving, exportConfig, importConfig, notifyError } = useDashboardState();
@@ -169,10 +170,9 @@ const tabs = [
       </SectionCard>
 
       <SectionCard eyebrow="Pool" title="Activity Log">
-        <label class="toggle event-toggle">
-          <input v-model="poolLogActivity" type="checkbox">
-          <span>Log pool events to activity feed</span>
-        </label>
+        <div class="event-toggle">
+          <ToggleSwitch v-model="poolLogActivity" label="Log pool events to activity feed" />
+        </div>
         <p class="field-hint">When enabled, pool connection and sync events appear in the activity log.</p>
       </SectionCard>
 
@@ -207,35 +207,29 @@ const tabs = [
     <div v-else-if="activeTab === 'events'">
       <SectionCard eyebrow="Settings" title="System Events">
         <div class="event-settings">
-          <label class="toggle event-toggle">
-            <input v-model="settings.system.events.startup" type="checkbox">
-            <span>Send startup events</span>
-          </label>
+          <div class="event-toggle">
+            <ToggleSwitch v-model="settings.system.events.startup" label="Send startup events" />
+          </div>
 
-          <label class="toggle event-toggle">
-            <input v-model="settings.system.events.providerEnabled" type="checkbox">
-            <span>Send events when a provider gets enabled</span>
-          </label>
+          <div class="event-toggle">
+            <ToggleSwitch v-model="settings.system.events.providerEnabled" label="Send events when a provider gets enabled" />
+          </div>
 
-          <label class="toggle event-toggle">
-            <input v-model="settings.system.events.providerDisabled" type="checkbox">
-            <span>Send events when a provider gets disabled</span>
-          </label>
+          <div class="event-toggle">
+            <ToggleSwitch v-model="settings.system.events.providerDisabled" label="Send events when a provider gets disabled" />
+          </div>
 
-          <label class="toggle event-toggle">
-            <input v-model="settings.system.events.providerAdded" type="checkbox">
-            <span>Send events when a provider is added</span>
-          </label>
+          <div class="event-toggle">
+            <ToggleSwitch v-model="settings.system.events.providerAdded" label="Send events when a provider is added" />
+          </div>
 
-          <label class="toggle event-toggle">
-            <input v-model="settings.system.events.providerRemoved" type="checkbox">
-            <span>Send events when a provider is removed</span>
-          </label>
+          <div class="event-toggle">
+            <ToggleSwitch v-model="settings.system.events.providerRemoved" label="Send events when a provider is removed" />
+          </div>
 
-          <label class="toggle event-toggle">
-            <input v-model="settings.system.events.deliveryFailure" type="checkbox">
-            <span>Send events when a delivery target fails</span>
-          </label>
+          <div class="event-toggle">
+            <ToggleSwitch v-model="settings.system.events.deliveryFailure" label="Send events when a delivery target fails" />
+          </div>
         </div>
         <p class="field-hint">
           Targets can opt into these Nook system events from their provider filter inside Delivery.
@@ -330,10 +324,21 @@ const tabs = [
 }
 
 .event-toggle {
+  display: flex;
   padding: 0.75rem 1rem;
   border: 1px solid var(--nook-border);
   border-radius: var(--radius-xl);
   background: oklch(0 0 0 / 2.5%);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.event-toggle:hover {
+  border-color: color-mix(in oklab, var(--nook-border) 60%, var(--foreground));
+  background: oklch(0 0 0 / 4%);
+}
+
+.event-toggle :deep(.toggle-switch) {
+  width: 100%;
 }
 
 .field-hint {

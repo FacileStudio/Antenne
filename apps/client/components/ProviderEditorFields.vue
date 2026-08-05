@@ -2,6 +2,7 @@
 import { Icon } from "@iconify/vue";
 
 import TagPillInput from "./TagPillInput.vue";
+import ToggleSwitch from "./ToggleSwitch.vue";
 import type { ProviderSettings } from "../types";
 
 const props = defineProps<{
@@ -18,10 +19,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <label class="toggle">
-    <input :checked="editingProvider.enabled" type="checkbox" @change="emit('patch', { enabled: ($event.target as HTMLInputElement).checked })">
-    <span>Enabled</span>
-  </label>
+  <ToggleSwitch :model-value="editingProvider.enabled" label="Enabled" @update:model-value="emit('patch', { enabled: $event })" />
 
   <label class="field">
     <span>Name</span>
@@ -62,10 +60,7 @@ const emit = defineEmits<{
       <input :value="editingProvider.pollInterval" type="number" min="10" step="1" @input="emit('patch', { pollInterval: Number(($event.target as HTMLInputElement).value) || 300 })">
     </label>
 
-    <label class="toggle">
-      <input :checked="editingProvider.includeContent" type="checkbox" @change="emit('patch', { includeContent: ($event.target as HTMLInputElement).checked })">
-      <span>Include full content</span>
-    </label>
+    <ToggleSwitch :model-value="editingProvider.includeContent" label="Include full content" @update:model-value="emit('patch', { includeContent: $event })" />
   </template>
 
   <template v-else-if="editingProvider.type === 'imap'">
@@ -79,10 +74,7 @@ const emit = defineEmits<{
       <input :value="editingProvider.port" type="number" min="1" step="1" @input="emit('patch', { port: Number(($event.target as HTMLInputElement).value) || 993 })">
     </label>
 
-    <label class="toggle">
-      <input :checked="editingProvider.secure" type="checkbox" @change="emit('patch', { secure: ($event.target as HTMLInputElement).checked })">
-      <span>TLS</span>
-    </label>
+    <ToggleSwitch :model-value="editingProvider.secure" label="TLS" @update:model-value="emit('patch', { secure: $event })" />
 
     <label class="field required">
       <span>Username</span>
@@ -109,10 +101,7 @@ const emit = defineEmits<{
       <input :value="editingProvider.pollInterval" type="number" min="1" step="1" @input="emit('patch', { pollInterval: Number(($event.target as HTMLInputElement).value) || 60 })">
     </label>
 
-    <label class="toggle">
-      <input :checked="editingProvider.includeEmailBody" type="checkbox" @change="emit('patch', { includeEmailBody: ($event.target as HTMLInputElement).checked })">
-      <span>Include email body</span>
-    </label>
+    <ToggleSwitch :model-value="editingProvider.includeEmailBody" label="Include email body" @update:model-value="emit('patch', { includeEmailBody: $event })" />
   </template>
 
   <template v-else>

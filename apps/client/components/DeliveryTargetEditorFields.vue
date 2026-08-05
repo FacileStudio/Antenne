@@ -5,6 +5,7 @@ import { Icon } from "@iconify/vue";
 import RoomIdEditor from "./RoomIdEditor.vue";
 import SmtpAddressEditor from "./SmtpAddressEditor.vue";
 import TagPillInput from "./TagPillInput.vue";
+import ToggleSwitch from "./ToggleSwitch.vue";
 import { getProviderLabel, SYSTEM_PROVIDER_ID, type DeliveryTarget, type ProviderSettings } from "../types";
 
 const props = defineProps<{
@@ -34,10 +35,7 @@ const providerOptions = computed(() => [
 </script>
 
 <template>
-  <label class="toggle">
-    <input :checked="editingTarget.enabled" type="checkbox" @change="emit('patch', { enabled: ($event.target as HTMLInputElement).checked })">
-    <span>Enabled</span>
-  </label>
+  <ToggleSwitch :model-value="editingTarget.enabled" label="Enabled" @update:model-value="emit('patch', { enabled: $event })" />
 
   <label class="field">
     <span>Name</span>
@@ -167,10 +165,7 @@ const providerOptions = computed(() => [
       <input :value="editingTarget.port" type="number" placeholder="587" @input="emit('patch', { port: Number(($event.target as HTMLInputElement).value) })">
     </label>
 
-    <label class="toggle">
-      <input :checked="editingTarget.secure" type="checkbox" @change="emit('patch', { secure: ($event.target as HTMLInputElement).checked })">
-      <span>Use TLS</span>
-    </label>
+    <ToggleSwitch :model-value="editingTarget.secure" label="Use TLS" @update:model-value="emit('patch', { secure: $event })" />
 
     <label class="field">
       <span>Username</span>
@@ -279,10 +274,7 @@ const providerOptions = computed(() => [
       </div>
     </label>
 
-    <label class="toggle">
-      <input :checked="editingTarget.includeRawPayload" type="checkbox" @change="emit('patch', { includeRawPayload: ($event.target as HTMLInputElement).checked })">
-      <span>Include raw provider payload</span>
-    </label>
+    <ToggleSwitch :model-value="editingTarget.includeRawPayload" label="Include raw provider payload" @update:model-value="emit('patch', { includeRawPayload: $event })" />
   </template>
 
   <template v-else>
@@ -291,10 +283,7 @@ const providerOptions = computed(() => [
       <input :value="editingTarget.url" type="url" placeholder="https://example.com/hooks/nook" @input="emit('patch', { url: ($event.target as HTMLInputElement).value })">
     </label>
 
-    <label class="toggle">
-      <input :checked="editingTarget.includeRawPayload" type="checkbox" @change="emit('patch', { includeRawPayload: ($event.target as HTMLInputElement).checked })">
-      <span>Include raw provider payload</span>
-    </label>
+    <ToggleSwitch :model-value="editingTarget.includeRawPayload" label="Include raw provider payload" @update:model-value="emit('patch', { includeRawPayload: $event })" />
 
     <label class="field">
       <span>Signing secret</span>
