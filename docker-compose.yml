@@ -4,7 +4,6 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-      network: host
     expose:
       - "${PORT:-9090}"
     environment:
