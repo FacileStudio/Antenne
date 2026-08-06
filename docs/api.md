@@ -9,8 +9,9 @@ endpoints, then the authenticated `/api/*` surface, then the dashboard, and fina
 
 Nook also serves its own spec, but it documents the **pool only**:
 
-- `GET /api/openapi` — OpenAPI document for the pool endpoints
-- `GET /api/docs` — Scalar reference for the same
+- `GET /docs` — Scalar reference, the same path as every other Facile backend
+- `GET /docs/openapi.json` — OpenAPI document for the pool endpoints
+- `GET /api/docs` and `GET /api/openapi` — the previous paths, kept as aliases
 
 Both are reachable without a session.
 
@@ -36,7 +37,7 @@ Errors are JSON with a `code` and a message; codes seen in the router are `unaut
 | Method | Path | What it does |
 |---|---|---|
 | GET | `/health` | Returns `{"status":"ok"}` as soon as the server is listening |
-| GET | `/api/openapi` | OpenAPI document for the pool, with the server URL derived from the request |
+| GET | `/docs/openapi.json` | OpenAPI document for the pool, with the server URL derived from the request. Also served at `/api/openapi` |
 | GET | `/api/docs` | Scalar reference page |
 | GET | `/favicon.ico` | Serves the dashboard favicon |
 | GET | `/` | 302 to `/dashboard` |

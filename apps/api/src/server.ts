@@ -110,13 +110,13 @@ function createRequestHandler(options: AppServerOptions & { poolServer?: PoolSer
       return createJsonResponse({ status: "ok" });
     }
 
-    if (url.pathname === "/api/docs" && req.method === "GET") {
+    if ((url.pathname === "/docs" || url.pathname === "/api/docs") && req.method === "GET") {
       return new Response(SCALAR_HTML, {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
 
-    if (url.pathname === "/api/openapi" && req.method === "GET") {
+    if ((url.pathname === "/docs/openapi.json" || url.pathname === "/api/openapi") && req.method === "GET") {
       const spec = getPoolOpenAPISpec(`${url.protocol}//${url.host}`);
       return Response.json(spec);
     }
