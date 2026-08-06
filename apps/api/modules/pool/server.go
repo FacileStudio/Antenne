@@ -20,6 +20,14 @@ const (
 	replayBatch    = 100
 	writeTimeout   = 10 * time.Second
 	readLimitBytes = 4 << 20
+
+	// A pool socket carries nothing at all while the suite is quiet, and every
+	// proxy in front of Nook culls an idle connection — Cloudflare at 100
+	// seconds, Traefik at 180. The interval matches the SSE keep-alive for the
+	// same reason, and the deadline is three of them so a single dropped ping
+	// does not evict a healthy client.
+	pingInterval = 20 * time.Second
+	pongTimeout  = 60 * time.Second
 )
 
 // Activity is a pool lifecycle event, reported to the activity log.
@@ -36,6 +44,7 @@ type connection struct {
 	app      RegisteredApp
 	socket   *websocket.Conn
 	channels map[string]bool
+	closed   chan struct{}
 	mu       sync.Mutex
 }
 
@@ -50,6 +59,35 @@ func (c *connection) send(message any) error {
 	defer c.mu.Unlock()
 	c.socket.SetWriteDeadline(time.Now().Add(writeTimeout))
 	return c.socket.WriteMessage(websocket.TextMessage, encoded)
+}
+
+// keepAlive pings until the read loop closes the connection.
+//
+// The ping is a control frame rather than the protocol's own `{"type":"ping"}`
+// because every WebSocket peer answers a control frame automatically: the Go
+// client's gorilla socket does it while blocked in ReadMessage, and a browser
+// or Bun client does it below the API, with no code on either side. The pong
+// that comes back is what proves the peer is alive and what keeps a proxy from
+// reaping a silent connection.
+//
+// WriteControl is the one gorilla method safe to call concurrently with a
+// writer, so this deliberately does not take the send mutex — waiting on it
+// would let a slow fan-out delay a ping past its deadline.
+func (c *connection) keepAlive(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.closed:
+			return
+		case <-ticker.C:
+			deadline := time.Now().Add(writeTimeout)
+			if err := c.socket.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
+				return
+			}
+		}
+	}
 }
 
 // Server is the pool's WebSocket half.
@@ -219,8 +257,12 @@ func (s *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	socket.SetReadLimit(readLimitBytes)
+	socket.SetReadDeadline(time.Now().Add(pongTimeout))
+	socket.SetPongHandler(func(string) error {
+		return socket.SetReadDeadline(time.Now().Add(pongTimeout))
+	})
 
-	conn := &connection{app: app, socket: socket, channels: map[string]bool{}}
+	conn := &connection{app: app, socket: socket, channels: map[string]bool{}, closed: make(chan struct{})}
 	s.attach(conn)
 
 	if err := conn.send(map[string]string{
@@ -236,6 +278,7 @@ func (s *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s.log.Info("pool app connected", slog.String("app", app.App), slog.String("app_id", app.AppID))
 	s.report(Activity{Type: "pool.connected", App: app.App, Detail: app.App + " joined the pool"})
 
+	go conn.keepAlive(pingInterval)
 	go s.readLoop(conn)
 }
 
@@ -275,6 +318,7 @@ func (s *Server) removeLocked(conn *connection) {
 
 func (s *Server) readLoop(conn *connection) {
 	defer func() {
+		close(conn.closed)
 		s.detach(conn)
 		conn.socket.Close()
 		s.log.Info("pool app disconnected",
@@ -288,27 +332,38 @@ func (s *Server) readLoop(conn *connection) {
 		if err != nil {
 			return
 		}
+		s.handleFrame(conn, raw)
+		// Refreshed after the frame is handled, not before: a subscribe replays
+		// the backlog inline, and every send in it can block for writeTimeout,
+		// so a large replay would otherwise burn the whole budget and the next
+		// read would fail the instant the client was finally caught up.
+		//
+		// Any frame counts, not just a pong — the Go client pings in the
+		// protocol rather than in control frames.
+		conn.socket.SetReadDeadline(time.Now().Add(pongTimeout))
+	}
+}
 
-		var frame struct {
-			Type string `json:"type"`
-		}
-		if json.Unmarshal(raw, &frame) != nil {
-			s.sendError(conn, "PARSE_ERROR", "invalid json")
-			continue
-		}
+func (s *Server) handleFrame(conn *connection, raw []byte) {
+	var frame struct {
+		Type string `json:"type"`
+	}
+	if json.Unmarshal(raw, &frame) != nil {
+		s.sendError(conn, "PARSE_ERROR", "invalid json")
+		return
+	}
 
-		switch frame.Type {
-		case "subscribe":
-			s.handleSubscribe(conn, raw)
-		case "event":
-			s.handleEvent(conn, raw)
-		case "ack":
-			s.handleAck(conn, raw)
-		case "ping":
-			conn.send(map[string]string{"type": "pong"})
-		default:
-			s.sendError(conn, "UNKNOWN_TYPE", "unknown message type: "+frame.Type)
-		}
+	switch frame.Type {
+	case "subscribe":
+		s.handleSubscribe(conn, raw)
+	case "event":
+		s.handleEvent(conn, raw)
+	case "ack":
+		s.handleAck(conn, raw)
+	case "ping":
+		conn.send(map[string]string{"type": "pong"})
+	default:
+		s.sendError(conn, "UNKNOWN_TYPE", "unknown message type: "+frame.Type)
 	}
 }
 
