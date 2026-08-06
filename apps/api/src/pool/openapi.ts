@@ -621,7 +621,7 @@ export const SCALAR_HTML = `<!doctype html>
   <meta charset="utf-8" />
 </head>
 <body>
-  <script id="api-reference" data-url="/api/openapi"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  <script id="api-reference" data-url="/docs/openapi.json"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.64.0"></script>
 </body>
 </html>`;
