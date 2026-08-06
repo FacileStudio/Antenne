@@ -14,8 +14,8 @@ Building the image, the port that must not drift, and putting Nook behind Traefi
 against the working directory, and the dashboard would silently not be served — the API
 answers, the healthcheck stays green, and only a browser sees the failure.
 
-The image is **not** the `:nonroot` distroless variant: `/data` is a named volume, which Docker
-creates owned by root, and a non-root process could not read the legacy settings import.
+It runs as `:nonroot`. The binary writes nothing to disk — every byte of state lives in
+Postgres — so there is no volume whose ownership could fight the process.
 
 ## Compose
 
@@ -54,17 +54,15 @@ the Traefik service port.
 
 ## Volumes
 
-| Volume | Holds |
-|---|---|
-| `nook-postgres` | the database — settings, providers, targets, the event log, spaces, the pool queue |
-| `nook-data` | only the legacy `nook.json`, read once during the upgrade |
+One volume, `nook-postgres`, holding everything: settings, providers, targets, the event log,
+spaces and the pool queue. Nothing else is written to disk.
 
-The Postgres volume bakes in `POSTGRES_PASSWORD` at first init. Changing the variable later
-without wiping the volume gives SASL authentication failures against a healthy-looking database
-container.
+It bakes in `POSTGRES_PASSWORD` at first init. Changing the variable later without wiping the
+volume gives SASL authentication failures against a healthy-looking database container.
 
-`nook-data` can be dropped once the import has run and the settings are confirmed in the
-dashboard.
+A rebuild from a pre-Postgres deployment needs the old `nook.json` mounted and
+`NOOK_SETTINGS_PATH` pointing at it for one boot; both can be removed afterwards, which is
+what the current deployment did.
 
 ## Traefik
 
@@ -107,10 +105,11 @@ other end would otherwise answer with a silent 200.
 ## Upgrading from the Bun release
 
 1. Add a Postgres and set `DATABASE_URL`.
-2. Keep `/data` mounted and leave `NOOK_SETTINGS_PATH` pointing at `nook.json`.
+2. Mount the old data volume and set `NOOK_SETTINGS_PATH` to the `nook.json` inside it.
 3. Deploy. Migrations run at startup; the legacy file is imported on that first boot and the
    import is logged with the provider and target counts.
-4. Check the dashboard, then drop `nook-data`.
+4. Check the dashboard, then drop the mount, the variable and the volume.
 
 The dashboard moves from `/dashboard` to the root — old links 301. The webhook paths and the
-pool endpoints do not move.
+pool endpoints do not move. Pool clients re-register on connect, so their tokens not carrying
+over is invisible.

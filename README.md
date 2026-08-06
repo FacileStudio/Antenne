@@ -73,14 +73,16 @@ Full reference: [docs/configuration.md](docs/configuration.md).
 
 ## Upgrading from the Bun release
 
-The service was a Bun process storing its configuration in `/data/nook.json`. On the first
-boot after the upgrade, if the database has no settings yet and `NOOK_SETTINGS_PATH` points at
-that file, Nook imports it — providers, delivery targets and secrets included — and leaves the
-file untouched as a rollback copy. Keep the `/data` volume mounted for that one boot.
+Done for facile.studio, and kept for anyone rebuilding from an old volume. Point
+`NOOK_SETTINGS_PATH` at a pre-Postgres `nook.json` and mount it. On a boot where the database
+has no settings yet, Nook imports the file — providers, delivery targets and secrets included
+— and leaves it untouched. Afterwards the database is the only source, and the variable and
+the volume can both go.
 
 Two things move: the dashboard is served at the root rather than at `/dashboard` (the old
 paths 301), and the API needs a Postgres. The webhook paths and the pool endpoints do not
-move — they are registered in third-party systems and in every pool client.
+move — they are registered in third-party systems and in every pool client. The pool's tokens
+do not migrate, but clients register on connect, so they re-register on their own.
 
 ## Structure
 
