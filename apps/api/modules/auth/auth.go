@@ -11,6 +11,7 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"log/slog"
@@ -125,7 +126,7 @@ func (s *Service) ensureAdmin() error {
 		email = email + "@nook.local"
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(s.cfg.AdminPassword), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword(prehash(s.cfg.AdminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
@@ -144,7 +145,7 @@ func (s *Service) ensureAdmin() error {
 		return err
 	}
 
-	if bcrypt.CompareHashAndPassword([]byte(existing.PasswordHash), []byte(s.cfg.AdminPassword)) == nil {
+	if bcrypt.CompareHashAndPassword([]byte(existing.PasswordHash), prehash(s.cfg.AdminPassword)) == nil {
 		return nil
 	}
 
@@ -222,7 +223,7 @@ func (s *Service) Login(clientIP, password string) (string, time.Time, error) {
 		s.logins.Fail(clientIP)
 		return "", time.Time{}, apierrors.Unauthorized("invalid password")
 	}
-	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), prehash(password)) != nil {
 		s.logins.Fail(clientIP)
 		s.log.Warn("login failed", slog.String("client_ip", clientIP))
 		return "", time.Time{}, apierrors.Unauthorized("invalid password")
@@ -291,4 +292,17 @@ func newToken() (string, error) {
 func hashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+// prehash folds a password to a fixed 44-character string before bcrypt sees it.
+//
+// bcrypt silently ignores everything past 72 bytes, and golang.org/x/crypto
+// refuses outright — which is how a deployment running a long passphrase
+// crash-looped on the first boot after the move off HMAC. The digest is
+// base64-encoded rather than passed raw because bcrypt truncates at the first
+// NUL byte, and a raw SHA-256 digest contains one about 40% of the time.
+func prehash(password string) []byte {
+	sum := sha256.Sum256([]byte(password))
+	encoded := base64.StdEncoding.EncodeToString(sum[:])
+	return []byte(encoded)
 }
