@@ -120,3 +120,75 @@ func TestMarshalEmitsOnlyTheFieldsOfTheType(t *testing.T) {
 		t.Error("a website provider is missing `url`")
 	}
 }
+
+// A client whose JSON encoder escapes non-ASCII sends the marker as the ASCII
+// escape sequence for U+2022, eight times. Decoded it is the same string, so the
+// merge has to find it — a byte-level scan of the request body does not, and
+// skipping the merge writes the marker itself over every secret in the document.
+func TestRedactedSecretsSurviveAnEscapingEncoder(t *testing.T) {
+	current := baseline()
+
+	escaped := []byte(`{"timeout":10,
+	  "providers":{"port":9090,"items":[
+	    {"id":"p1","type":"dokploy","name":"Dokploy","enabled":true,"tags":["infra"],
+	     "path":"/webhook/dokploy","secretHeader":"x-dokploy-secret",
+	     "secretValue":"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}]},
+	  "delivery":{"items":[
+	    {"id":"t1","type":"matrix","name":"Matrix","enabled":true,
+	     "providerIds":["p1"],"providerTags":[],"homeserver":"https://matrix.org",
+	     "accessToken":"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+	     "roomIds":["!room:matrix.org"]}]}}`)
+
+	// The fixture must carry the escape sequence, not the character: a literal
+	// marker here would pass against the very bug this pins.
+	if strings.Contains(string(escaped), Redacted) {
+		t.Fatal("the fixture holds the literal marker, so it does not exercise an escaping encoder")
+	}
+	if !strings.Contains(string(escaped), `\u2022`) {
+		t.Fatal("the fixture is not escaped at all")
+	}
+
+	next, err := Normalize(MergeSecrets(escaped, current), current)
+	if err != nil {
+		t.Fatalf("normalize: %v", err)
+	}
+
+	if got := *next.Providers.Items[0].SecretValue; got != "s3cr3t" {
+		t.Errorf("provider secret = %q, want the stored value", got)
+	}
+	if got := next.Delivery.Items[0].AccessToken; got != "syt_live" {
+		t.Errorf("matrix token = %q, want the stored value", got)
+	}
+}
+
+// Second line of defence: even with MergeSecrets bypassed entirely, the marker
+// must never reach storage as a credential. It is not a value anyone means.
+func TestNormalizeNeverStoresTheMarkerAsASecret(t *testing.T) {
+	current := baseline()
+
+	document := []byte(`{"timeout":10,
+	  "providers":{"port":9090,"items":[
+	    {"id":"p1","type":"dokploy","name":"Dokploy","enabled":true,"tags":["infra"],
+	     "path":"/webhook/dokploy","secretValue":"` + Redacted + `"}]},
+	  "delivery":{"items":[
+	    {"id":"t1","type":"matrix","name":"Matrix","enabled":true,
+	     "providerIds":["p1"],"providerTags":[],"homeserver":"https://matrix.org",
+	     "accessToken":"` + Redacted + `","roomIds":["!room:matrix.org"]}]}}`)
+
+	// Deliberately no MergeSecrets call.
+	next, err := Normalize(document, current)
+	if err != nil {
+		t.Fatalf("normalize: %v", err)
+	}
+
+	if got := *next.Providers.Items[0].SecretValue; got == Redacted {
+		t.Error("the redaction marker was stored as the provider secret")
+	} else if got != "s3cr3t" {
+		t.Errorf("provider secret = %q, want the stored value kept", got)
+	}
+	if got := next.Delivery.Items[0].AccessToken; got == Redacted {
+		t.Error("the redaction marker was stored as the matrix token")
+	} else if got != "syt_live" {
+		t.Errorf("matrix token = %q, want the stored value kept", got)
+	}
+}

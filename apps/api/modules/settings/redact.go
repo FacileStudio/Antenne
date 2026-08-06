@@ -2,7 +2,6 @@ package settings
 
 import (
 	"encoding/json"
-	"strings"
 )
 
 // Redact replaces every stored secret with the redaction marker. The dashboard
@@ -55,10 +54,13 @@ func Redact(source AppSettings) AppSettings {
 // normalization happens afterwards: a marker has to become the real secret
 // before any "blank clears the field" rule sees it.
 func MergeSecrets(raw json.RawMessage, current AppSettings) json.RawMessage {
-	if !strings.Contains(string(raw), Redacted) {
-		return raw
-	}
-
+	// There is deliberately no fast path that scans the raw bytes for the marker
+	// before decoding. The marker is non-ASCII, and a JSON encoder that escapes
+	// non-ASCII — Python's json.dump does by default — sends it as the ASCII
+	// escape sequence for U+2022 repeated eight times, which no byte comparison
+	// against the literal marker finds. Such a guard skips the merge, and every
+	// redacted secret in that request is then stored as the marker itself.
+	// Decoding first is the only comparison that survives the client's encoder.
 	var document map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &document); err != nil {
 		return raw

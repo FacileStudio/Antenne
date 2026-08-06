@@ -168,9 +168,7 @@ func normalizeProvider(raw json.RawMessage, existing map[string]Provider) (Provi
 		if username := stringField(incoming, "username", ""); username != "" {
 			seed.Username = username
 		}
-		if _, ok := incoming["password"]; ok {
-			seed.Password = optionalString(incoming["password"])
-		}
+		applyOptionalSecret(incoming, "password", &seed.Password)
 		seed.PollInterval = positiveIntField(incoming, "pollInterval", seed.PollInterval)
 		applyBoolField(incoming, "includeEmailBody", &seed.IncludeEmailBody)
 	default:
@@ -183,9 +181,7 @@ func normalizeProvider(raw json.RawMessage, existing map[string]Provider) (Provi
 		if header := stringField(incoming, "secretHeader", ""); header != "" {
 			seed.SecretHeader = &header
 		}
-		if _, ok := incoming["secretValue"]; ok {
-			seed.SecretValue = optionalString(incoming["secretValue"])
-		}
+		applyOptionalSecret(incoming, "secretValue", &seed.SecretValue)
 	}
 
 	if seed.Tags == nil {
@@ -259,22 +255,22 @@ func normalizeTarget(raw json.RawMessage, existing map[string]DeliveryTarget) (D
 	switch seed.Type {
 	case TargetMatrix:
 		applyString(incoming, "homeserver", &seed.Homeserver)
-		applyString(incoming, "accessToken", &seed.AccessToken)
-		applyOptionalString(incoming, "refreshToken", &seed.RefreshToken)
+		applySecret(incoming, "accessToken", &seed.AccessToken)
+		applyOptionalSecret(incoming, "refreshToken", &seed.RefreshToken)
 		applyString(incoming, "userId", &seed.UserID)
-		applyOptionalString(incoming, "password", &seed.Password)
+		applyOptionalSecret(incoming, "password", &seed.Password)
 		applyOptionalString(incoming, "deviceId", &seed.DeviceID)
 		if _, ok := incoming["roomIds"]; ok {
 			seed.RoomIDs = stringList(incoming["roomIds"])
 		}
 	case TargetDiscord:
-		applyString(incoming, "webhookUrl", &seed.WebhookURL)
+		applySecret(incoming, "webhookUrl", &seed.WebhookURL)
 	case TargetSMTP:
 		applyString(incoming, "host", &seed.Host)
 		seed.Port = positiveIntField(incoming, "port", seed.Port)
 		applyBoolField(incoming, "secure", &seed.Secure)
 		applyString(incoming, "username", &seed.Username)
-		applyOptionalString(incoming, "password", &seed.Password)
+		applyOptionalSecret(incoming, "password", &seed.Password)
 		applyString(incoming, "fromAddress", &seed.FromAddress)
 		if _, ok := incoming["toAddresses"]; ok {
 			seed.ToAddresses = stringList(incoming["toAddresses"])
@@ -283,7 +279,7 @@ func normalizeTarget(raw json.RawMessage, existing map[string]DeliveryTarget) (D
 	case TargetNtfy:
 		applyString(incoming, "serverUrl", &seed.ServerURL)
 		applyString(incoming, "topic", &seed.Topic)
-		applyString(incoming, "accessToken", &seed.AccessToken)
+		applySecret(incoming, "accessToken", &seed.AccessToken)
 		if rawPriority, ok := incoming["priority"]; ok {
 			seed.Priority = optionalPositiveInt(rawPriority, seed.Priority)
 		}
@@ -294,11 +290,11 @@ func normalizeTarget(raw json.RawMessage, existing map[string]DeliveryTarget) (D
 	case TargetPerception:
 		applyString(incoming, "url", &seed.URL)
 		applyString(incoming, "workspace", &seed.Workspace)
-		applyOptionalString(incoming, "secretValue", &seed.SecretValue)
+		applyOptionalSecret(incoming, "secretValue", &seed.SecretValue)
 		applyBoolField(incoming, "includeRawPayload", &seed.IncludeRawPayload)
 	default:
 		applyString(incoming, "url", &seed.URL)
-		applyOptionalString(incoming, "secretValue", &seed.SecretValue)
+		applyOptionalSecret(incoming, "secretValue", &seed.SecretValue)
 		applyBoolField(incoming, "includeRawPayload", &seed.IncludeRawPayload)
 	}
 
@@ -324,7 +320,7 @@ func normalizePool(document map[string]json.RawMessage, fallback *PoolSettings) 
 	if err := json.Unmarshal(rawPool, &incoming); err != nil {
 		return pool
 	}
-	if incoming.Secret != nil {
+	if incoming.Secret != nil && strings.TrimSpace(*incoming.Secret) != Redacted {
 		pool.Secret = strings.TrimSpace(*incoming.Secret)
 	}
 	if incoming.LogActivity != nil {
@@ -343,6 +339,37 @@ func stringField(document map[string]json.RawMessage, key, fallback string) stri
 		return fallback
 	}
 	return strings.TrimSpace(value)
+}
+
+// applySecret is applyString for a field that Redact rewrites. A value equal to
+// the marker means the caller is echoing back what it was shown, so the stored
+// value is kept — a second line of defence behind MergeSecrets, and the reason a
+// client whose encoder mangles the marker can no longer erase a credential.
+func applySecret(document map[string]json.RawMessage, key string, target *string) {
+	if isRedactedField(document, key) {
+		return
+	}
+	applyString(document, key, target)
+}
+
+// applyOptionalSecret is applyOptionalString with the same guard.
+func applyOptionalSecret(document map[string]json.RawMessage, key string, target **string) {
+	if isRedactedField(document, key) {
+		return
+	}
+	applyOptionalString(document, key, target)
+}
+
+func isRedactedField(document map[string]json.RawMessage, key string) bool {
+	raw, ok := document[key]
+	if !ok {
+		return false
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return false
+	}
+	return value == Redacted
 }
 
 func applyString(document map[string]json.RawMessage, key string, target *string) {
