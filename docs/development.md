@@ -1,113 +1,120 @@
 # Nook — Development
 
-Local setup, the dashboard build step that catches everyone out, and how to test.
+Local setup, where the configuration comes from, and the quality gate.
 
 ## Prerequisites
 
-| Tool | Version | Why |
-|---|---|---|
-| Bun | 1.x | The runtime, the package manager, the test runner and the SQLite driver |
-| Docker | any recent | Only for a container run |
-
-There is no Node dependency, no `mise.toml`, no `scripts/check.sh` and no git hooks. The API has no
-runtime dependencies at all — `apps/api/package.json` declares only `@types/bun` and TypeScript as
-dev dependencies. Everything the service needs comes from Bun's standard library: `Bun.serve`,
-`Bun.file`, `bun:sqlite`, `node:crypto`.
+- Go 1.25 (pinned in `mise.toml`)
+- Bun, for the dashboard
+- A PostgreSQL 16 to point `DATABASE_URL` at
+- The `casier` CLI, for the development configuration
 
 ## Setup
 
 ```sh
-bun install
-bun run client:build
-bun run dev
+mise run install     # client dependencies
+mise run hooks       # enable the tracked git hooks in this clone
 ```
 
-`bun run dev` runs `apps/api/index.ts` directly. There is no build step for the API and no watch
-mode wired up in the scripts.
+## Running
 
-Point the settings file somewhere local rather than at `/data`:
+Two processes, in two terminals:
 
 ```sh
-NOOK_SETTINGS_PATH=./data/nook.json bun run dev
+mise run dev         # the API on :9090, with secrets injected from Casier
+mise run client      # the dashboard on :5173, proxying /api to the API
 ```
 
-The directory is created on the first save. Set `NOOK_ADMIN_PASSWORD` too unless you want the
-dashboard open, and note the startup warning if you do not.
+`mise run dev` wraps the API in `casier run`, so nothing has to exist on disk —
+`.casier.toml` pins this repo to the `nook` project and its `dev` environment. `mise run
+dev-offline` runs from the last-known-good cache when Casier is unreachable. See
+[configuration.md](configuration.md) for what it supplies and how to add to it.
 
-## The dashboard build step
-
-This is the constraint that shapes the whole workflow: **the Docker image never builds the
-dashboard from source.** It copies a prebuilt bundle. So the generated output has to be committed
-and current before anything ships.
+Migrations are embedded and applied at startup. To apply them without starting the server:
 
 ```sh
-bun run client:dev     # Nuxt dev server, for iterating on the UI
-bun run client:build   # bunx nuxi generate — regenerate the static bundle
+mise run migrate
 ```
 
-`apps/client/nuxt.config.ts` sets `ssr: false`, `app.baseURL: "/dashboard/"` and redirects Nitro's
-output to `../api/dashboard/.output`, so `client:build` writes straight into
-`apps/api/dashboard/.output/public`, which is what the API serves and what the image copies.
+`go run . migrate up`, `down`, `status` and `baseline` are all available through
+`tronc/migrate`.
 
-Ship a dashboard change without running `client:build` and the deployed UI stays on the previous
-bundle, with no error anywhere to tell you.
+### Without Casier
 
-At startup the API checks whether `dashboard/.output/public/index.html` exists and logs
-`[startup] dashboard: built` or `not built`. Check that line first when the dashboard 404s.
+The API only reads the process environment, so anything that puts the variables there works:
+
+```sh
+cd apps/api
+cp .env.example .env      # then export it, or use your own runner
+DATABASE_URL=postgres://nook:nook@localhost:5432/nook?sslmode=disable \
+NOOK_ADMIN_PASSWORD=dev go run .
+```
+
+With no `NOOK_ADMIN_PASSWORD` set the dashboard and its API are open, which is the fastest way
+to poke at a fresh install locally. `APP_ENV=production` refuses to boot that way.
+
+## The quality gate
+
+```sh
+mise run check       # gofmt, vet, go test, then svelte-check
+mise run check-go    # the Go half only
+mise run format      # rewrite Go sources in place
+```
+
+`scripts/check.sh` is invoked directly rather than through `mise` inside itself: `mise run`
+resolves every tool in the merged config before running a task body, so an unrelated broken
+tool in a global config would take the gate down with it.
+
+The gate also fails if a non-Postgres database driver appears in `go.mod`. Postgres is the only
+database in this suite, tests included — a test on SQLite builds a different schema from the
+GORM tags, then passes, proving nothing about the DDL that ships.
 
 ## Tests
 
+Go tests sit beside the source:
+
+| File | What it pins |
+|---|---|
+| `modules/settings/settings_test.go` | the redaction round-trip, path collisions, per-type marshalling |
+| `modules/delivery/delivery_test.go` | opt-in routing with no fallthrough, and per-type readiness |
+| `internal/envelope/envelope_test.go` | id stability, raw-payload withholding, the signature covering timestamp + id + body |
+| `main_test.go` | every route has an entry in the reference registry, and the registry renders |
+
+Adding a route means adding it to the owning module's `Documentation`, or
+`TestEveryRouteIsDocumented` fails. The startup log warns about the same thing, so a route
+added without one is visible even if the test is skipped.
+
 ```sh
-bun test
+cd apps/api && go test ./...
 ```
 
-The root `test` script is `bun test apps/api/src/*.test.ts`. Two suites exist: `delivery.test.ts`
-covers target selection and the delivery pipeline, `server.test.ts` covers routing and auth.
+## The dashboard
 
-Typecheck the API:
+SvelteKit 2 with Svelte 5 runes, Tailwind v4 and shadcn-svelte primitives over bits-ui. It
+builds to `apps/client/build`, which the Go binary serves through `tronc/spa`. The Docker build
+does this for you; there is no committed build output to keep in sync.
 
 ```sh
-bun run typecheck
+cd apps/client
+bun run check        # svelte-check
+bun run build
 ```
 
-## Reading the startup log
+### Icons
 
-Nook is deliberately loud on boot, and the log is the fastest diagnostic available:
+Icons are inlined at build time rather than fetched from a CDN or the Iconify API — Nook is
+self-hosted with no cloud dependency. `src/lib/icon-data.ts` is generated:
 
-```
-[startup] settings path: /data/nook.json
-[startup] persisted settings: yes
-[startup] dashboard: built
-[startup] server port: 9090
-[startup] delivery targets: 3
-[startup] matrix rooms: !abc:example.org
-[startup] providers: 7 total
-[startup] websites: 2
-[startup] imap: 1
-[startup] rss: 1
-[startup] webhooks: 3
-[startup] pool: enabled (epoch=…)
-[startup] listening on 9090
+```sh
+cd apps/client
+bun run icons        # after adding a name to scripts/build-icons.ts
 ```
 
-Two security warnings follow when they apply: one when `NOOK_ADMIN_PASSWORD` is unset, one about
-`x-forwarded-for` being trusted for rate limiting. Neither is optional to fix in production.
+The generator fails loudly on a name that does not exist in the collection, which is worth
+knowing because Solar has real typos in its icon names (`magnifer`, `pallete`, `spedometer`).
 
-Delivery produces one summary line per event, listing how many targets succeeded, failed and were
-filtered out, with the target names. A `filtered` count equal to the number of targets means the
-routing rules match nothing — check `providerIds` and `providerTags` on the targets.
+### Running the client against a deployed API
 
-## Conventions
-
-- One file per webhook provider in `apps/api/src/webhooks/providers/`, registered by type in
-  `webhooks/index.ts`. A new provider needs a `WebhookProviderDefinition`, an entry in that map, a
-  `WebhookProviderType` union member, and defaults in `provider-config.ts`.
-- Delivery targets are sender functions in `delivery-senders.ts`, selected by the type guards in
-  `delivery-config.ts`.
-- HTTP and Perception deliveries always carry a signed envelope; the other targets carry the HTML
-  message.
-- Pull providers expose an `apply(settings)` manager so a settings change reconfigures them without
-  a restart. Anything new that polls should follow that shape.
-- Settings mutations go through `SettingsStore.update`, never by writing the file directly. The
-  store normalizes, validates, persists and re-applies in one call.
-- No inline comments in code.
+`vite.config.ts` proxies `/api` to `http://localhost:9090`. The port is hardcoded rather than
+read from `process.env`: this project declares node types without installing them, so touching
+`process` there turns a svelte-check warning into an error and fails the gate.

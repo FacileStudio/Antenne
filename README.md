@@ -3,10 +3,11 @@
 Alert aggregation and the suite's event bus — Nook watches providers, routes what they emit to
 delivery targets, and hosts the Nook Pool that other Facile apps sync through.
 
-It is a Bun service with no HTTP framework: one `Bun.serve` handler, a hand-written router, and a
-prebuilt Nuxt dashboard served as static files. Provider and delivery target configuration lives
-entirely in `/data/nook.json`, edited through that dashboard — environment variables cover only
-core server settings and dashboard auth.
+It is a Go service on the [`tronc`](https://github.com/FacileStudio/tronc) chassis: chi, GORM
+and PostgreSQL, with goose migrations embedded in the binary. One container serves the API,
+the webhook receivers, the pool and a SvelteKit dashboard. Provider and delivery
+configuration is edited entirely from that dashboard; environment variables cover the server
+itself and its bootstrap credentials.
 
 Live at [nook.facile.studio](https://nook.facile.studio).
 
@@ -16,22 +17,20 @@ Live at [nook.facile.studio](https://nook.facile.studio).
 - Polls IMAP inboxes and RSS feeds for new items
 - Receives webhooks from Uptime Kuma, DocuSeal, Dokploy, Git forges and Vikunja, and from the
   suite apps Ardoise, Sablier, Perception, Opus, Vision, Plume and Nuage
-- Delivers alerts to Matrix, Discord, HTTP webhooks, SMTP, ntfy and Perception, routed per target
-  by provider id or provider tag
+- Delivers alerts to Matrix, Discord, HTTP webhooks, SMTP, ntfy and Perception, routed per
+  target by provider id or provider tag
 - Signs structured event envelopes with HMAC-SHA256 for HTTP and Perception targets
 - Retries failed deliveries three times with backoff, and keeps a replayable event log
-- Hosts the Nook Pool: a WebSocket bus with a persistent offset-based queue that other suite apps
+- Hosts the Nook Pool: a WebSocket bus with a durable offset-based queue that other suite apps
   register with and sync through
-- Serves a dashboard at `/dashboard` covering every provider, target, space and event
 
 ## Stack
 
 | Layer | Tech |
 |---|---|
-| API | Bun 1, `Bun.serve` with a hand-written router, no framework |
-| Client | Nuxt 4 with SSR off, statically generated, Vue 3, Tailwind CSS 4, Vue Flow |
-| Storage | `nook.json` plus sibling JSON files for events and spaces, SQLite (`bun:sqlite`) for the pool queue |
-| Deploy | Docker Compose, single container, prebuilt dashboard baked into the image |
+| API | Go 1.25, `tronc` (chi), GORM, PostgreSQL 16, `tronc/migrate` (goose) |
+| Client | SvelteKit 2, Svelte 5 runes, Tailwind v4, shadcn-svelte over bits-ui, Solar icons |
+| Deploy | Docker Compose, distroless image, the dashboard baked in |
 
 ## Quick start
 
@@ -39,44 +38,56 @@ Live at [nook.facile.studio](https://nook.facile.studio).
 docker compose up -d
 ```
 
-The service listens on `PORT` (default `9090`) and serves the API, dashboard, health check and
-webhook receivers from that single port. Open `http://localhost:9090/dashboard` to configure
-providers and delivery targets. The compose file uses `expose` rather than `ports`, so publish the
-port or put Traefik in front of it.
+Compose starts Postgres and the app. `POSTGRES_PASSWORD`, `NOOK_ADMIN_PASSWORD` and
+`NOOK_SESSION_SECRET` are required. The service listens on `9090` and serves the API, the
+dashboard, the health check, the webhook receivers and the pool from that one port. Compose
+uses `expose` rather than `ports`, so publish the port or put Traefik in front of it.
 
 ### Local development
 
 ```sh
-bun install
-bun run client:build
-bun run dev
+mise run install    # client dependencies
+mise run dev        # the API, with secrets injected from Casier
+mise run client     # the dashboard dev server, proxying /api to the API
 ```
 
-For dashboard-only work, `bun run client:dev` runs Nuxt in dev mode. The static bundle has to be
-rebuilt with `bun run client:build` before any dashboard change can ship — the runtime image does
-not build it.
+Configuration for the developer loop comes from [Casier](https://casier.facile.studio);
+`.casier.toml` pins this repo to the `nook` project. `mise run dev-offline` runs from the
+cached values. See [docs/development.md](docs/development.md).
 
 ## Configuration
 
 | Variable | What it does |
 |---|---|
-| `PORT` | HTTP port for the API, dashboard, health check and webhooks. Default `9090` |
-| `NOOK_SETTINGS_PATH` | Path to the settings file. Default `/data/nook.json` |
-| `NOOK_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Unset leaves both open |
-| `NOOK_SESSION_SECRET` | Signing key for the dashboard session cookie; random per boot when unset |
+| `DATABASE_URL` | Postgres connection string. Required |
+| `PORT` | HTTP port for the API, dashboard, health check, webhooks and pool. Default `9090` |
+| `NOOK_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Required in production |
+| `NOOK_SESSION_SECRET` | Keeps sessions alive across a restart. Required in production |
 | `POOL_SECRET` | Shared secret apps present when registering with the pool |
+| `NOOK_SETTINGS_PATH` | A pre-Postgres `nook.json` to import on the first boot |
 
-Everything else — providers, delivery targets, credentials, routing — lives in the settings file
+Everything else — providers, delivery targets, credentials, routing — lives in the database
 and is edited through the dashboard.
 
 Full reference: [docs/configuration.md](docs/configuration.md).
+
+## Upgrading from the Bun release
+
+The service was a Bun process storing its configuration in `/data/nook.json`. On the first
+boot after the upgrade, if the database has no settings yet and `NOOK_SETTINGS_PATH` points at
+that file, Nook imports it — providers, delivery targets and secrets included — and leaves the
+file untouched as a rollback copy. Keep the `/data` volume mounted for that one boot.
+
+Two things move: the dashboard is served at the root rather than at `/dashboard` (the old
+paths 301), and the API needs a Postgres. The webhook paths and the pool endpoints do not
+move — they are registered in third-party systems and in every pool client.
 
 ## Structure
 
 ```
 apps/
-  api/       Bun service — src/ holds the router, providers, delivery, pool and settings
-  client/    Nuxt dashboard, generated into apps/api/dashboard/.output/public
+  api/       Go service — internal/ holds the pipeline and plumbing, modules/ the domains
+  client/    SvelteKit dashboard, built into apps/client/build
 docs/        Architecture, configuration, development, deployment, API
 ```
 
@@ -85,10 +96,12 @@ docs/        Architecture, configuration, development, deployment, API
 | Doc | What's in it |
 |---|---|
 | [Architecture](docs/architecture.md) | Runtime topology, the alert pipeline, the pool protocol, the settings model |
-| [Configuration](docs/configuration.md) | Every environment variable, and the `nook.json` model |
-| [Development](docs/development.md) | Local setup, the dashboard build step, tests |
-| [Deployment](docs/deployment.md) | Docker, the variable port trap, volumes, Traefik routing |
+| [Configuration](docs/configuration.md) | Every environment variable and the settings model |
+| [Development](docs/development.md) | Local setup, Casier, the quality gate, tests |
+| [Deployment](docs/deployment.md) | Docker, Postgres, volumes, Traefik routing |
 | [API](docs/api.md) | HTTP endpoints, webhook receivers, the pool WebSocket protocol |
+
+A running instance also serves a generated OpenAPI reference at `/docs`.
 
 ---
 

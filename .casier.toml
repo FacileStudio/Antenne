@@ -1,0 +1,3 @@
+[project]
+slug = "nook"
+environment = "dev"

@@ -1,0 +1,46 @@
+[tools]
+go = "1.25"
+
+# The API reads its configuration from the process environment, so Casier can
+# supply it directly and no .env has to exist. `casier run` is network-first
+# with a last-known-good cache, so a Casier outage degrades to the previous
+# values with a warning rather than to an empty environment.
+[tasks.dev]
+description = "Run the API with secrets injected from Casier"
+run = "casier run -- sh -c 'cd apps/api && go run .'"
+
+[tasks.dev-offline]
+description = "Run the API from the cached secrets, without contacting Casier"
+run = "casier run --offline -- sh -c 'cd apps/api && go run .'"
+
+[tasks.client]
+description = "Run the dashboard dev server"
+run = "cd apps/client && bun run dev"
+
+[tasks.secrets]
+description = "List the secrets Casier holds for this project"
+run = "casier secrets list -p nook -e dev"
+
+[tasks.install]
+description = "Install client dependencies"
+run = "cd apps/client && bun install --frozen-lockfile"
+
+[tasks.migrate]
+description = "Apply pending database migrations without starting the server"
+run = "casier run -- sh -c 'cd apps/api && go run . migrate up'"
+
+[tasks.check]
+description = "Run the full quality gate: Go, then the client"
+run = "sh ./scripts/check.sh"
+
+[tasks.check-go]
+description = "Run the Go half of the quality gate"
+run = "sh ./scripts/check.sh --go-only"
+
+[tasks.format]
+description = "Format the Go sources in place"
+run = "sh ./scripts/check.sh --format"
+
+[tasks.hooks]
+description = "Enable the tracked git hooks in this clone"
+run = "git config core.hooksPath .githooks"

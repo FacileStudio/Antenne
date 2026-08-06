@@ -1,223 +1,207 @@
 # Nook — API
 
-Every HTTP route the Bun server handles, and the WebSocket protocol the Nook Pool speaks.
+Every HTTP route the server handles, and the WebSocket protocol the Nook Pool speaks.
 
-Routing is a chain of `if` statements in `src/server.ts`, evaluated top to bottom, so order
-matters: pool routes are matched first, then the health check and OpenAPI documents, then the auth
-endpoints, then the authenticated `/api/*` surface, then the dashboard, and finally an unmatched
-`POST` falls through to the webhook receivers.
+A generated reference is served by the running instance at **`/docs`**, with the OpenAPI 3.1
+document at `/docs/openapi.json`. It is built from a route registry each module owns
+(`Documentation` in `modules/*`, `*Documentation` in `internal/server`), and
+`TestEveryRouteIsDocumented` fails the build when a route is added without an entry. This page
+is the prose version: the reference is the machine-readable one.
 
-Nook also serves its own spec, but it documents the **pool only**:
+Errors use the suite envelope:
 
-- `GET /docs` — Scalar reference, the same path as every other Facile backend
-- `GET /docs/openapi.json` — OpenAPI document for the pool endpoints
-- `GET /api/docs` and `GET /api/openapi` — the previous paths, kept as aliases
+```json
+{ "error": { "code": "invalid_argument", "message": "timeout must be a positive number" } }
+```
 
-Both are reachable without a session.
+`invalid_argument` 400 · `unauthenticated` 401 · `permission_denied` 403 · `not_found` 404 ·
+`already_exists` 409 · `rate_limited` 429 · `internal` 500.
+
+## Health
+
+| Route | Notes |
+|---|---|
+| `GET /health`, `GET /api/health` | process liveness |
+| `GET /ready`, `GET /api/ready` | also checks the database |
+
+Mounted at both prefixes so an external monitor cannot mistake the SPA shell for a green check.
 
 ## Authentication
 
-The dashboard API uses a session cookie, `nook_session`, obtained from `POST /api/login` or the
-`/dashboard/login` form. It is `HttpOnly`, `SameSite=Lax`, `Secure` over HTTPS, and signed with
-HMAC-SHA256 over `<username>:<issuedAt>:<password>`.
-
-**When `NOOK_ADMIN_PASSWORD` is unset, `isAuthenticated` returns true unconditionally** and the
-entire API is open. That is the documented default, not a bug, and the process warns about it at
-startup.
-
-The pool endpoints do not use the session. They authenticate with `POOL_SECRET` at registration and
-with the returned token on the WebSocket. The exception is `GET /api/pool/stats`, which is behind
-the session.
-
-Errors are JSON with a `code` and a message; codes seen in the router are `unauthenticated`,
-`invalid_argument`, `rate_limited`, `not_found` and `internal`.
-
-## Public routes
-
-| Method | Path | What it does |
+| Route | Body | Notes |
 |---|---|---|
-| GET | `/health` | Returns `{"status":"ok"}` as soon as the server is listening |
-| GET | `/docs/openapi.json` | OpenAPI document for the pool, with the server URL derived from the request. Also served at `/api/openapi` |
-| GET | `/api/docs` | Scalar reference page |
-| GET | `/favicon.ico` | Serves the dashboard favicon |
-| GET | `/` | 302 to `/dashboard` |
+| `POST /api/login` | `{"password":"…"}` | sets the `nook_session` cookie |
+| `POST /api/logout` | — | revokes the session and expires the cookie |
+| `GET /api/session/public` | — | public: whether a password is required at all |
+| `GET /api/session` | — | authenticated: the current caller |
 
-## Authentication routes
+The session cookie is `HttpOnly`, `SameSite=Lax`, and `Secure` whenever the request arrived
+over TLS — including through Traefik, which terminates it and forwards plain HTTP.
 
-| Method | Path | What it does |
-|---|---|---|
-| POST | `/api/login` | Body `{"password": "…"}`. Sets the session cookie. Returns `{"ok":true}` immediately when no password is configured |
-| POST | `/api/logout` | Clears the session cookie |
-| POST | `/dashboard/login` | Form-encoded equivalent, redirects to `/dashboard/providers` on success and back to `/dashboard?error=invalid` or `?error=rate-limit` on failure |
+Failed logins are rate-limited per client IP: five within ten minutes blocks that IP for ten
+minutes. The bucket keys on `X-Forwarded-For`, which is only safe because the reverse proxy
+overwrites it.
 
-Failed attempts are rate limited per client IP. Once limited, `POST /api/login` returns
-`rate_limited` and the form redirects with `?error=rate-limit`.
+With no `NOOK_ADMIN_PASSWORD` configured, every caller is served as the admin and `/api/login`
+answers `{"ok":true}` without doing anything.
 
-## Dashboard API
+## Settings
 
-Everything below requires a session when one is configured.
-
-### Session and settings
-
-| Method | Path | What it does |
-|---|---|---|
-| GET | `/api/session` | `{authenticated, passwordRequired, username}` |
-| GET | `/api/settings` | `{settings, runtime, matrixConfigured}`. Secrets are redacted from `settings` |
-| PUT | `/api/settings` | Replaces the settings. Redacted secrets in the body are merged back from the stored values, so the dashboard can round-trip without ever seeing them. Returns the same shape as GET |
-
-`runtime` is `{serverPort, settingsPath, usingPersistedSettings, dashboardBuilt, lastReloadedAt}`.
-
-A `PUT` normalizes and validates before persisting, then re-applies every provider manager
-immediately. Rejections come back as `invalid_argument` with the reason — most often a
-non-positive timeout or two enabled webhook providers claiming the same path.
-
-### Testing
-
-| Method | Path | What it does |
-|---|---|---|
-| POST | `/api/test-alert` | Sends a test alert through the full pipeline, including routing filters. Fails when no delivery target exists |
-| POST | `/api/test-delivery-target` | Body `{"targetId": "…"}`. Sends directly to one target, bypassing routing |
-| POST | `/api/test-provider-connection` | Body `{"providerId": "…"}`. IMAP providers only; any other type returns an error |
-
-`test-alert` respects `providerIds` and `providerTags`, so it can legitimately succeed while
-delivering to nothing. `test-delivery-target` is the one that proves a target's credentials work.
-
-### Events
-
-| Method | Path | What it does |
-|---|---|---|
-| GET | `/api/events?limit=&offset=&q=&source=` | Paged event log with `{events, total, stats}`. Default limit 50 |
-| GET | `/api/events/provider/:providerId?limit=&offset=` | Same, filtered to one provider, with that provider's stats |
-| GET | `/api/events/target/:targetId?limit=&offset=` | Same, filtered to one delivery target |
-| GET | `/api/events/stream` | Server-sent events, one `data:` frame per new event as it is pushed |
-| POST | `/api/events/:eventId/replay` | Body `{"targetId": "…"}`. Re-sends a stored envelope to one target |
-
-The log keeps the last 500 entries. `source` filters on `webhook`, `website`, `imap`, `rss`, `test`
-or `system`. Replay requires the stored entry to have an envelope.
-
-### Spaces
-
-| Method | Path | What it does |
-|---|---|---|
-| GET | `/api/spaces` | List spaces |
-| POST | `/api/spaces` | Create a space |
-| GET | `/api/spaces/:id` | One space |
-| PUT | `/api/spaces/:id` | Update name or description |
-| DELETE | `/api/spaces/:id` | Delete a space |
-| GET | `/api/spaces/:id/members` | List members |
-| POST | `/api/spaces/:id/members` | Add a member |
-| PUT | `/api/spaces/:id/members/:userId` | Change a member's role |
-| DELETE | `/api/spaces/:id/members/:userId` | Remove a member |
-
-Roles are `owner`, `admin` and `member`. Members are keyed by an opaque user id; spaces are not
-wired to any identity provider.
-
-## Webhook receivers
-
-Any `POST` that matches no earlier route is handed to the webhook dispatcher, which looks for an
-enabled webhook provider whose configured `path` matches. Paths are set per provider in the
-dashboard; defaults are listed in [configuration.md](configuration.md).
-
-| Provider type | Default path |
+| Route | Notes |
 |---|---|
-| `uptime-kuma` | `/webhook/uptime-kuma` |
-| `docuseal` | `/webhook/docuseal` |
-| `dokploy` | `/webhook/dokploy` |
-| `git` | `/webhook/git` |
-| `vikunja` | `/webhook/vikunja` |
-| `ardoise` | `/webhook/ardoise` |
-| `sablier` | `/webhook/sablier` |
-| `perception` | `/webhook/perception` |
-| `opus` | `/webhook/opus` |
-| `nuage` | `/webhook/nuage` |
-| `vision`, `plume` | fall through to `/webhook/dokploy` — set an explicit path |
+| `GET /api/settings` | the settings, the runtime status, and whether Matrix is usable |
+| `PUT /api/settings` | replaces the whole document |
 
-Authentication per request is either the provider's own `authenticate` implementation (signature
-verification, for the types that support it) or a constant-time comparison of the configured
-`secretHeader` against `secretValue`. A provider with no `secretValue` accepts anything; a provider
-with a secret but no header name rejects everything.
+Both return:
 
-A successful receipt normalizes the payload into an `AlertContext`, which becomes a
-`NookEventEnvelope` and goes through the delivery pipeline.
+```json
+{ "settings": { … }, "runtime": { … }, "matrixConfigured": true }
+```
 
-## Outbound deliveries
+Secrets read as `••••••••`. Sending the marker back keeps the stored value; anything else
+replaces it; an empty string clears it. A rejected `PUT` leaves the current settings untouched
+— see [configuration.md](configuration.md) for what gets rejected.
 
-Nook is a client as well as a server. HTTP and Perception delivery targets receive a `POST` with
-the envelope as the JSON body and these headers:
+## Actions
 
-| Header | Value |
+| Route | Body | Notes |
+|---|---|---|
+| `POST /api/test-alert` | — | a test alert through the whole pipeline, including the routing rules |
+| `POST /api/test-delivery-target` | `{"targetId":"…"}` | straight to one target, bypassing routing |
+| `POST /api/test-provider-connection` | `{"providerId":"…"}` | IMAP only |
+
+`test-alert` respects routing, so it is silent unless a target lists `__nook_system__`.
+`test-delivery-target` is the one that answers "does this target work at all".
+
+## Events
+
+| Route | Notes |
 |---|---|
-| `Content-Type` | `application/json` |
-| `User-Agent` | `Nook/1.0 uptime-bot` |
-| `x-nook-event-id` | The envelope id |
+| `GET /api/events` | `limit`, `offset`, `q`, `source` |
+| `GET /api/events/provider/{providerId}` | scoped to one provider |
+| `GET /api/events/target/{targetId}` | scoped to one delivery target |
+| `GET /api/events/stream` | server-sent events, one `data:` frame per new entry |
+| `POST /api/events/{eventId}/replay` | `{"targetId":"…"}` — re-send a logged envelope |
+
+```json
+{ "events": [ … ], "total": 128, "stats": { "totalEvents": 128, "lastEventAt": "…",
+  "deliverySuccessCount": 121, "deliveryErrorCount": 7 } }
+```
+
+`stats` describes the whole filtered set, not the returned page, so the counters do not change
+as the operator scrolls. `q` matches every search term against a flattened per-event text
+column covering the event, the provider, the envelope's message and normalized string fields,
+and each delivery attempt's target and error.
+
+The log keeps the most recent 5000 entries; older ones are pruned hourly.
+
+## Spaces
+
+| Route | Notes |
+|---|---|
+| `GET /api/spaces` · `POST /api/spaces` | list, create |
+| `GET`/`PUT`/`DELETE /api/spaces/{id}` | one space; `GET` includes its members |
+| `GET`/`POST /api/spaces/{id}/members` | list, add |
+| `PUT`/`DELETE /api/spaces/{id}/members/{userId}` | update the role, remove |
+
+Roles are `owner`, `admin`, `member`. Adding an existing member returns that membership
+unchanged rather than erroring.
+
+`{userId}` is percent-decoded server-side, so a client sending `encodeURIComponent(email)`
+matches a stored address. chi routes on the raw path and would otherwise never match.
+
+## Webhooks
+
+```
+POST /webhook/<provider>
+```
+
+At the root, never under `/api` — these paths are registered in Dokploy, DocuSeal, the git
+forges and Vikunja. The path and the secret header are per-provider settings; the defaults are
+in [configuration.md](configuration.md).
+
+The body is read once under a 4 MB cap and kept raw, because signature verification hashes
+exactly what the sender signed. Authentication runs before the JSON is parsed.
+
+| Answer | Meaning |
+|---|---|
+| `200 {"ok":true}` | accepted; delivered if the provider produced a message |
+| `401` | the secret or signature did not verify |
+| `400` | the body is not JSON |
+| `404` | no enabled provider is configured on that path |
+
+A recognised event that is not worth an alert — a bare heartbeat — is accepted, logged, and not
+delivered.
+
+## Outbound event envelope
+
+HTTP and Perception targets receive the envelope, signed:
+
+| Header | |
+|---|---|
+| `x-nook-event-id` | the envelope id |
 | `x-nook-timestamp` | Unix seconds |
 | `x-nook-schema-version` | `1` |
-| `x-nook-signature-256` | `sha256=<hmac>`, present only when the target has a secret |
+| `x-nook-signature-256` | `sha256=` + HMAC-SHA256 of `timestamp.eventId.body` |
 
-The HMAC is SHA-256 over `<timestamp>.<event_id>.<raw_body>` keyed with the target's secret.
-Verify it against the raw body before parsing.
+The signature binds all three, so a receiver that also bounds the timestamp's age can reject a
+replay. A target with no secret configured gets the first three headers and no signature.
 
-Failed deliveries are retried after 5 s, 30 s and 300 s, three attempts maximum.
+`payload.raw` is `null` unless the provider marked the payload safe to forward **and** the
+target has `includeRawPayload`. When it is stripped, `privacy.rawPayloadAllowed` goes to
+`false` with it, so the receiver can tell the difference between "no raw payload" and "raw
+payload withheld".
 
-## Pool protocol
+## The pool
 
-The Nook Pool is a WebSocket event bus with a durable, offset-based queue. Client apps use the
-`@facile/pool` library rather than speaking this directly.
+| Route | Notes |
+|---|---|
+| `POST /pool/register`, `POST /api/pool/register` | exchange the shared secret for a token |
+| `GET /pool/ws`, `GET /api/pool/ws` | the WebSocket, `?token=…` |
+| `GET /api/pool/stats` | authenticated: epoch, live connections, connected apps |
 
-### Registration
-
-```
-POST /api/pool/register
-{
-  "app": "Opus",
-  "instance_id": "<optional>",
-  "secret": "<POOL_SECRET>",
-  "events": { "emit": ["task.created"], "listen": ["task.created"] }
-}
-→ 200 {"token": "…", "app_id": "…"}
-→ 400 {"error": "app is required"} | {"error": "invalid json"}
-→ 403 {"error": "invalid secret"}
+```jsonc
+// POST /pool/register
+{ "app": "sablier", "instance_id": "optional",
+  "secret": "…", "events": { "emit": ["*"], "listen": ["*"] } }
+// → { "token": "…", "app_id": "…" }
 ```
 
-The identity is `app` when no `instance_id` is given, `app:instance_id` otherwise — that is how one
-Opus deployment maintains a separate pool identity per workspace. `emit` and `listen` both default
-to `["*"]`.
+Re-registering an app keeps its existing token: a restarting client must not invalidate the
+token another instance is using.
 
-### Connecting
+### Frames
 
+```jsonc
+// server, on connect
+{ "type": "welcome", "epoch": "…", "app_id": "…" }
+
+// client
+{ "type": "subscribe", "channels": { "tasks": { "last_offset": 42 } } }
+// server, after replaying anything newer
+{ "type": "subscribed", "channels": { "tasks": { "offset": 57 } } }
+
+// either direction
+{ "type": "event", "id": "…", "channel": "tasks", "offset": 58,
+  "payload": { … }, "timestamp": 1786022937782, "sender": "sablier" }
+
+// server to the emitter, or client reporting its cursor
+{ "type": "ack", "channel": "tasks", "offset": 58 }
+
+{ "type": "ping" }  →  { "type": "pong" }
+{ "type": "error", "code": "UNKNOWN_TYPE", "message": "…" }
 ```
-GET /api/pool/ws?token=<token>          Upgrade: websocket
-→ 401 {"error": "token required"}
-→ 403 {"error": "invalid token"}
-```
 
-Only one live connection per `app_id`. A second one replaces the first, which is closed with code
-`1000` and reason `replaced by new connection`.
+On subscribe, the server resumes from whichever cursor is further along: the client's
+`last_offset` or the server-side ack cursor, which is what lets a client that lost its offsets
+recover. An app never receives its own emissions back.
 
-### Messages
+The `epoch` changes on every boot. A client seeing a new one knows it is looking at a restarted
+server and should resync rather than trust its offsets across the gap.
 
-| Direction | Type | Shape |
-|---|---|---|
-| server → client | `welcome` | `{type, epoch, app_id}` |
-| client → server | `subscribe` | `{type, channels: {"<name>": {last_offset}}}` |
-| server → client | `subscribed` | `{type, channels: {"<name>": {offset}}}` |
-| server → client | `event` | `{type, id, channel, offset, payload, timestamp, sender}` |
-| client → server | `ack` | `{type, channel, offset}` |
-| server → client | `error` | `{type, code, message}` |
+One live connection per app: a second closes the first with code 1000 `replaced by new
+connection`.
 
-`epoch` is a UUID regenerated on every server boot. A client that sees a new epoch must treat its
-stored offsets as invalid and resubscribe from scratch — this is what makes losing
-`pool-events.db` survivable.
-
-Subscribe with `last_offset` to resume; the server replays everything after it on that channel.
-Acknowledge as you go: retention is interest-based, and unacknowledged events are kept.
-
-### Stats
-
-| Method | Path | Auth | What it does |
-|---|---|---|---|
-| GET | `/api/pool/stats` | session | Pool epoch, registered apps and live connections |
-
-The payload Nook relays over the pool is opaque to it. Nook does not author suite event envelopes
-and cannot supply `actor_email` — it moves other apps' payloads without inspecting them. See
-[architecture.md](architecture.md).
+Acking is what pins retention. Events are kept until every active listener has acked them, past
+a 48h floor; a listener not seen for 14 days stops pinning; a 30-day ceiling backstops
+everything and logs loudly when a listener is still behind it.

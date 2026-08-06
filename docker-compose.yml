@@ -1,26 +1,81 @@
 services:
-  app:
+  postgres:
+    image: postgres:16-alpine
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nook}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-nook}
+    volumes:
+      - nook-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nook} -d ${POSTGRES_DB:-nook}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     expose:
-      - "${PORT:-9090}"
+      - "9090"
     environment:
-      NOOK_SETTINGS_PATH: ${NOOK_SETTINGS_PATH:-/data/nook.json}
-      PORT: ${PORT:-9090}
-      NOOK_SESSION_SECRET: ${NOOK_SESSION_SECRET}
-      NOOK_ADMIN_PASSWORD: ${NOOK_ADMIN_PASSWORD}
+      APP_ENV: ${APP_ENV:-production}
+      # Pinned rather than interpolated. The webhook URLs registered in Dokploy,
+      # DocuSeal and the git forges point at this port, and the healthcheck has
+      # to agree with it — the old `${PORT:-9090}` in both places went stale the
+      # moment the port was changed from the dashboard.
+      PORT: "9090"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER:-nook}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nook}?sslmode=disable
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       NOOK_ADMIN_USERNAME: ${NOOK_ADMIN_USERNAME:-admin}
+      NOOK_ADMIN_PASSWORD: ${NOOK_ADMIN_PASSWORD:?NOOK_ADMIN_PASSWORD is required}
+      NOOK_SESSION_SECRET: ${NOOK_SESSION_SECRET:?NOOK_SESSION_SECRET is required}
+      POOL_SECRET: ${POOL_SECRET:-}
+      TIMEOUT: ${TIMEOUT:-10}
+      # Read once, on the first boot after the move to Postgres, so an existing
+      # deployment keeps its providers, targets and secrets. Safe to leave in
+      # place: the file is only consulted when the database has no settings yet.
+      NOOK_SETTINGS_PATH: ${NOOK_SETTINGS_PATH:-/data/nook.json}
+      # Journal log shipping (optional — per-app key from Journal's Keys page)
+      JOURNAL_URL: ${JOURNAL_URL:-}
+      JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
     volumes:
-      - app_data:/data
+      - nook-data:/data
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: dokploy-network
+      traefik.http.routers.nook-web.rule: "Host(`nook.facile.studio`)"
+      traefik.http.routers.nook-web.entrypoints: web
+      traefik.http.routers.nook-web.middlewares: redirect-to-https@file
+      traefik.http.routers.nook-web.service: nook-svc
+      traefik.http.routers.nook-secure.rule: "Host(`nook.facile.studio`)"
+      traefik.http.routers.nook-secure.entrypoints: websecure
+      traefik.http.routers.nook-secure.tls.certresolver: letsencrypt
+      traefik.http.routers.nook-secure.service: nook-svc
+      traefik.http.services.nook-svc.loadbalancer.server.port: "9090"
     healthcheck:
-      test: ["CMD", "bun", "-e", "const res = await fetch('http://localhost:${PORT:-9090}/health'); if (!res.ok) process.exit(1)"]
+      test: ["CMD", "/nook", "healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 15s
 
 volumes:
-  app_data:
+  nook-postgres:
+  nook-data:
     name: nook_data
+
+networks:
+  dokploy-network:
+    external: true
