@@ -28,7 +28,6 @@ type Config struct {
 	SessionSecret string
 	PoolSecret    string
 	ClientDir     string
-	LegacyPath    string
 	Timeout       int
 }
 
@@ -71,7 +70,6 @@ func Load() (Config, error) {
 		SessionSecret: troncenv.String("NOOK_SESSION_SECRET", ""),
 		PoolSecret:    troncenv.String("POOL_SECRET", ""),
 		ClientDir:     troncenv.String("CLIENT_DIR", "./client"),
-		LegacyPath:    troncenv.String("NOOK_SETTINGS_PATH", ""),
 		Timeout:       timeout,
 	}
 

@@ -4,7 +4,8 @@ Building the image, the port that must not drift, and putting Nook behind Traefi
 
 ## The image
 
-`apps/api/Dockerfile` is a three-stage build:
+`Dockerfile` at the repository root is a three-stage build — it has to be there, because it
+builds both `apps/client` and `apps/api` and needs the whole repo as its context:
 
 1. `oven/bun:1` builds the SvelteKit client.
 2. `golang:1.25-alpine` builds a static binary with `CGO_ENABLED=0`.
@@ -60,10 +61,6 @@ spaces and the pool queue. Nothing else is written to disk.
 It bakes in `POSTGRES_PASSWORD` at first init. Changing the variable later without wiping the
 volume gives SASL authentication failures against a healthy-looking database container.
 
-A rebuild from a pre-Postgres deployment needs the old `nook.json` mounted and
-`NOOK_SETTINGS_PATH` pointing at it for one boot; both can be removed afterwards, which is
-what the current deployment did.
-
 ## Traefik
 
 The compose file carries the labels for la ruche: an HTTP router redirecting to HTTPS, an
@@ -101,15 +98,3 @@ are teed to [Journal](https://journal.facile.studio) under the app name `nook`. 
 key from Journal's Keys page; Nook is not on Journal's docker network, so the URL is
 `https://journal.facile.studio/api` — with the `/api` suffix, which the SPA catch-all on the
 other end would otherwise answer with a silent 200.
-
-## Upgrading from the Bun release
-
-1. Add a Postgres and set `DATABASE_URL`.
-2. Mount the old data volume and set `NOOK_SETTINGS_PATH` to the `nook.json` inside it.
-3. Deploy. Migrations run at startup; the legacy file is imported on that first boot and the
-   import is logged with the provider and target counts.
-4. Check the dashboard, then drop the mount, the variable and the volume.
-
-The dashboard moves from `/dashboard` to the root — old links 301. The webhook paths and the
-pool endpoints do not move. Pool clients re-register on connect, so their tokens not carrying
-over is invisible.

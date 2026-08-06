@@ -135,7 +135,7 @@ func run() int {
 		return 1
 	}
 
-	store, err := settings.NewStore(db, appLogger, settings.Defaults(cfg.Port, cfg.Timeout), cfg.LegacyPath)
+	store, err := settings.NewStore(db, appLogger, settings.Defaults(cfg.Port, cfg.Timeout))
 	if err != nil {
 		appLogger.Error("settings", slog.Any("error", err))
 		return 1

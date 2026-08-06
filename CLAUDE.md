@@ -40,6 +40,7 @@ Production values are injected by Dokploy; Casier covers the developer loop.
 ## Project Structure
 
 ```
+Dockerfile                  Multi-stage build: the client with Bun, then the Go binary
 apps/
   api/
     main.go                 Entry point: config, migrations, router, graceful shutdown
@@ -132,7 +133,6 @@ restarting re-seeds the password and revokes that user's sessions, which is the 
 | `NOOK_SESSION_SECRET` | Required in production so sessions survive a restart | — |
 | `POOL_SECRET` | Shared secret pool clients register with. The dashboard value wins | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
-| `NOOK_SETTINGS_PATH` | A pre-Postgres `nook.json` to import, read once when the database has no settings | — |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set | — |
 
 `PORT` deliberately does **not** follow `troncenv.Core`'s 8080 default: the published webhook
