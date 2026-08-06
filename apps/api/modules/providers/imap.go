@@ -121,7 +121,11 @@ func (i *IMAP) poll(ctx context.Context, provider settings.Provider) {
 		i.log.Error("inbox login failed", slog.String("provider", provider.Name), slog.Any("error", err))
 		return
 	}
-	defer client.Logout().Wait()
+	// The closure is load-bearing: `defer client.Logout().Wait()` evaluates
+	// client.Logout() immediately, so the LOGOUT goes out right after LOGIN and
+	// every later command lands on a connection the server is already closing —
+	// which surfaced as `unexpected EOF` on SELECT for every inbox.
+	defer func() { client.Logout().Wait() }()
 
 	mailbox, err := client.Select(imapMailbox, nil).Wait()
 	if err != nil {
@@ -348,7 +352,11 @@ func TestConnection(provider settings.Provider) error {
 	if err := client.Login(provider.Username, *provider.Password).Wait(); err != nil {
 		return err
 	}
-	defer client.Logout().Wait()
+	// The closure is load-bearing: `defer client.Logout().Wait()` evaluates
+	// client.Logout() immediately, so the LOGOUT goes out right after LOGIN and
+	// every later command lands on a connection the server is already closing —
+	// which surfaced as `unexpected EOF` on SELECT for every inbox.
+	defer func() { client.Logout().Wait() }()
 
 	_, err = client.Select(imapMailbox, nil).Wait()
 	return err
