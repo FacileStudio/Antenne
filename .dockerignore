@@ -1,7 +1,9 @@
 node_modules
-apps/api/node_modules
-apps/client/node_modules
-apps/client/.nuxt
-apps/client/.output
-apps/api/dashboard
+apps/*/node_modules
+apps/client/.svelte-kit
+apps/client/build
+.git
+.env
+.env.*
+*.log
 .DS_Store

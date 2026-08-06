@@ -1,135 +1,113 @@
 # Nook — Configuration
 
-Nook is configured in two places that behave very differently: a handful of environment variables
-for the process itself, and a JSON settings file for everything else.
-
-## The split
-
-**Environment variables cover core server settings and dashboard auth only.** Providers, delivery
-targets, credentials and routing rules live in the settings file and are edited exclusively
-through the dashboard at `/dashboard`. There is no environment variable for a Matrix room, an SMTP
-password or a webhook path, and adding one is not the intended extension point.
-
-Nook does not use `tronc`, so there is no `troncenv.Core` block and no fail-fast on a missing
-variable. Every variable below is optional and the process boots without any of them.
+Nook is configured in two places that behave very differently: a handful of environment
+variables for the process itself, and a settings document in Postgres for everything else.
 
 ## Environment variables
 
-### Core
+Read once at startup. Every error `env.Load` returns is a reason not to boot.
 
-| Variable | Required | Default | What it does |
-|---|---|---|---|
-| `PORT` | no | `9090` | Seeds the default listen port. Serves API, dashboard, health check and webhooks |
-| `WEBHOOK_PORT` | no | — | Legacy alias, read only when `PORT` is unset |
-| `NOOK_SETTINGS_PATH` | no | `/data/nook.json` | Settings file path. The event log and spaces files are derived from it |
-| `TIMEOUT` | no | `10` | Seeds the default provider timeout, in seconds. Ignored when not a positive number |
+| Variable | What it does | Default |
+|---|---|---|
+| `DATABASE_URL` | Postgres connection string | **required** — the API exits 1 without it |
+| `APP_ENV` | `development` / `staging` / `production`. Never gates security behaviour on its own | `development` |
+| `PORT` | HTTP port for the API, dashboard, health check, webhooks and pool | `9090` |
+| `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | `info` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated origins. `ALLOWED_ORIGINS`, `DOMAINS`, `DOMAIN`, `CORS_ORIGINS`, `TRUSTED_ORIGINS` and `CLIENT_ORIGIN` remain accepted fallbacks | unset denies every cross-origin caller |
+| `NOOK_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
+| `NOOK_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open to anyone who can reach the server | — |
+| `NOOK_SESSION_SECRET` | Required in production so sessions survive a restart | — |
+| `POOL_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
+| `TIMEOUT` | Website check timeout, in seconds | `10` |
+| `NOOK_SETTINGS_PATH` | A pre-Postgres `nook.json` to import, read once when the database has no settings yet | — |
+| `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set for anything to ship | — |
 
-`PORT` and `TIMEOUT` only seed *defaults*. Once a settings file exists, its `providers.port` and
-`timeout` win — see the trap below.
+`APP_ENV=production` refuses to start without `NOOK_ADMIN_PASSWORD` and `NOOK_SESSION_SECRET`.
+That is the one place `APP_ENV` changes behaviour, and it fails closed.
 
-### Dashboard authentication
+### PORT is not tronc's default
 
-| Variable | Required | Default | What it does |
-|---|---|---|---|
-| `NOOK_ADMIN_PASSWORD` | no | — | When set, the dashboard and every `/api/*` route require a session. **When unset, both are open to anyone who can reach the port** |
-| `NOOK_ADMIN_USERNAME` | no | `admin` | Login label, and part of the session token payload. Not checked at login |
-| `NOOK_SESSION_SECRET` | no | random per boot | HMAC key for the session cookie. Leave it unset and every restart signs users out |
+`troncenv.Core` defaults `PORT` to `8080`. Nook deliberately keeps `9090`: the webhook URLs
+registered in Dokploy, DocuSeal and the git forges all point at it, every pool client's base
+URL points at it, and the dashboard's dev proxy targets it. Compose pins it explicitly, and so
+does `.env.example`.
 
-The session cookie is `nook_session`, `HttpOnly`, `SameSite=Lax`, and `Secure` when the request
-looks like HTTPS. Login is rate limited per client IP.
+### Schemeless CORS origins are dropped
 
-### Pool
+`troncenv.CORSOrigins` reads `DOMAIN` among its fallbacks, and deployments set that to a bare
+hostname for Traefik rather than to an origin. Nook filters out anything without an `http://`
+or `https://` prefix, because a schemeless value never matches an `Origin` header and only
+misleads anything that reads the list back as a URL.
 
-| Variable | Required | Default | What it does |
-|---|---|---|---|
-| `POOL_SECRET` | no | `pool` | Shared secret apps present to `POST /api/pool/register`. Overridden by `pool.secret` in the settings file when that is set |
+### Development configuration comes from Casier
 
-The default is the literal string `pool`, and the server logs
-`[pool] using default secret 'pool' — set POOL_SECRET in production` when it is in use. Any app
-that knows the secret can register and read every channel it subscribes to, so treat it as a
-credential.
+`.casier.toml` pins this repo to the `nook` project and its `dev` environment, so `mise run
+dev` wraps the API in `casier run` and the process starts with everything above already in its
+environment. Nothing has to exist on disk; a local `.env` still works and simply wins nothing,
+because the API reads the process environment either way.
 
-## The port trap
+`casier run` is network-first with a last-known-good cache, so a Casier outage falls back to
+the previously fetched values and says so on stderr — it never starts the API with an empty
+environment. `mise run dev-offline` forces the cached path.
 
-The listen port is read from the **settings file**, not the environment:
-
-```ts
-const serverPort = store.getSettings().providers.port;
+```sh
+casier secrets set -p nook -e dev DATABASE_URL postgres://nook:nook@localhost:5432/nook
+casier sync push -p nook -e dev -f apps/api/.env.example
+mise run secrets    # list what Casier holds
 ```
 
-`PORT` seeds `providers.port` only when no settings file exists yet. Change the port in the
-dashboard and `nook.json` wins from then on, with the environment variable silently ignored.
+Production values are injected by Dokploy. Casier covers the developer loop, not the bootstrap
+tier.
 
-This matters because both the compose `expose` and the compose healthcheck interpolate
-`${PORT:-9090}`. If the two drift apart, the container fails its healthcheck while the service is
-perfectly healthy on a different port. Keep `PORT` and `providers.port` in sync, or leave the port
-alone in the dashboard and manage it purely from the environment.
+## The settings document
 
-A port change is also the one setting that needs a process restart. Everything else is applied
-live on `PUT /api/settings`.
+Everything else — providers, delivery targets, credentials, routing, system events, the pool
+secret — lives in Postgres and is edited through the dashboard. `GET /api/settings` returns it;
+`PUT /api/settings` replaces it whole.
 
-## The settings file
-
-Written to `NOOK_SETTINGS_PATH`, pretty-printed JSON, rewritten in full on every save. Three
-sibling files are derived from the same path: `nook-events.json` (the event log, capped at 500
-entries), `nook-spaces.json` (spaces and members), and `pool-events.db` (the pool's SQLite queue,
-in the same directory).
-
-Top-level shape:
-
-```json
+```jsonc
 {
-  "delivery": { "items": [] },
-  "system": {
-    "events": {
-      "startup": true,
-      "providerEnabled": false,
-      "providerDisabled": false,
-      "providerAdded": false,
-      "providerRemoved": false,
-      "deliveryFailure": false
-    }
-  },
   "timeout": 10,
-  "providers": { "port": 9090, "items": [] },
-  "pool": { "secret": "…", "logActivity": true }
+  "providers": {
+    "port": 9090,
+    "items": [
+      {
+        "id": "…", "type": "website", "name": "Landing",
+        "enabled": true, "tags": ["public"],
+        "url": "https://facile.studio", "interval": 60
+      },
+      {
+        "id": "…", "type": "dokploy", "name": "Dokploy",
+        "enabled": true, "tags": ["infra"],
+        "path": "/webhook/dokploy",
+        "secretHeader": "x-dokploy-secret", "secretValue": "••••••••"
+      }
+    ]
+  },
+  "delivery": {
+    "items": [
+      {
+        "id": "…", "type": "matrix", "name": "Ops room", "enabled": true,
+        "providerIds": ["__nook_system__"], "providerTags": ["infra"],
+        "homeserver": "https://matrix.org", "accessToken": "••••••••",
+        "roomIds": ["!ops:matrix.example.com"]
+      }
+    ]
+  },
+  "system": { "events": { "startup": true, "deliveryFailure": false } },
+  "pool": { "secret": "••••••••", "logActivity": true }
 }
 ```
 
-Every write goes through `normalizeAppSettings`, which coerces types, fills gaps from the defaults
-and rejects invalid input. Two rejections are worth knowing: a non-positive `timeout`, and two
-enabled webhook providers sharing a path.
+Only the fields belonging to a type appear on that type.
 
-### `system.events`
+### Secrets read as `••••••••`
 
-Nook can alert about itself. Each flag emits a system event through the normal delivery pipeline,
-under the reserved provider id `__nook_system__`.
+Every stored secret is redacted on the way out. Sending the marker back keeps the stored value;
+sending anything else replaces it; sending an empty string clears it. So an exported config
+carries no credentials, and a dashboard that never saw one cannot erase it.
 
-| Flag | Default | Fires when |
-|---|---|---|
-| `startup` | `true` | The service finishes booting |
-| `providerEnabled` | `false` | A provider is switched on |
-| `providerDisabled` | `false` | A provider is switched off |
-| `providerAdded` | `false` | A provider is created |
-| `providerRemoved` | `false` | A provider is deleted |
-| `deliveryFailure` | `false` | One or more targets fail for an event |
-
-System events are routed like any other, which means a target only receives them if it lists
-`__nook_system__` in its `providerIds`. Enabling the flag alone is not enough.
-
-### `providers.items`
-
-Each entry has `id`, `type`, `name`, `enabled` and `tags`. Type-specific fields:
-
-| Type | Fields |
-|---|---|
-| `website` | URL and `interval` in seconds, default `60` |
-| `imap` | Host, port, credentials and mailbox. The only type with a connection test |
-| `rss` | Feed URL and poll interval |
-| webhook types | `path` and, optionally, `secretHeader` plus `secretValue` |
-
-Webhook types are `uptime-kuma`, `docuseal`, `dokploy`, `git`, `vikunja`, `ardoise`, `sablier`,
-`perception`, `opus`, `vision`, `plume` and `nuage`. Default paths and secret headers:
+### Provider defaults
 
 | Type | Default path | Default secret header |
 |---|---|---|
@@ -142,34 +120,31 @@ Webhook types are `uptime-kuma`, `docuseal`, `dokploy`, `git`, `vikunja`, `ardoi
 | `sablier` | `/webhook/sablier` | `x-sablier-signature` |
 | `perception` | `/webhook/perception` | `x-perception-secret` |
 | `opus` | `/webhook/opus` | `x-opus-signature` |
+| `vision` | `/webhook/vision` | `x-vision-signature-256` |
+| `plume` | `/webhook/plume` | `x-plume-signature-256` |
 | `nuage` | `/webhook/nuage` | `x-nuage-signature-256` |
-| `vision`, `plume` | `/webhook/dokploy` | `x-dokploy-secret` |
 
-`vision` and `plume` have no dedicated default and fall through to the `dokploy` values. Give them
-an explicit path, or the second one you enable will collide and the save will be rejected.
+`ardoise`, `vision`, `plume` and `nuage` verify an HMAC-SHA256 of the body prefixed with
+`sha256=`. `opus` verifies the bare hex digest with no prefix. The rest compare the header
+against the configured secret in constant time. An empty secret accepts unauthenticated calls
+on that path.
 
-A provider with no `secretValue` accepts unauthenticated requests. A provider with a `secretValue`
-but no `secretHeader` rejects everything.
+### Rejected documents
 
-### `delivery.items`
+A `PUT` is refused, with the current settings left untouched, when the timeout is not positive,
+a webhook path does not start with `/`, two enabled webhook providers share a path, a delivery
+target has an unknown type, or the listener port is not a valid TCP port.
 
-Each target has `id`, `type`, `name`, `enabled`, `providerIds` and `providerTags`, plus fields
-specific to its type — see [architecture.md](architecture.md) for the full field list per type.
+### The listener port
 
-`providerIds` and `providerTags` are the routing rule and both default to empty, which means **a
-new target receives nothing until you attach at least one provider id or tag to it**. There is no
-catch-all.
+`providers.port` is what the process binds on the next restart, and the only setting that needs
+one. Everything else re-applies live on save. Changing it means changing the deployment's
+`PORT`, the compose healthcheck and every registered webhook URL — which is why compose pins
+`9090` literally instead of interpolating it.
 
-### `pool`
+## Importing a pre-Postgres `nook.json`
 
-| Field | Default | What it does |
-|---|---|---|
-| `secret` | — | Overrides `POOL_SECRET` |
-| `logActivity` | `true` | Set to `false` to stop mirroring pool traffic into the event log |
-
-## Secrets on disk
-
-`nook.json` holds every credential in plaintext: Matrix access tokens and passwords, SMTP
-passwords, ntfy tokens, HTTP and Perception target secrets, webhook provider secrets and the pool
-secret. It is a secret file living on the `/data` volume. Back it up as one, and do not commit a
-copy.
+Set `NOOK_SETTINGS_PATH` to the old file. On the first boot, if the database has no settings
+yet, Nook normalizes and imports it — providers, targets and secrets included — logs what it
+took, and leaves the file untouched as a rollback copy. Afterwards the database is the only
+source and the variable is inert, so it is safe to leave in place.

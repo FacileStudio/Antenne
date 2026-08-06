@@ -5,216 +5,155 @@ suite apps, and where the state actually lives.
 
 ## Runtime topology
 
-One process, one port. `Bun.serve` handles HTTP and WebSocket traffic through a single hand-written
-request handler; there is no framework and no reverse proxy inside the container.
+Nook is one Go binary serving the dashboard API, the webhook receivers, the pool and the built
+SvelteKit client from a single port, backed by one PostgreSQL database.
 
 ```
-Internet ──▶ Traefik ──▶ Bun.serve (:PORT, default 9090) ──┬──▶ /health          JSON status
-                                                            ├──▶ /api/pool/*     pool server
-                                                            ├──▶ /api/*          dashboard API
-                                                            ├──▶ /dashboard/*    static Nuxt bundle
-                                                            └──▶ POST /*         webhook receivers
-                                                                       │
-                                              ┌────────────────────────┼───────────────────┐
-                                              │                        │                   │
-                                     /data/nook.json         /data/nook-events.json   /data/pool-events.db
-                                     settings + secrets       event log (500 max)     SQLite, WAL
-
-Other Facile apps ──WebSocket──▶ /api/pool/ws ◀──WebSocket── Other Facile apps
+                    ┌──────────────────────────────────────────┐
+  third parties ───▶│ /webhook/<provider>   (root, never /api)  │
+  pool clients ────▶│ /pool/register, /pool/ws                  │
+  browser ─────────▶│ /api/*  ·  /health  ·  everything else    │
+                    └──────────────────┬───────────────────────┘
+                                       │
+                    ┌──────────────────▼───────────────────────┐
+                    │ internal/app — the alert pipeline         │
+                    └──────────────────┬───────────────────────┘
+                                       │
+       ┌───────────────┬───────────────┼───────────────┬────────────────┐
+       ▼               ▼               ▼               ▼                ▼
+   providers/      settings/       events/        delivery/          pool/
+   (pollers)       (config)     (activity log)    (senders)        (WS bus)
+                                       │
+                                       ▼
+                                  PostgreSQL
 ```
 
-Every path is served from the same port. That port is not fixed — see
-[deployment.md](deployment.md).
-
-## Components
-
-| File | Role |
-|---|---|
-| `apps/api/index.ts` | Wiring: loads settings, starts the managers, builds the server, owns `sendConfiguredAlert` |
-| `src/server.ts` | Top-level router and error boundary |
-| `src/server-api.ts` | Authenticated dashboard API |
-| `src/server-api-spaces.ts` | Spaces and members CRUD |
-| `src/server-auth.ts` | Session cookie, login rate limiting |
-| `src/server-dashboard.ts` | Static asset serving for the prebuilt Nuxt bundle |
-| `src/monitor.ts`, `src/imap.ts`, `src/rss.ts` | Pull providers, each with an `apply(settings)` manager |
-| `src/webhooks/` | Push providers, one file per provider under `providers/` |
-| `src/delivery*.ts` | Target selection, senders, HTTP delivery, signing |
-| `src/event-envelope.ts` | The structured envelope every HTTP and Perception delivery carries |
-| `src/event-log.ts` | In-memory ring of the last 500 events, persisted to disk |
-| `src/retry.ts` | Retry queue for failed deliveries |
-| `src/settings*.ts` | Load, normalize, persist and hot-apply the settings file |
-| `src/pool/` | The Nook Pool: WebSocket server, connection registry, SQLite event queue |
+[`tronc`](https://github.com/FacileStudio/tronc) supplies the chassis: the chi router and its
+middleware chain (request id, recovery, real IP, CORS, request logging), the
+`{"error":{"code","message"}}` envelope, bounded JSON decoding, the health endpoints, the SPA
+handler and the shared configuration. `tronc/migrate` applies the embedded goose migrations at
+startup, so a distroless container with no shell can still migrate itself.
 
 ## The alert pipeline
 
-Every alert, whatever its origin, goes through `sendConfiguredAlert` in `apps/api/index.ts`.
+Every event — a webhook, a website transition, a new email, a feed item, a system notice —
+takes the same path through `internal/app`:
 
-1. **Guard.** If no delivery target exists at all, the call throws.
-2. **Deduplicate.** A SHA-256 of `providerId` plus message is kept for 30 seconds; a repeat inside
-   that window is dropped.
-3. **Route.** `getDeliveryRouteSummary` selects targets. A target accepts an alert when it lists
-   the provider id in `providerIds`, or when it shares at least one tag with the provider's
-   `providerTags`. **There is no implicit fallthrough** — a target that lists neither receives
-   nothing. This is the single most common reason a freshly configured target stays silent.
-4. **Build the envelope.** `buildNookEventEnvelope` produces a `NookEventEnvelope` and derives a
-   stable id by hashing provider, event type, timestamp and a canonically serialized payload, so
-   the same event produced twice keeps the same id.
-5. **Log.** The event is pushed to the event log before delivery, then updated with the outcome.
-6. **Deliver.** Selected targets that are fully configured are sent in parallel. Targets that are
-   selected but incomplete are counted and skipped with a warning.
-7. **Retry.** Each failure is queued in `src/retry.ts`, which retries after 5 s, 30 s and 300 s,
-   three attempts maximum.
-8. **Escalate.** When `system.events.deliveryFailure` is on, a failure emits its own system alert,
-   guarded against recursion by a module-level flag.
+1. **Deduplicate.** An identical message from the same provider within 30 seconds is dropped.
+   Two sources reporting one outage is one alert.
+2. **Build the envelope.** `internal/envelope` assembles the schema-version-1 document and
+   derives its id by hashing the provider, the event type, the occurrence time and the
+   payload — so the same source event replayed twice carries the same id and a downstream
+   consumer can deduplicate.
+3. **Log it.** The entry lands in `events` with a flattened `search_text` column, and is fanned
+   out to every open SSE subscriber.
+4. **Route it.** `delivery.Summarize` resolves which targets opted in.
+5. **Deliver it.** Every sendable target is attempted in parallel; each attempt is recorded
+   with its status, error and duration.
+6. **Retry.** A failed attempt is queued for three more tries at 5s, 30s and 5min. The queue is
+   in-memory on purpose: a retry is only useful within minutes of the original attempt, and
+   the event log already records anything that outlives the process.
 
-Alerts are HTML strings. Plain text is derived from them for targets that need it.
+### Routing is opt-in, with no fallthrough
+
+A target receives an event only if it names the provider id in `providerIds` **or** shares one
+of the provider's tags through `providerTags`. Both default to empty and there is no
+catch-all, so a freshly created target receives nothing until one of the two is set.
+
+Nook's own events carry the reserved provider id `__nook_system__`. Enabling a system event in
+Settings is not enough — a target has to list that id explicitly.
+
+The delivery log line reports a `filtered` count. `filtered` equal to the target count means
+the routing rules match nothing.
+
+## The settings model
+
+Providers and delivery targets are polymorphic: fifteen provider types and six target types,
+each with its own fields. They are stored as a row carrying the indexed columns every type
+shares — id, type, name, enabled, position, tags — plus a `jsonb` `config` for the rest.
+
+The wire format is the dashboard's contract and is unchanged from the pre-Go service, so a
+config exported from the old dashboard imports here untouched. `Provider.MarshalJSON` and
+`DeliveryTarget.MarshalJSON` emit only the fields belonging to the type, keeping the JSON as
+narrow as the TypeScript union it replaced.
+
+A save replaces both lists wholesale rather than diffing them. Ordering is part of the state,
+and a partial write would leave the runtime routing to targets the operator just deleted.
+
+### Secrets
+
+Secrets never leave the server. `settings.Redact` replaces each one with `••••••••` on the way
+out; `settings.MergeSecrets` rewrites that marker back to the stored value on the way in,
+before normalization sees it. A dashboard that never held a secret therefore cannot erase it,
+and an exported config carries none.
 
 ## Providers
 
-Two families.
+- **Webhook providers** are passive. `modules/webhooks` holds one file per provider, each
+  owning its payload shape, its message rendering and its envelope mapping. The intake reads
+  the raw body once and keeps it raw, because signature verification has to hash exactly what
+  the sender signed.
+- **Pollers** are active. `modules/providers` drives websites, IMAP inboxes and RSS feeds. Each
+  restarts its watchers on every settings save, bound to the process context — never to a
+  request context, which would cancel them the moment the save responded.
 
-**Pull providers** hold a manager with an `apply(settings)` method, re-invoked on every settings
-change so the dashboard can reconfigure them live.
+A website needs two consecutive failures before it is called down: one timeout is noise. Any
+status under 400 counts as healthy, because several monitored hosts redirect their canonical
+path or locale and `res.ok` would misread that as downtime.
 
-| Type | What it does |
-|---|---|
-| `website` | HTTP check on an interval, default 60 s, alerting on up and down transitions |
-| `imap` | Polls a mailbox for newly received messages. The only provider type with a connection test |
-| `rss` | Polls a feed for new entries |
-
-**Push providers** are webhook receivers. Each is a `WebhookProviderDefinition` in
-`src/webhooks/providers/`, registered by type in `src/webhooks/index.ts`. Twelve types exist:
-`uptime-kuma`, `docuseal`, `dokploy`, `git`, `vikunja`, `ardoise`, `sablier`, `perception`, `opus`,
-`vision`, `plume`, `nuage`.
-
-Each configured webhook provider owns a path. Paths must be unique among enabled providers —
-`normalizeProvidersConfig` throws on a collision, which rejects the settings save. Defaults come
-from `getWebhookDefaultPath`; `vision` and `plume` have no dedicated default and fall through to
-`/webhook/dokploy`, so give them an explicit path.
-
-Authentication is per provider. A definition may supply its own `authenticate` (signature
-verification); otherwise Nook compares `secretHeader` against `secretValue` with a constant-time
-comparison. A provider with no `secretValue` accepts anything.
-
-## Event envelope
-
-`NookEventEnvelope` is Nook's own schema, at `schemaVersion: 1`. The TypeScript type carries no
-version suffix on purpose.
-
-```
-{
-  schemaVersion, id, occurredAt, emittedAt, source,
-  provider: { id, type, name, tags },
-  event:    { type, title, messageHtml, messageText, url },
-  actor:    { id, name, email } | null,
-  subject:  { type, id, name, url },
-  payload:  { normalized, raw },
-  privacy:  { containsPii, rawPayloadAllowed }
-}
-```
-
-`source` is one of `webhook`, `website`, `imap`, `rss`, `test`, `system`. `subject.type` is drawn
-from a closed list (`task`, `contract`, `client`, `deployment`, `repository`, `email`, `service`,
-`schedule`, `system`, `unknown`). The raw payload is stripped unless `rawPayloadAllowed` is true;
-`redactEnvelopeRawPayload` strips it after the fact for storage.
-
-**This is not the suite `enveloppe` contract.** `@facile/events` keys cross-app identity on
-`actor_email`, sourced from a Facile SSO identity. Nook's `actor.email` is whatever a third-party
-webhook payload happened to contain, and is null for every website, RSS and system event. Nook
-anchors the bus without being a participant in the envelope contract that runs over it — it relays
-app payloads opaquely and never authors one.
-
-HTTP and Perception deliveries carry the envelope as the request body plus four headers:
-
-- `x-nook-event-id`
-- `x-nook-timestamp`
-- `x-nook-schema-version`
-- `x-nook-signature-256`
-
-The signature is `sha256=` followed by HMAC-SHA256 over `<timestamp>.<event_id>.<raw_body>` using
-the target's secret. Deliveries without a configured secret are sent unsigned, with the other three
-headers still present.
-
-## Delivery targets
-
-Six types, all defined in `src/types.ts` and constructed by `createDefaultDeliveryTarget`.
-
-| Type | Carries | Key fields |
-|---|---|---|
-| `matrix` | HTML message | `homeserver`, `accessToken`, `refreshToken`, `userId`, `password`, `deviceId`, `roomIds` |
-| `discord` | HTML message | `webhookUrl` |
-| `webhook` | Signed envelope | `url`, `secretValue`, `includeRawPayload` |
-| `smtp` | HTML message | `host`, `port`, `secure`, `username`, `password`, `fromAddress`, `toAddresses`, `subjectPrefix` |
-| `ntfy` | HTML message | `serverUrl`, `topic`, `accessToken`, `priority`, `tags`, `clickUrl` |
-| `perception` | Signed envelope | `url`, `workspace`, `secretValue`, `includeRawPayload` |
-
-Every target additionally has `id`, `name`, `enabled`, `providerIds` and `providerTags`.
+The first IMAP and RSS poll only records what is already there, so a restart re-seeds instead
+of replaying the whole inbox into Matrix.
 
 ## The Nook Pool
 
-The pool is a separate subsystem from alert delivery. It is a durable, offset-based event bus that
-suite apps use to sync with each other — Opus, Sablier and Mycelium are the current clients, through
-the `@facile/pool` library.
+A WebSocket bus with a durable, offset-based queue in Postgres. A client registers over HTTP
+with the shared secret, receives a token, and connects with it.
 
-```
-App ──POST /api/pool/register {app, instance_id, secret, events}──▶ Nook
-    ◀──────────────── {token, app_id} ────────────────────────────
-App ──WS /api/pool/ws?token=… ──▶ welcome {epoch, app_id}
-    ──▶ subscribe {channels: {name: {last_offset}}}
-    ◀── subscribed {channels: {name: {offset}}}
-    ◀── event {id, channel, offset, payload, timestamp, sender}
-    ──▶ ack {channel, offset}
-```
+| Frame | Direction | Meaning |
+|---|---|---|
+| `welcome` | server | the boot epoch and the client's app id |
+| `subscribe` | client | channels and the client's last known offset |
+| `subscribed` | server | the confirmed cursor per channel, after replay |
+| `event` | both | an emission, or a relayed one |
+| `ack` | both | the assigned offset, or the client's cursor |
+| `ping` / `pong` | both | liveness |
+| `error` | server | a code and a message |
 
-- **Registration** returns a token. The identity is `app` or `app:instance_id` when an instance is
-  given, which is how Opus keeps one pool connection per workspace. Declared `events.emit` and
-  `events.listen` default to `["*"]`.
-- **Authentication** is a single shared `POOL_SECRET`, compared in constant time. The default value
-  is the literal string `pool`, and the server logs a warning when it is in use.
-- **Persistence** is SQLite at `<data dir>/pool-events.db` with WAL journaling. Each channel has a
-  monotonic offset; a reconnecting client resumes from its last acknowledged offset.
-- **Epoch** is a UUID regenerated on every boot and sent in the `welcome` message, so clients can
-  detect a queue reset and resynchronize rather than trusting stale offsets.
-- **Retention is interest-based**, not time-based. Events acknowledged by every active listener of
-  a channel become eligible for deletion. A listener inactive for more than 14 days stops pinning
-  retention and is logged as such. Cleanup runs every 24 hours.
-- **One connection per app id.** A second connection replaces the first, which is closed with
-  `1000 replaced by new connection`.
-- Pool activity is mirrored into the event log as `providerType: "pool"` unless
-  `pool.logActivity` is set to `false` in the settings.
+The **epoch** is a fresh id on every boot, sent in `welcome`. A client can tell a restart from
+a reconnect and resync from its own cursor rather than trusting offsets across a gap.
 
-## Settings and state
+**One live connection per app.** A second replaces the first with close code 1000 `replaced by
+new connection`, so a reconnect arriving before the old socket's close is noticed does not
+deliver everything twice.
 
-`SettingsStore` holds the whole configuration in memory, normalizes anything written to it, and
-persists to `NOOK_SETTINGS_PATH`. A `PUT /api/settings` re-applies every manager immediately;
-nothing needs a restart except a port change.
+**Retention is interest-based, not time-based.** Events stay until every active listener has
+acked them, past a 48h floor kept for replay. A listener not seen for 14 days stops pinning
+the log. A 30-day ceiling backstops everything, and crossing it while a listener is still
+behind logs loudly rather than dropping silently.
 
-Three files sit side by side, all derived from the settings path:
+An app never receives its own emissions back.
 
-| File | Contents |
-|---|---|
-| `nook.json` | Providers, delivery targets, system event flags, timeout, port, pool settings |
-| `nook-events.json` | The event log, capped at 500 entries |
-| `nook-spaces.json` | Spaces and their members |
-| `pool-events.db` | The pool's SQLite queue, in the same directory |
+## Authentication
 
-The settings file contains every credential in plaintext — Matrix access tokens, SMTP passwords,
-webhook secrets, the pool secret. Treat the volume accordingly.
+Nook owns its users and sessions and has no OIDC. The implementation sits behind
+`auth.Authenticator`; handlers read an `authcontext.Identity` and never see a cookie, a token
+or a user row. Replacing the implementation with the suite's shared auth package changes no
+handler.
 
-Spaces are a grouping layer with `owner`, `admin` and `member` roles keyed by user id. They are
-stored in their own file and are not wired to any external identity provider.
+Session tokens are opaque random values, stored only as a SHA-256 hash, so a database leak
+does not hand over live sessions. `NOOK_ADMIN_PASSWORD` remains the source of truth for the
+bootstrap account: changing it and restarting re-seeds the hash and revokes that user's
+sessions, which is the recovery path.
 
-## Authentication and safety
+## URL layout
 
-- The dashboard and the whole `/api/*` surface are gated by a session cookie, but **only when
-  `NOOK_ADMIN_PASSWORD` is set**. Unset, everything is open to anyone who can reach the port, and
-  the process logs a security warning at startup saying so.
-- `NOOK_SESSION_SECRET` signs the session cookie. Unset, it is random per boot, so every restart
-  invalidates sessions.
-- Login attempts are rate limited per client IP, derived from `x-forwarded-for`, then
-  `cf-connecting-ip`, then `x-real-ip`. Startup logs a second warning about this: the reverse proxy
-  must overwrite `x-forwarded-for` or the limiter is trivially bypassed.
-- `/api/pool/register` and `/api/pool/ws` are deliberately outside the session gate — they
-  authenticate with `POOL_SECRET` and a token. `/api/pool/stats` is inside it.
-- An uncaught exception exits the process so the supervisor restarts a known-good instance;
-  unhandled rejections are logged only.
+The layout is not uniform, and each exception is load-bearing:
+
+- `/webhook/*` and `/pool/*` stay at the root. They are registered in Dokploy, DocuSeal, the
+  git forges and every pool client, and moving them under `/api` breaks all of them silently.
+- `/api/*` carries its own 404 and 405. Without them the SPA catch-all answers an unknown API
+  path with 200 and HTML, which a machine client reads as a successful write.
+- `/health` and `/ready` are mounted at both the root and `/api`, so an external monitor
+  reaching only one of the two cannot read the SPA shell as green.
+- `/dashboard` and `/dashboard/*` 301 to the equivalent root path, for links made before the
+  client moved to the root.

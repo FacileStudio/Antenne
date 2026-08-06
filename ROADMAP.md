@@ -10,7 +10,9 @@
 - [x] Real-time activity feed via SSE
 - [x] Full-text search and filtering in activity log
 - [x] Webhook replay — re-deliver any logged event to any target from the dashboard
-- [ ] SQLite persistence — replace flat JSON file
+- [x] Replace the flat JSON file with a real database — landed as Postgres, not SQLite,
+      to match the rest of the Go suite (goose migrations through `tronc/migrate`)
+- [ ] Adopt the shared auth package once it ships — `auth.Authenticator` is the seam
 
 ## New Webhook Providers
 
