@@ -37,4 +37,6 @@ ENV CLIENT_DIR=/client
 
 EXPOSE 9090
 
+USER nonroot:nonroot
+
 ENTRYPOINT ["/nook"]

@@ -64,29 +64,16 @@ cached values. See [docs/development.md](docs/development.md).
 | `NOOK_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Required in production |
 | `NOOK_SESSION_SECRET` | Keeps sessions alive across a restart. Required in production |
 | `POOL_SECRET` | Shared secret apps present when registering with the pool |
-| `NOOK_SETTINGS_PATH` | A pre-Postgres `nook.json` to import on the first boot |
 
 Everything else — providers, delivery targets, credentials, routing — lives in the database
 and is edited through the dashboard.
 
 Full reference: [docs/configuration.md](docs/configuration.md).
 
-## Upgrading from the Bun release
-
-Done for facile.studio, and kept for anyone rebuilding from an old volume. Point
-`NOOK_SETTINGS_PATH` at a pre-Postgres `nook.json` and mount it. On a boot where the database
-has no settings yet, Nook imports the file — providers, delivery targets and secrets included
-— and leaves it untouched. Afterwards the database is the only source, and the variable and
-the volume can both go.
-
-Two things move: the dashboard is served at the root rather than at `/dashboard` (the old
-paths 301), and the API needs a Postgres. The webhook paths and the pool endpoints do not
-move — they are registered in third-party systems and in every pool client. The pool's tokens
-do not migrate, but clients register on connect, so they re-register on their own.
-
 ## Structure
 
 ```
+Dockerfile   Multi-stage build: the client with Bun, then the Go binary
 apps/
   api/       Go service — internal/ holds the pipeline and plumbing, modules/ the domains
   client/    SvelteKit dashboard, built into apps/client/build

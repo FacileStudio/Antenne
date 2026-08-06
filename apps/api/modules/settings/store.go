@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"os"
 	"sync"
 	"time"
 
@@ -65,8 +64,8 @@ type Store struct {
 }
 
 // NewStore loads the settings from the database, seeding them from the defaults
-// — or from a legacy nook.json, if one is still on the volume — on first boot.
-func NewStore(db *gorm.DB, log *slog.Logger, defaults AppSettings, legacyPath string) (*Store, error) {
+// on first boot.
+func NewStore(db *gorm.DB, log *slog.Logger, defaults AppSettings) (*Store, error) {
 	store := &Store{db: db, log: log, current: defaults}
 
 	loaded, found, err := store.load()
@@ -80,22 +79,10 @@ func NewStore(db *gorm.DB, log *slog.Logger, defaults AppSettings, legacyPath st
 		return store, nil
 	}
 
-	seed := defaults
-	imported := false
-	if legacyPath != "" {
-		if legacy, ok := store.importLegacy(legacyPath, defaults); ok {
-			seed, imported = legacy, true
-		}
-	}
-
-	if err := store.persist(seed); err != nil {
+	if err := store.persist(defaults); err != nil {
 		return nil, err
 	}
-	store.current = seed
-	// An import is a real configuration, not the defaults, and the dashboard
-	// says so. Without this the boot that imports 16 providers still reports
-	// "Defaults" until the next restart.
-	store.persisted = imported
+	store.current = defaults
 	return store, nil
 }
 
@@ -322,33 +309,6 @@ func deleteMissing(tx *gorm.DB, model any, kept []string) error {
 		return tx.Where("1 = 1").Delete(model).Error
 	}
 	return tx.Where("id NOT IN ?", kept).Delete(model).Error
-}
-
-// importLegacy reads a pre-Postgres nook.json so an existing deployment keeps
-// its providers, targets and secrets across the migration. It runs once: after
-// the first write the database is the only source, and the file is left on disk
-// untouched as a rollback copy.
-func (s *Store) importLegacy(path string, defaults AppSettings) (AppSettings, bool) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			s.log.Warn("could not read the legacy settings file", slog.String("path", path), slog.Any("error", err))
-		}
-		return AppSettings{}, false
-	}
-
-	imported, err := Normalize(raw, defaults)
-	if err != nil {
-		s.log.Error("the legacy settings file could not be imported, starting from defaults",
-			slog.String("path", path), slog.Any("error", err))
-		return AppSettings{}, false
-	}
-
-	s.log.Info("imported the legacy settings file into Postgres",
-		slog.String("path", path),
-		slog.Int("providers", len(imported.Providers.Items)),
-		slog.Int("delivery_targets", len(imported.Delivery.Items)))
-	return imported, true
 }
 
 func cloneSettings(source AppSettings) AppSettings {

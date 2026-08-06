@@ -19,7 +19,6 @@ Read once at startup. Every error `env.Load` returns is a reason not to boot.
 | `NOOK_SESSION_SECRET` | Required in production so sessions survive a restart | — |
 | `POOL_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
-| `NOOK_SETTINGS_PATH` | A pre-Postgres `nook.json` to import, read once when the database has no settings yet | — |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set for anything to ship | — |
 
 `APP_ENV=production` refuses to start without `NOOK_ADMIN_PASSWORD` and `NOOK_SESSION_SECRET`.
@@ -141,10 +140,3 @@ target has an unknown type, or the listener port is not a valid TCP port.
 one. Everything else re-applies live on save. Changing it means changing the deployment's
 `PORT`, the compose healthcheck and every registered webhook URL — which is why compose pins
 `9090` literally instead of interpolating it.
-
-## Importing a pre-Postgres `nook.json`
-
-Set `NOOK_SETTINGS_PATH` to the old file. On the first boot, if the database has no settings
-yet, Nook normalizes and imports it — providers, targets and secrets included — logs what it
-took, and leaves the file untouched as a rollback copy. Afterwards the database is the only
-source and the variable is inert, so it is safe to leave in place.
