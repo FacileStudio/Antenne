@@ -22,9 +22,10 @@ COPY apps/api/ .
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} \
     go build -trimpath -ldflags="-s -w" -o /out/nook .
 
-# Not the :nonroot variant: /data is a named volume, which Docker creates owned
-# by root, so a non-root process could not read the legacy settings import.
-FROM gcr.io/distroless/static-debian12
+# :nonroot, because the binary writes nothing to disk — every byte of state is in
+# Postgres. The root variant was only needed while a legacy settings file had to
+# be read off a root-owned named volume, and that volume is gone.
+FROM gcr.io/distroless/static-debian12:nonroot
 
 COPY --from=api-build /out/nook /nook
 COPY --from=client-build /client/build /client

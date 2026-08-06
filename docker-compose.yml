@@ -40,15 +40,12 @@ services:
       NOOK_SESSION_SECRET: ${NOOK_SESSION_SECRET:?NOOK_SESSION_SECRET is required}
       POOL_SECRET: ${POOL_SECRET:-}
       TIMEOUT: ${TIMEOUT:-10}
-      # Read once, on the first boot after the move to Postgres, so an existing
-      # deployment keeps its providers, targets and secrets. Safe to leave in
-      # place: the file is only consulted when the database has no settings yet.
-      NOOK_SETTINGS_PATH: ${NOOK_SETTINGS_PATH:-/data/nook.json}
+      # NOOK_SETTINGS_PATH is deliberately unset. The one-time import from the
+      # pre-Postgres nook.json has run and the volume is gone; point it at a
+      # file again only to re-import into an empty database.
       # Journal log shipping (optional — per-app key from Journal's Keys page)
       JOURNAL_URL: ${JOURNAL_URL:-}
       JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
-    volumes:
-      - nook-data:/data
     networks:
       - default
       - dokploy-network
@@ -73,8 +70,6 @@ services:
 
 volumes:
   nook-postgres:
-  nook-data:
-    name: nook_data
 
 networks:
   dokploy-network:
