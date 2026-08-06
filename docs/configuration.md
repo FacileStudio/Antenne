@@ -55,10 +55,23 @@ casier sync push -p nook -e dev -f apps/api/.env.example
 mise run secrets    # list what Casier holds
 ```
 
-**Production values are injected by Dokploy, not read from Casier.** That is the suite
-convention and it is deliberate: an app that fetched its own configuration from Casier at boot
-could not start while Casier was down, and Casier needs a configured environment of its own to
-start at all. Casier covers the developer loop; the bootstrap tier stays in the orchestrator.
+### Production: Casier is the source, Dokploy is the injector
+
+The `prod` environment holds every production value, and Dokploy is driven from it:
+
+```sh
+DOKPLOY_URL=https://gare.facile.studio/api DOKPLOY_API_KEY=… \
+  casier push dokploy -p nook -e prod MmZp9bJ4XggnCCArKOp3z
+```
+
+The running container still reads its configuration from the Dokploy compose env, **never from
+Casier at boot**. That split is deliberate: an app that fetched its own configuration from
+Casier at startup could not start while Casier was down, and Casier needs a configured
+environment of its own to start at all. So Casier owns the values, versions them and tracks
+their rotation age; Dokploy remains the bootstrap tier that hands them to the process.
+
+Rotating a production secret is therefore: `casier secrets set -p nook -e prod KEY value`,
+then `casier push dokploy`, then redeploy.
 
 ## The settings document
 

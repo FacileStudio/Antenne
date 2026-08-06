@@ -35,7 +35,10 @@ dev` wraps the API in `casier run` and the process starts with `DATABASE_URL`,
 the previously fetched values and says so on stderr. Add a value with
 `casier secrets set -p nook -e dev KEY value`.
 
-Production values are injected by Dokploy; Casier covers the developer loop.
+Production values live in Casier's `prod` environment and are pushed into Dokploy with
+`casier push dokploy -p nook -e prod <composeId>`; the container reads them from the Dokploy
+env, never from Casier at boot. Casier owns and versions the values; Dokploy is the bootstrap
+tier.
 
 ## Project Structure
 
