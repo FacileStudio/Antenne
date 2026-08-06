@@ -81,9 +81,10 @@ func NewStore(db *gorm.DB, log *slog.Logger, defaults AppSettings, legacyPath st
 	}
 
 	seed := defaults
+	imported := false
 	if legacyPath != "" {
-		if imported, ok := store.importLegacy(legacyPath, defaults); ok {
-			seed = imported
+		if legacy, ok := store.importLegacy(legacyPath, defaults); ok {
+			seed, imported = legacy, true
 		}
 	}
 
@@ -91,6 +92,10 @@ func NewStore(db *gorm.DB, log *slog.Logger, defaults AppSettings, legacyPath st
 		return nil, err
 	}
 	store.current = seed
+	// An import is a real configuration, not the defaults, and the dashboard
+	// says so. Without this the boot that imports 16 providers still reports
+	// "Defaults" until the next restart.
+	store.persisted = imported
 	return store, nil
 }
 
