@@ -55,8 +55,10 @@ casier sync push -p nook -e dev -f apps/api/.env.example
 mise run secrets    # list what Casier holds
 ```
 
-Production values are injected by Dokploy. Casier covers the developer loop, not the bootstrap
-tier.
+**Production values are injected by Dokploy, not read from Casier.** That is the suite
+convention and it is deliberate: an app that fetched its own configuration from Casier at boot
+could not start while Casier was down, and Casier needs a configured environment of its own to
+start at all. Casier covers the developer loop; the bootstrap tier stays in the orchestrator.
 
 ## The settings document
 
