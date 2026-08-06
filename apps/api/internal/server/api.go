@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
@@ -192,10 +193,23 @@ func (a *API) handleEventStream(w http.ResponseWriter, r *http.Request) {
 	stream, unsubscribe := a.app.Events().Subscribe()
 	defer unsubscribe()
 
+	// A quiet Nook can go minutes without an event, and every proxy in front of
+	// one culls an idle connection — Cloudflare at 100 seconds, Traefik at 180.
+	// Without this the stream simply dies mid-session and the client reconnects,
+	// which a browser's EventSource hides and anything else reports as an error.
+	// A comment frame is the SSE keep-alive: every consumer ignores it.
+	heartbeat := time.NewTicker(20 * time.Second)
+	defer heartbeat.Stop()
+
 	for {
 		select {
 		case <-r.Context().Done():
 			return
+		case <-heartbeat.C:
+			if _, err := io.WriteString(w, ": keep-alive\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
 		case entry, open := <-stream:
 			if !open {
 				return
