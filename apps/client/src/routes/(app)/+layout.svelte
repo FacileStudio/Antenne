@@ -21,7 +21,7 @@
 	];
 
 	const title = $derived(
-		TITLES.find((entry) => page.url.pathname.startsWith(entry.prefix))?.label ?? 'Nook'
+		TITLES.find((entry) => page.url.pathname.startsWith(entry.prefix))?.label ?? 'Antenne'
 	);
 
 	$effect(() => {

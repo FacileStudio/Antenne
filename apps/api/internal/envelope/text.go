@@ -11,7 +11,7 @@ var (
 	anyTag       = regexp.MustCompile(`<[^>]*>`)
 )
 
-// HTMLToPlainText renders the small HTML subset Nook's messages use down to
+// HTMLToPlainText renders the small HTML subset Antenne's messages use down to
 // text, for the channels that cannot display markup: Discord, ntfy, and the
 // text/plain half of an SMTP message.
 func HTMLToPlainText(message string) string {
@@ -21,7 +21,7 @@ func HTMLToPlainText(message string) string {
 	return strings.TrimSpace(text)
 }
 
-// EscapeHTML escapes the three characters that can break out of Nook's message
+// EscapeHTML escapes the three characters that can break out of Antenne's message
 // markup. Provider payloads are third-party text and go through it before being
 // interpolated into a message.
 func EscapeHTML(value string) string {

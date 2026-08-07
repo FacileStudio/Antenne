@@ -1,6 +1,6 @@
-# Nook — Configuration
+# Antenne — Configuration
 
-Nook is configured in two places that behave very differently: a handful of environment
+Antenne is configured in two places that behave very differently: a handful of environment
 variables for the process itself, and a settings document in Postgres for everything else.
 
 ## Environment variables
@@ -14,19 +14,19 @@ Read once at startup. Every error `env.Load` returns is a reason not to boot.
 | `PORT` | HTTP port for the API, dashboard, health check, webhooks and pool | `9090` |
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | `info` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins. `ALLOWED_ORIGINS`, `DOMAINS`, `DOMAIN`, `CORS_ORIGINS`, `TRUSTED_ORIGINS` and `CLIENT_ORIGIN` remain accepted fallbacks | unset denies every cross-origin caller |
-| `NOOK_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
-| `NOOK_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open to anyone who can reach the server | — |
-| `NOOK_SESSION_SECRET` | Required in production so sessions survive a restart | — |
+| `ANTENNE_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
+| `ANTENNE_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open to anyone who can reach the server | — |
+| `ANTENNE_SESSION_SECRET` | Required in production so sessions survive a restart | — |
 | `POOL_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set for anything to ship | — |
 
-`APP_ENV=production` refuses to start without `NOOK_ADMIN_PASSWORD` and `NOOK_SESSION_SECRET`.
+`APP_ENV=production` refuses to start without `ANTENNE_ADMIN_PASSWORD` and `ANTENNE_SESSION_SECRET`.
 That is the one place `APP_ENV` changes behaviour, and it fails closed.
 
 ### PORT is not tronc's default
 
-`troncenv.Core` defaults `PORT` to `8080`. Nook deliberately keeps `9090`: the webhook URLs
+`troncenv.Core` defaults `PORT` to `8080`. Antenne deliberately keeps `9090`: the webhook URLs
 registered in Dokploy, DocuSeal and the git forges all point at it, every pool client's base
 URL points at it, and the dashboard's dev proxy targets it. Compose pins it explicitly, and so
 does `.env.example`.
@@ -34,13 +34,13 @@ does `.env.example`.
 ### Schemeless CORS origins are dropped
 
 `troncenv.CORSOrigins` reads `DOMAIN` among its fallbacks, and deployments set that to a bare
-hostname for Traefik rather than to an origin. Nook filters out anything without an `http://`
+hostname for Traefik rather than to an origin. Antenne filters out anything without an `http://`
 or `https://` prefix, because a schemeless value never matches an `Origin` header and only
 misleads anything that reads the list back as a URL.
 
 ### Development configuration comes from Casier
 
-`.casier.toml` pins this repo to the `nook` project and its `dev` environment, so `mise run
+`.casier.toml` pins this repo to the `antenne` project and its `dev` environment, so `mise run
 dev` wraps the API in `casier run` and the process starts with everything above already in its
 environment. Nothing has to exist on disk; a local `.env` still works and simply wins nothing,
 because the API reads the process environment either way.
@@ -50,8 +50,8 @@ the previously fetched values and says so on stderr — it never starts the API 
 environment. `mise run dev-offline` forces the cached path.
 
 ```sh
-casier secrets set -p nook -e dev DATABASE_URL postgres://nook:nook@localhost:5432/nook
-casier sync push -p nook -e dev -f apps/api/.env.example
+casier secrets set -p antenne -e dev DATABASE_URL postgres://antenne:antenne@localhost:5432/antenne
+casier sync push -p antenne -e dev -f apps/api/.env.example
 mise run secrets    # list what Casier holds
 ```
 
@@ -61,7 +61,7 @@ The `prod` environment holds every production value, and Dokploy is driven from 
 
 ```sh
 DOKPLOY_URL=https://gare.facile.studio/api DOKPLOY_API_KEY=… \
-  casier push dokploy -p nook -e prod MmZp9bJ4XggnCCArKOp3z
+  casier push dokploy -p antenne -e prod MmZp9bJ4XggnCCArKOp3z
 ```
 
 The running container still reads its configuration from the Dokploy compose env, **never from
@@ -70,7 +70,7 @@ Casier at startup could not start while Casier was down, and Casier needs a conf
 environment of its own to start at all. So Casier owns the values, versions them and tracks
 their rotation age; Dokploy remains the bootstrap tier that hands them to the process.
 
-Rotating a production secret is therefore: `casier secrets set -p nook -e prod KEY value`,
+Rotating a production secret is therefore: `casier secrets set -p antenne -e prod KEY value`,
 then `casier push dokploy`, then redeploy.
 
 ## The settings document
@@ -102,7 +102,7 @@ secret — lives in Postgres and is edited through the dashboard. `GET /api/sett
     "items": [
       {
         "id": "…", "type": "matrix", "name": "Ops room", "enabled": true,
-        "providerIds": ["__nook_system__"], "providerTags": ["infra"],
+        "providerIds": ["__antenne_system__"], "providerTags": ["infra"],
         "homeserver": "https://matrix.org", "accessToken": "••••••••",
         "roomIds": ["!ops:matrix.example.com"]
       }

@@ -1,8 +1,8 @@
-// Package webhooks receives third-party events and turns them into Nook alerts.
+// Package webhooks receives third-party events and turns them into Antenne alerts.
 //
 // One file per provider under providers.go's registry; each provider owns its
 // payload shape, its message rendering and its envelope mapping, and nothing
-// else in Nook knows what a DocuSeal submission or a Vikunja task looks like.
+// else in Antenne knows what a DocuSeal submission or a Vikunja task looks like.
 package webhooks
 
 import (
@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // Context tells a provider which of its configured instances is handling the

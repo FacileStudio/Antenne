@@ -43,7 +43,7 @@ func serve(t *testing.T, handler func(*websocket.Conn)) *websocket.Conn {
 }
 
 // A pool socket carries nothing while the suite is quiet, and a proxy reaps a
-// silent connection — Cloudflare sits in front of nook.facile.studio and culls
+// silent connection — Cloudflare sits in front of antenne.facile.studio and culls
 // an idle WebSocket at around a hundred seconds, which is what put Opus in a
 // reconnect loop all day. The server is what has to keep the connection warm:
 // the TypeScript client sends nothing at all, and a ping control frame is the

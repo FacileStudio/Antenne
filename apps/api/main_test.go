@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/env"
+	"github.com/FacileStudio/Antenne/apps/api/internal/env"
 	"github.com/FacileStudio/tronc/apiref"
 	troncenv "github.com/FacileStudio/tronc/env"
 )
@@ -42,7 +42,7 @@ func TestTheReferenceRendersEveryModule(t *testing.T) {
 		"/api/events",
 		"/api/spaces/{id}/members/{userId}",
 		"/webhook/{provider}",
-		"/pool/ws",
+		"/antenne/ws",
 	} {
 		if _, found := paths[expected]; !found {
 			t.Errorf("the reference is missing %s", expected)

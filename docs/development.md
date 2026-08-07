@@ -1,4 +1,4 @@
-# Nook — Development
+# Antenne — Development
 
 Local setup, where the configuration comes from, and the quality gate.
 
@@ -26,7 +26,7 @@ mise run client      # the dashboard on :5173, proxying /api to the API
 ```
 
 `mise run dev` wraps the API in `casier run`, so nothing has to exist on disk —
-`.casier.toml` pins this repo to the `nook` project and its `dev` environment. `mise run
+`.casier.toml` pins this repo to the `antenne` project and its `dev` environment. `mise run
 dev-offline` runs from the last-known-good cache when Casier is unreachable. See
 [configuration.md](configuration.md) for what it supplies and how to add to it.
 
@@ -46,11 +46,11 @@ The API only reads the process environment, so anything that puts the variables 
 ```sh
 cd apps/api
 cp .env.example .env      # then export it, or use your own runner
-DATABASE_URL=postgres://nook:nook@localhost:5432/nook?sslmode=disable \
-NOOK_ADMIN_PASSWORD=dev go run .
+DATABASE_URL=postgres://antenne:antenne@localhost:5432/antenne?sslmode=disable \
+ANTENNE_ADMIN_PASSWORD=dev go run .
 ```
 
-With no `NOOK_ADMIN_PASSWORD` set the dashboard and its API are open, which is the fastest way
+With no `ANTENNE_ADMIN_PASSWORD` set the dashboard and its API are open, which is the fastest way
 to poke at a fresh install locally. `APP_ENV=production` refuses to boot that way.
 
 ## The quality gate
@@ -102,7 +102,7 @@ bun run build
 
 ### Icons
 
-Icons are inlined at build time rather than fetched from a CDN or the Iconify API — Nook is
+Icons are inlined at build time rather than fetched from a CDN or the Iconify API — Antenne is
 self-hosted with no cloud dependency. `src/lib/icon-data.ts` is generated:
 
 ```sh

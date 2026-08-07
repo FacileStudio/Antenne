@@ -1,11 +1,11 @@
-# Nook — Architecture
+# Antenne — Architecture
 
-How an alert gets from a provider to a delivery target, how the Nook Pool relays events between
+How an alert gets from a provider to a delivery target, how the Antenne Pool relays events between
 suite apps, and where the state actually lives.
 
 ## Runtime topology
 
-Nook is one Go binary serving the dashboard API, the webhook receivers, the pool and the built
+Antenne is one Go binary serving the dashboard API, the webhook receivers, the pool and the built
 SvelteKit client from a single port, backed by one PostgreSQL database.
 
 ```
@@ -60,7 +60,7 @@ A target receives an event only if it names the provider id in `providerIds` **o
 of the provider's tags through `providerTags`. Both default to empty and there is no
 catch-all, so a freshly created target receives nothing until one of the two is set.
 
-Nook's own events carry the reserved provider id `__nook_system__`. Enabling a system event in
+Antenne's own events carry the reserved provider id `__antenne_system__`. Enabling a system event in
 Settings is not enough — a target has to list that id explicitly.
 
 The delivery log line reports a `filtered` count. `filtered` equal to the target count means
@@ -104,7 +104,7 @@ path or locale and `res.ok` would misread that as downtime.
 The first IMAP and RSS poll only records what is already there, so a restart re-seeds instead
 of replaying the whole inbox into Matrix.
 
-## The Nook Pool
+## The Antenne Pool
 
 A WebSocket bus with a durable, offset-based queue in Postgres. A client registers over HTTP
 with the shared secret, receives a token, and connects with it.
@@ -135,13 +135,13 @@ An app never receives its own emissions back.
 
 ## Authentication
 
-Nook owns its users and sessions and has no OIDC. The implementation sits behind
+Antenne owns its users and sessions and has no OIDC. The implementation sits behind
 `auth.Authenticator`; handlers read an `authcontext.Identity` and never see a cookie, a token
 or a user row. Replacing the implementation with the suite's shared auth package changes no
 handler.
 
 Session tokens are opaque random values, stored only as a SHA-256 hash, so a database leak
-does not hand over live sessions. `NOOK_ADMIN_PASSWORD` remains the source of truth for the
+does not hand over live sessions. `ANTENNE_ADMIN_PASSWORD` remains the source of truth for the
 bootstrap account: changing it and restarting re-seeds the hash and revokes that user's
 sessions, which is the recovery path.
 

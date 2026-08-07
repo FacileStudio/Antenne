@@ -148,7 +148,7 @@ class DashboardStore {
 		const url = URL.createObjectURL(blob);
 		const anchor = document.createElement('a');
 		anchor.href = url;
-		anchor.download = 'nook-config.json';
+		anchor.download = 'antenne-config.json';
 		anchor.click();
 		URL.revokeObjectURL(url);
 	}

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // Message is one alert, in both the rendered and the structured form. HTML goes
@@ -127,8 +127,8 @@ func HasConfiguredMatrix(config settings.DeliveryConfig) bool {
 //
 // Routing is opt-in with no fallthrough: a target receives an event only if it
 // names the provider id or shares one of its tags. A freshly created target
-// receives nothing until one of the two is set, and Nook's own events need the
-// reserved `__nook_system__` id listed explicitly.
+// receives nothing until one of the two is set, and Antenne's own events need the
+// reserved `__antenne_system__` id listed explicitly.
 func Accepts(target settings.DeliveryTarget, providerID string, providerTags []string) bool {
 	if providerID != "" {
 		for _, candidate := range target.ProviderIDs {

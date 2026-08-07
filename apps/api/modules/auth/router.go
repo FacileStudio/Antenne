@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
 	"github.com/go-chi/chi/v5"

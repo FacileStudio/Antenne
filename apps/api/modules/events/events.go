@@ -1,4 +1,4 @@
-// Package events is Nook's activity log: every alert Nook handled, what it was
+// Package events is Antenne's activity log: every alert Antenne handled, what it was
 // delivered to, and whether that worked.
 package events
 
@@ -12,8 +12,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/delivery"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 )
 
 // Retention is how many entries the log keeps. It is a count rather than an age

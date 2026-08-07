@@ -31,8 +31,8 @@ func TestTheIDIsStableAcrossMapOrdering(t *testing.T) {
 	if first.ID != second.ID {
 		t.Errorf("the same event hashed to %s and %s", first.ID, second.ID)
 	}
-	if !strings.HasPrefix(first.ID, "nook_") {
-		t.Errorf("id %q is missing the nook_ prefix", first.ID)
+	if !strings.HasPrefix(first.ID, "antenne_") {
+		t.Errorf("id %q is missing the antenne_ prefix", first.ID)
 	}
 }
 
@@ -93,15 +93,15 @@ func TestHTMLToPlainTextRendersTheMessageSubset(t *testing.T) {
 // receiver can reject a replay. Verify the header actually covers all three.
 func TestSignedHeadersCoverTimestampEventAndBody(t *testing.T) {
 	body := []byte(`{"hello":"world"}`)
-	headers := SignedHeaders("secret", "nook_abc", body)
+	headers := SignedHeaders("secret", "antenne_abc", body)
 
-	signature := headers.Get("x-nook-signature-256")
+	signature := headers.Get("x-antenne-signature-256")
 	if signature == "" {
 		t.Fatal("no signature was written")
 	}
 
-	timestamp := headers.Get("x-nook-timestamp")
-	signed := []byte(timestamp + ".nook_abc." + string(body))
+	timestamp := headers.Get("x-antenne-timestamp")
+	signed := []byte(timestamp + ".antenne_abc." + string(body))
 	if !VerifyHexSignature("secret", "sha256=", signature, signed) {
 		t.Error("the signature does not verify over timestamp.eventId.body")
 	}
@@ -111,11 +111,11 @@ func TestSignedHeadersCoverTimestampEventAndBody(t *testing.T) {
 }
 
 func TestNoSecretMeansNoSignature(t *testing.T) {
-	headers := SignedHeaders("", "nook_abc", []byte("{}"))
-	if headers.Get("x-nook-signature-256") != "" {
+	headers := SignedHeaders("", "antenne_abc", []byte("{}"))
+	if headers.Get("x-antenne-signature-256") != "" {
 		t.Error("an unconfigured secret still produced a signature header")
 	}
-	if headers.Get("x-nook-schema-version") != "1" {
+	if headers.Get("x-antenne-schema-version") != "1" {
 		t.Error("the schema version header is missing")
 	}
 	var _ http.Header = headers
