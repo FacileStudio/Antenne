@@ -1,13 +1,21 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
+	import {
+		Badge,
+		Button,
+		Card,
+		ConfirmModal,
+		Drawer,
+		EmptyState,
+		Field,
+		Select,
+		Switch,
+		Table,
+		cn,
+		icons,
+		toast
+	} from '@facile/muse';
 	import DeliveryEditorFields from './DeliveryEditorFields.svelte';
-	import Icon from './Icon.svelte';
 	import ViewToggle from './ViewToggle.svelte';
-	import Badge from './ui/badge.svelte';
-	import Button from './ui/button.svelte';
-	import Select from './ui/select.svelte';
-	import Sheet from './ui/sheet.svelte';
-	import Switch from './ui/switch.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { deliveryIcon } from '$lib/icons';
@@ -19,7 +27,6 @@
 		type DeliveryTarget,
 		type DeliveryTargetType
 	} from '$lib/types';
-	import { cn } from '$lib/utils';
 
 	const targets = $derived(dashboard.settings.delivery.items);
 	const providers = $derived(dashboard.settings.providers.items);
@@ -30,20 +37,49 @@
 
 	let editing = $state<DeliveryTarget | null>(null);
 	let editingIndex = $state(-1);
-	let sheetOpen = $state(false);
+	let drawerOpen = $state(false);
 	let testing = $state(false);
 
-	const typeOptions = deliveryTargetTypes.map((type) => ({ value: type, label: targetLabel(type) }));
+	let pendingRemoval = $state<DeliveryTarget | null>(null);
+	let confirmOpen = $state(false);
+
+	/*
+	 * Every optional credential is `string | null` on the wire and the form controls want a
+	 * string. The API maps an empty string back to null on the way in (settings.optionalString),
+	 * so the round-trip is lossless and no field silently gains an empty-string value.
+	 */
+	const NULLABLE_TEXT = [
+		'accessToken',
+		'refreshToken',
+		'password',
+		'deviceId',
+		'secretValue',
+		'clickUrl'
+	] as const;
+
+	function hydrate(target: DeliveryTarget): DeliveryTarget {
+		const draft = target as unknown as Record<string, unknown>;
+		for (const key of NULLABLE_TEXT) {
+			if (draft[key] === null) draft[key] = '';
+		}
+		return target;
+	}
 
 	/** A target with no provider and no tag selected can never receive anything. */
 	function isSilent(target: DeliveryTarget): boolean {
 		return target.providerIds.length === 0 && target.providerTags.length === 0;
 	}
 
+	function routingSummary(target: DeliveryTarget): string {
+		const providerCount = `${target.providerIds.length} ${target.providerIds.length === 1 ? 'provider' : 'providers'}`;
+		if (target.providerTags.length === 0) return providerCount;
+		return `${providerCount} · ${target.providerTags.length} ${target.providerTags.length === 1 ? 'tag' : 'tags'}`;
+	}
+
 	function open(index: number) {
 		editingIndex = index;
-		editing = structuredClone($state.snapshot(targets[index])) as DeliveryTarget;
-		sheetOpen = true;
+		editing = hydrate(structuredClone($state.snapshot(targets[index])) as DeliveryTarget);
+		drawerOpen = true;
 	}
 
 	function add() {
@@ -54,11 +90,14 @@
 	async function commit() {
 		if (!editing || editingIndex < 0) return;
 		const draft = structuredClone($state.snapshot(editing)) as DeliveryTarget;
-		dashboard.setTargets(targets.map((current, index) => (index === editingIndex ? draft : current)));
+		dashboard.setTargets(
+			targets.map((current, index) => (index === editingIndex ? draft : current))
+		);
 		await dashboard.save();
-		sheetOpen = false;
+		drawerOpen = false;
 	}
 
+	/** A row toggle is its own edit and persists on the spot; the editor waits for Save. */
 	async function toggleEnabled(index: number, enabled: boolean) {
 		dashboard.setTargets(
 			targets.map((target, position) => (position === index ? { ...target, enabled } : target))
@@ -66,10 +105,18 @@
 		await dashboard.save({ silent: true });
 	}
 
-	async function remove(index: number) {
-		dashboard.setTargets(targets.filter((_, position) => position !== index));
-		if (editingIndex === index) sheetOpen = false;
+	function askRemove(target: DeliveryTarget) {
+		pendingRemoval = target;
+		confirmOpen = true;
+	}
+
+	async function confirmRemove() {
+		const doomed = pendingRemoval;
+		if (!doomed) return;
+		if (editing?.id === doomed.id) drawerOpen = false;
+		dashboard.setTargets(targets.filter((target) => target.id !== doomed.id));
 		await dashboard.save();
+		pendingRemoval = null;
 	}
 
 	async function sendTest() {
@@ -79,139 +126,174 @@
 			await api.testTarget(editing.id);
 			toast.success(`Test delivered to ${editing.name}.`);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : 'The test delivery failed');
+			toast.danger(error instanceof Error ? error.message : 'The test delivery failed');
 		} finally {
 			testing = false;
 		}
 	}
 </script>
 
-<div class="grid gap-4">
-	<div class="flex flex-wrap items-end gap-3">
-		<div class="grid gap-1.5">
-			<span class="text-xs text-muted-foreground">New target type</span>
-			<Select bind:value={nextType as string} options={typeOptions} class="w-56" />
-		</div>
+<div class="flex flex-col gap-4">
+	<div class="flex flex-wrap items-end gap-4">
+		<Field label="New target type" class="w-full sm:w-56">
+			<Select bind:value={nextType as string}>
+				{#each deliveryTargetTypes as type (type)}
+					<option value={type}>{targetLabel(type)}</option>
+				{/each}
+			</Select>
+		</Field>
 
-		<Button onclick={add}>
-			<Icon icon="solar:add-circle-linear" size={15} />
-			Add target
-		</Button>
+		<Button size="lg" icon={icons.plus} onclick={add}>Add target</Button>
 
-		<div class="ml-auto">
-			{#if targets.length > 0}
+		{#if targets.length > 0}
+			<div class="ml-auto">
 				<ViewToggle bind:value={view} />
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</div>
 
 	{#if targets.length === 0}
-		<p class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-			No delivery target configured yet. Nothing Antenne sees will be delivered anywhere.
-		</p>
+		<EmptyState
+			icon={icons.mail}
+			title="No delivery target yet"
+			description="Antenne is watching, but nothing it sees leaves the box until a target exists."
+		>
+			<Button icon={icons.plus} onclick={add}>Add target</Button>
+		</EmptyState>
 	{:else if view === 'card'}
-		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 			{#each targets as target, index (target.id)}
-				<article
-					class={cn(
-						'flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/20',
-						!target.enabled && 'opacity-55'
-					)}
-				>
-					<div class="flex items-start justify-between">
+				<Card class={cn('flex flex-col gap-4', !target.enabled && 'opacity-55')}>
+					<div class="flex items-start justify-between gap-3">
 						<span
-							class="flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground"
+							class="flex size-10 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted"
 						>
-							<Icon icon={deliveryIcon(target.type)} size={22} />
+							<iconify-icon icon={deliveryIcon(target.type)} width="20" height="20" class="block"
+							></iconify-icon>
 						</span>
 						<Switch
-							size="sm"
-							checked={target.enabled}
-							aria-label={`Enable ${target.name}`}
-							onCheckedChange={(checked: boolean) => toggleEnabled(index, checked)}
+							label="Enabled"
+							bind:checked={() => target.enabled, (enabled) => toggleEnabled(index, enabled)}
 						/>
 					</div>
 
-					<div class="grid min-w-0 gap-0.5">
-						<span class="truncate text-sm font-semibold">{target.name}</span>
-						<span class="text-xs text-muted-foreground">{targetLabel(target.type)}</span>
+					<div class="flex min-w-0 flex-col gap-1">
+						<span class="truncate text-fc-sm font-semibold text-fc-fg">{target.name}</span>
+						<span class="text-fc-xs text-fc-fg-muted">{targetLabel(target.type)}</span>
 					</div>
 
 					{#if isSilent(target)}
-						<Badge variant="outline" title="Attach a provider or a tag, or this target receives nothing.">
-							No source attached
-						</Badge>
+						<Badge tone="warning" title="Attach a provider or a tag, or this target receives nothing."
+							>No source attached</Badge
+						>
 					{:else}
-						<span class="text-xs text-muted-foreground">
-							{target.providerIds.length}
-							{target.providerIds.length === 1 ? 'provider' : 'providers'}
-							{#if target.providerTags.length > 0}
-								· {target.providerTags.length}
-								{target.providerTags.length === 1 ? 'tag' : 'tags'}
-							{/if}
-						</span>
+						<span class="text-fc-xs text-fc-fg-muted">{routingSummary(target)}</span>
 					{/if}
 
-					<div class="mt-auto flex gap-1 border-t border-border pt-2.5">
-						<Button variant="ghost" size="sm" class="flex-1" onclick={() => open(index)} title="Edit">
-							<Icon icon="solar:pen-linear" size={14} />
+					<div class="mt-auto flex items-center gap-2">
+						<Button variant="outline" size="sm" icon={icons.edit} onclick={() => open(index)}>
+							Edit
 						</Button>
-						<Button variant="ghost" size="sm" class="flex-1" href={`/targets/${target.id}`} title="Activity">
-							<Icon icon="solar:chart-2-linear" size={14} />
-						</Button>
-						<Button variant="destructive" size="sm" class="flex-1" onclick={() => remove(index)} title="Delete">
-							<Icon icon="solar:trash-bin-trash-linear" size={14} />
-						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							icon={icons.dashboard}
+							href={`/targets/${target.id}`}
+							title="Activity"
+							aria-label={`Activity for ${target.name}`}
+						/>
+						<Button
+							variant="ghost-danger"
+							size="sm"
+							icon={icons.remove}
+							onclick={() => askRemove(target)}
+							title="Delete"
+							aria-label={`Delete ${target.name}`}
+							class="ml-auto"
+						/>
 					</div>
-				</article>
+				</Card>
 			{/each}
 		</div>
 	{:else}
-		<div class="grid gap-2">
-			{#each targets as target, index (target.id)}
-				<article
-					class={cn(
-						'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:border-foreground/20',
-						!target.enabled && 'opacity-55'
-					)}
-				>
-					<div class="flex min-w-0 flex-wrap items-center gap-2.5">
-						<Switch
-							size="sm"
-							checked={target.enabled}
-							aria-label={`Enable ${target.name}`}
-							onCheckedChange={(checked: boolean) => toggleEnabled(index, checked)}
-						/>
-						<Icon icon={deliveryIcon(target.type)} size={19} class="text-muted-foreground" />
-						<strong class="truncate text-sm font-semibold">{target.name}</strong>
-						<Badge variant="outline">{targetLabel(target.type)}</Badge>
-						{#if isSilent(target)}
-							<Badge variant="outline">No source attached</Badge>
-						{/if}
-					</div>
-
-					<div class="flex items-center gap-1">
-						<Button variant="ghost" size="sm" onclick={() => open(index)}>
-							<Icon icon="solar:pen-linear" size={14} />
-							Edit
-						</Button>
-						<Button variant="ghost" size="icon" href={`/targets/${target.id}`} title="Activity">
-							<Icon icon="solar:chart-2-linear" size={14} />
-						</Button>
-						<Button variant="destructive" size="icon" onclick={() => remove(index)} title="Delete">
-							<Icon icon="solar:trash-bin-trash-linear" size={14} />
-						</Button>
-					</div>
-				</article>
-			{/each}
-		</div>
+		<Table>
+			<thead>
+				<tr>
+					<th scope="col">Target</th>
+					<th scope="col">Type</th>
+					<th scope="col">Routing</th>
+					<th scope="col"><span class="sr-only">Actions</span></th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each targets as target, index (target.id)}
+					<tr class={cn(!target.enabled && 'opacity-55')}>
+						<td>
+							<div class="flex min-w-0 items-center gap-3">
+								<iconify-icon
+									icon={deliveryIcon(target.type)}
+									width="18"
+									height="18"
+									class="block shrink-0"
+								></iconify-icon>
+								<!-- The switch is labelled with the target's own name, so the control and the
+								     row's identity are one thing rather than a column of "Enabled". -->
+								<Switch
+									label={target.name}
+									bind:checked={() => target.enabled, (enabled) => toggleEnabled(index, enabled)}
+									class="min-w-0 font-semibold"
+								/>
+							</div>
+						</td>
+						<td class="text-fc-fg-muted">{targetLabel(target.type)}</td>
+						<td>
+							{#if isSilent(target)}
+								<Badge
+									tone="warning"
+									title="Attach a provider or a tag, or this target receives nothing."
+									>No source attached</Badge
+								>
+							{:else}
+								<span class="text-fc-fg-muted">{routingSummary(target)}</span>
+							{/if}
+						</td>
+						<td>
+							<div class="flex items-center justify-end gap-1">
+								<Button variant="ghost" size="sm" icon={icons.edit} onclick={() => open(index)}>
+									Edit
+								</Button>
+								<Button
+									variant="ghost"
+									size="sm"
+									icon={icons.dashboard}
+									href={`/targets/${target.id}`}
+									title="Activity"
+									aria-label={`Activity for ${target.name}`}
+								/>
+								<Button
+									variant="ghost-danger"
+									size="sm"
+									icon={icons.remove}
+									onclick={() => askRemove(target)}
+									title="Delete"
+									aria-label={`Delete ${target.name}`}
+								/>
+							</div>
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</Table>
 	{/if}
 </div>
 
-<Sheet
-	bind:open={sheetOpen}
+<!-- The editor works on a detached clone: nothing the drawer touches reaches the settings
+     document until commit() writes it back and saves. -->
+<Drawer
+	bind:open={drawerOpen}
+	showClose
 	title={editing ? `Edit ${editing.name}` : 'Edit target'}
-	description={editing ? targetLabel(editing.type) : ''}
+	description={editing ? targetLabel(editing.type) : undefined}
 >
 	{#if editing}
 		<DeliveryEditorFields
@@ -223,13 +305,25 @@
 	{/if}
 
 	{#snippet footer()}
-		<Button variant="outline" onclick={sendTest} disabled={testing}>
-			<Icon icon="solar:plain-linear" size={15} />
-			{testing ? 'Sending…' : 'Send a test'}
-		</Button>
-		<Button onclick={commit} disabled={dashboard.saving}>
-			<Icon icon="solar:diskette-linear" size={15} />
-			{dashboard.saving ? 'Saving…' : 'Save'}
-		</Button>
+		<div class="flex flex-wrap justify-end gap-2">
+			<Button variant="outline" icon="solar:plain-linear" onclick={sendTest} disabled={testing}>
+				{testing ? 'Sending…' : 'Send a test'}
+			</Button>
+			<Button icon={icons.check} onclick={commit} disabled={dashboard.saving}>
+				{dashboard.saving ? 'Saving…' : 'Save'}
+			</Button>
+		</div>
 	{/snippet}
-</Sheet>
+</Drawer>
+
+<ConfirmModal
+	bind:open={confirmOpen}
+	tone="danger"
+	title="Delete this delivery target?"
+	description={pendingRemoval
+		? `${pendingRemoval.name} stops receiving events the moment this is saved, and any provider routed only here goes nowhere. Deleting cannot be undone.`
+		: undefined}
+	confirmLabel="Delete"
+	onConfirm={confirmRemove}
+	onCancel={() => (pendingRemoval = null)}
+/>

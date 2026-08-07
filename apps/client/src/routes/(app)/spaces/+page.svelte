@@ -1,15 +1,9 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
-	import Icon from '$lib/components/Icon.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import Button from '$lib/components/ui/button.svelte';
-	import Field from '$lib/components/ui/field.svelte';
-	import Input from '$lib/components/ui/input.svelte';
-	import Sheet from '$lib/components/ui/sheet.svelte';
+	import { Button, Card, Drawer, EmptyState, Field, Input, Spinner, Textarea, icons, toast } from '@facile/muse';
 	import { spaces } from '$lib/spaces.svelte';
 	import { formatDateTime } from '$lib/utils';
 
-	let sheetOpen = $state(false);
+	let drawerOpen = $state(false);
 	let name = $state('');
 	let description = $state('');
 	let submitting = $state(false);
@@ -21,12 +15,12 @@
 	function openCreate() {
 		name = '';
 		description = '';
-		sheetOpen = true;
+		drawerOpen = true;
 	}
 
 	async function create() {
 		if (!name.trim()) {
-			toast.error('A space needs a name.');
+			toast.danger('A space needs a name.');
 			return;
 		}
 
@@ -34,68 +28,86 @@
 		try {
 			const space = await spaces.create(name.trim(), description.trim());
 			toast.success(`Created ${space.name}.`);
-			sheetOpen = false;
+			drawerOpen = false;
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : 'Failed to create the space');
+			toast.danger(error instanceof Error ? error.message : 'Failed to create the space');
 		} finally {
 			submitting = false;
 		}
 	}
 </script>
 
-<section class="grid gap-5">
-	<PageHeader eyebrow="Spaces" title="Teams">
-		{#snippet actions()}
-			<Button onclick={openCreate}>
-				<Icon icon="solar:add-circle-linear" size={15} />
-				New space
-			</Button>
-		{/snippet}
-	</PageHeader>
+<div class="flex flex-col gap-10">
+	<section class="flex flex-col gap-4">
+		<div class="flex flex-wrap items-start justify-between gap-4">
+			<div class="flex flex-col gap-2">
+				<h1 class="text-fc-2xl font-semibold text-fc-fg">Spaces</h1>
+				<p class="text-fc-sm text-fc-fg-muted">
+					Spaces group members. Antenne's providers and delivery targets stay instance-wide.
+				</p>
+			</div>
 
-	{#if spaces.spaces.length === 0}
-		<p class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-			No space yet. Spaces group members; Antenne's providers and targets are instance-wide.
-		</p>
-	{:else}
-		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-			{#each spaces.spaces as space (space.id)}
-				<a
-					href={`/spaces/${space.id}`}
-					class="grid gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/20"
-				>
-					<div class="flex items-center gap-2.5">
-						<span class="flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground">
-							<Icon icon="solar:buildings-2-linear" size={18} />
-						</span>
-						<strong class="truncate text-sm font-semibold">{space.name}</strong>
-					</div>
-
-					{#if space.description}
-						<p class="line-clamp-2 text-sm text-muted-foreground">{space.description}</p>
-					{/if}
-
-					<span class="text-xs text-muted-foreground">
-						Created {formatDateTime(space.createdAt)}
-					</span>
-				</a>
-			{/each}
+			<Button icon={icons.plus} onclick={openCreate}>New space</Button>
 		</div>
-	{/if}
-</section>
 
-<Sheet bind:open={sheetOpen} title="New space" description="Spaces group members.">
-	<Field label="Name" required>
-		<Input bind:value={name} placeholder="Studio" />
-	</Field>
+		{#if spaces.loading && !spaces.loaded}
+			<div class="flex justify-center py-12">
+				<Spinner />
+			</div>
+		{:else if spaces.spaces.length === 0}
+			<EmptyState
+				icon={icons.usersGroup}
+				title="No space yet"
+				description="Spaces group members; Antenne's providers and targets are instance-wide."
+			>
+				<Button icon={icons.plus} onclick={openCreate}>New space</Button>
+			</EmptyState>
+		{:else}
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				{#each spaces.spaces as space (space.id)}
+					<Card href={`/spaces/${space.id}`} class="flex flex-col gap-4">
+						<div class="flex items-center gap-3">
+							<!-- The tile inverts on hover instead of tinting, so it stays legible once the
+							     card itself steps up to fc-surface. -->
+							<span
+								class="flex size-9 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted transition-colors group-hover:bg-fc-accent group-hover:text-fc-accent-fg"
+							>
+								<iconify-icon icon={icons.usersGroup} width="18" height="18" class="block"
+								></iconify-icon>
+							</span>
+							<span class="truncate text-fc-sm font-semibold text-fc-fg">{space.name}</span>
+						</div>
 
-	<Field label="Description">
-		<Input bind:value={description} placeholder="What this space is for" />
-	</Field>
+						<div class="flex flex-col gap-1">
+							{#if space.description}
+								<p class="line-clamp-2 text-fc-sm text-fc-fg-muted">{space.description}</p>
+							{/if}
+							<p class="text-fc-xs text-fc-fg-muted">Created {formatDateTime(space.createdAt)}</p>
+						</div>
+					</Card>
+				{/each}
+			</div>
+		{/if}
+	</section>
+</div>
+
+<Drawer bind:open={drawerOpen} title="New space" description="Spaces group members." showClose>
+	<div class="flex flex-col gap-4">
+		<Field label="Name">
+			<Input bind:value={name} placeholder="Studio" />
+		</Field>
+
+		<Field label="Description" helper="Optional — what this space is for.">
+			<Textarea bind:value={description} rows={3} placeholder="What this space is for" />
+		</Field>
+	</div>
 
 	{#snippet footer()}
-		<Button onclick={create} disabled={submitting}>
-			{submitting ? 'Creating…' : 'Create space'}
-		</Button>
+		<div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+			<Button variant="ghost" size="lg" onclick={() => (drawerOpen = false)}>Cancel</Button>
+			<Button size="lg" onclick={create} disabled={submitting}>
+				{submitting ? 'Creating…' : 'Create space'}
+			</Button>
+		</div>
 	{/snippet}
-</Sheet>
+</Drawer>

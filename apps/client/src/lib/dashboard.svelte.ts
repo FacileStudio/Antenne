@@ -1,4 +1,4 @@
-import { toast } from 'svelte-sonner';
+import { toast } from '@facile/muse';
 import { api, ApiError, isUnauthenticated, redirectToLogin } from './backend';
 import type { AppSettings, DeliveryTarget, Provider, RuntimeStatus } from './types';
 
@@ -80,7 +80,7 @@ class DashboardStore {
 				await redirectToLogin();
 				return;
 			}
-			toast.error(describe(error, 'Failed to load settings'));
+			toast.danger(describe(error, 'Failed to load settings'));
 		} finally {
 			this.loading = false;
 		}
@@ -99,7 +99,7 @@ class DashboardStore {
 				await redirectToLogin();
 				return;
 			}
-			toast.error(describe(error, 'Failed to save settings'));
+			toast.danger(describe(error, 'Failed to save settings'));
 		} finally {
 			this.saving = false;
 		}
@@ -111,7 +111,7 @@ class DashboardStore {
 			await api.testAlert();
 			toast.success('Test alert sent.');
 		} catch (error) {
-			toast.error(describe(error, 'Failed to send the test alert'));
+			toast.danger(describe(error, 'Failed to send the test alert'));
 		} finally {
 			this.testing = false;
 		}
@@ -158,7 +158,7 @@ class DashboardStore {
 		try {
 			parsed = JSON.parse(await file.text()) as AppSettings;
 		} catch {
-			toast.error('That file is not valid JSON.');
+			toast.danger('That file is not valid JSON.');
 			return;
 		}
 

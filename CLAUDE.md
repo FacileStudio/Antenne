@@ -8,8 +8,9 @@ Ships with a SvelteKit dashboard for configuration.
 
 - **API**: Go 1.25, chi via [`tronc`](https://github.com/FacileStudio/tronc), GORM + PostgreSQL 16
 - **Migrations**: goose through `tronc/migrate`, embedded in the binary and applied at startup
-- **Client**: SvelteKit 2 / Svelte 5 runes, Tailwind v4, shadcn-svelte primitives over bits-ui,
-  Solar icons inlined at build time
+- **Client**: SvelteKit 2 / Svelte 5 runes, Tailwind v4, and
+  [`muse`](https://github.com/FacileStudio/muse) (`@facile/muse`) — the suite's design system.
+  Antenne owns no primitives of its own; Solar icons come from the `iconify-icon` element
 - **Docker**: multi-stage — the client is built with Bun, then copied into a distroless Go image
 - **Deploy**: one container serving the API, the webhook receivers, the pool and the dashboard
 
@@ -100,8 +101,27 @@ The URL layout is not uniform, and that is deliberate — see the conventions be
   registered in `webhooks.Registry`.
 - Delivery targets are sender methods in `modules/delivery`.
 - Provider and delivery config is edited through the dashboard, not through env vars.
-- Icons are inlined at build time from `@iconify-json/solar`; add a name to
-  `apps/client/scripts/build-icons.ts` and run `bun run icons`.
+- **The dashboard is muse, and muse owns the palette.** `app.css` is two lines of muse plus a
+  `@theme inline` block aliasing the suite's semantic names (`bg-background`, `border-input`, …)
+  onto `fc-*`. That alias block is what keeps the shared raw-element login screen rendering, so
+  do not delete it, and do not redeclare a colour anywhere. The two lines that look optional are
+  not: without `@source '../node_modules/@facile/muse/src'` every muse component renders
+  unstyled, and without `optimizeDeps.exclude: ['@facile/muse']` in `vite.config.ts` the dev
+  server will not boot — while `vite build` and the whole gate stay green.
+- **Reach for a muse component before writing markup.** Feedback is `toast`, confirmation is
+  `ConfirmModal`, an empty list is `EmptyState`, a credential is `SecretField`, a settings row is
+  `SettingsRow`. Antenne keeps only what muse has no answer for: the provider and delivery
+  editors, the event timeline and the tag scale.
+- **Tags are the one categorical colour Antenne owns.** muse stops at six chart slots and tags
+  are user-created, so `tags.ts` derives a hue from the name and `[data-tag-tone]` in `app.css`
+  paints it. Tags are not muse `Badge` tones.
+- Icons are the `<iconify-icon>` custom element, registered once in the root layout. Use muse's
+  `icons` map for UI chrome; `apps/client/src/lib/icons.ts` maps provider, delivery-target and
+  source types to their own marks.
+- **Settings sections are routes, not state.** `/settings/<section>` is a real URL so a reload
+  and the back button both work; the tab strip lives in `settings/+layout.svelte`. Settings is
+  reached from the sidebar's user card, never from a nav row, and the danger zone sits at the
+  bottom of Advanced rather than in a tab of its own.
 - **Every route needs a registry entry.** Each module owns a `Documentation` value feeding the
   reference at `/docs`; `TestEveryRouteIsDocumented` fails the build on a route without one.
 
