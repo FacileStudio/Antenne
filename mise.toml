@@ -19,7 +19,7 @@ run = "cd apps/client && bun run dev"
 
 [tasks.secrets]
 description = "List the secrets Casier holds for this project"
-run = "casier secrets list -p nook -e dev"
+run = "casier secrets list -p antenne -e dev"
 
 [tasks.install]
 description = "Install client dependencies"
