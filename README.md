@@ -63,7 +63,7 @@ cached values. See [docs/development.md](docs/development.md).
 | `PORT` | HTTP port for the API, dashboard, health check, webhooks and pool. Default `9090` |
 | `ANTENNE_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Required in production |
 | `ANTENNE_SESSION_SECRET` | Keeps sessions alive across a restart. Required in production |
-| `POOL_SECRET` | Shared secret apps present when registering with the pool |
+| `ANTENNE_SECRET` | Shared secret apps present when registering with the pool |
 
 Everything else — providers, delivery targets, credentials, routing — lives in the database
 and is edited through the dashboard.

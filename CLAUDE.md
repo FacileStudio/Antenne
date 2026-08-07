@@ -30,7 +30,7 @@ Run from the repository root. Development configuration comes from
 
 `.casier.toml` pins this repo to the `antenne` project and its `dev` environment, so `mise run
 dev` wraps the API in `casier run` and the process starts with `DATABASE_URL`,
-`ANTENNE_ADMIN_PASSWORD`, `ANTENNE_SESSION_SECRET` and `POOL_SECRET` already in its environment.
+`ANTENNE_ADMIN_PASSWORD`, `ANTENNE_SESSION_SECRET` and `ANTENNE_SECRET` already in its environment.
 `casier run` is network-first with a last-known-good cache, so a Casier outage falls back to
 the previously fetched values and says so on stderr. Add a value with
 `casier secrets set -p antenne -e dev KEY value`.
@@ -134,7 +134,7 @@ restarting re-seeds the password and revokes that user's sessions, which is the 
 | `ANTENNE_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
 | `ANTENNE_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open | — (required in production) |
 | `ANTENNE_SESSION_SECRET` | Required in production so sessions survive a restart | — |
-| `POOL_SECRET` | Shared secret pool clients register with. The dashboard value wins | `pool` |
+| `ANTENNE_SECRET` | Shared secret pool clients register with. The dashboard value wins | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set | — |
 
