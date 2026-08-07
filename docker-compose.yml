@@ -38,7 +38,7 @@ services:
       ANTENNE_ADMIN_USERNAME: ${ANTENNE_ADMIN_USERNAME:-admin}
       ANTENNE_ADMIN_PASSWORD: ${ANTENNE_ADMIN_PASSWORD:?ANTENNE_ADMIN_PASSWORD is required}
       ANTENNE_SESSION_SECRET: ${ANTENNE_SESSION_SECRET:?ANTENNE_SESSION_SECRET is required}
-      POOL_SECRET: ${POOL_SECRET:-}
+      ANTENNE_SECRET: ${ANTENNE_SECRET:-}
       TIMEOUT: ${TIMEOUT:-10}
       # ANTENNE_SETTINGS_PATH is deliberately unset. The one-time import from the
       # pre-Postgres antenne.json has run and the volume is gone; point it at a

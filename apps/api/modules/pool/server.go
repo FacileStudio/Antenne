@@ -109,7 +109,7 @@ func NewServer(db *gorm.DB, log *slog.Logger, secret string) *Server {
 		secret = "pool"
 	}
 	if secret == "pool" {
-		log.Warn("pool is using the default secret 'pool' — set POOL_SECRET in production")
+		log.Warn("pool is using the default secret 'pool' — set ANTENNE_SECRET in production")
 	}
 
 	return &Server{
