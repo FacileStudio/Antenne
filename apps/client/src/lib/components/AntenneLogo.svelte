@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { cn } from '$lib/utils';
-
 	/**
 	 * Antenne's mark: concentric signal arcs around a dot. Inline rather than an
 	 * icon-set lookup because the opacity ramp across the three arcs is part of
@@ -14,7 +12,7 @@
 	viewBox="0 0 24 24"
 	width={size}
 	height={size}
-	class={cn('shrink-0', className)}
+	class="shrink-0 {className}"
 	aria-hidden="true"
 	focusable="false"
 >

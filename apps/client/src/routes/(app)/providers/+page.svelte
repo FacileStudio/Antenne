@@ -1,9 +1,14 @@
 <script lang="ts">
-	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ProviderList from '$lib/components/ProviderList.svelte';
 </script>
 
-<section class="grid gap-5">
-	<PageHeader eyebrow="Providers" title="Sources" />
+<div class="flex flex-col gap-10">
+	<div class="flex flex-col gap-2">
+		<h1 class="text-fc-2xl font-semibold text-fc-fg">Providers</h1>
+		<p class="text-fc-sm text-fc-fg-muted">
+			The sources Antenne watches, polls or receives on.
+		</p>
+	</div>
+
 	<ProviderList />
-</section>
+</div>
