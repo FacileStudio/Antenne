@@ -142,7 +142,7 @@ export interface AppSettings {
 	providers: { port: number; items: Provider[] };
 	// Always present client-side, so the settings form can bind straight into
 	// it. The API tolerates an absent block and normalizes what it receives.
-	pool: { secret: string; logActivity: boolean };
+	bus: { secret: string; logActivity: boolean };
 }
 
 export interface RuntimeStatus {

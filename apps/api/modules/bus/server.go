@@ -1,4 +1,4 @@
-package pool
+package bus
 
 import (
 	"crypto/hmac"
