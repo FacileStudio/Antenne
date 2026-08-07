@@ -95,6 +95,7 @@ func New(log *slog.Logger, store *settings.Store, eventLog *events.Service, send
 	}
 
 	application.retries = delivery.NewRetryQueue(sender, log, eventLog.MarkRetry)
+	application.retries.OnExhausted(application.notifyDeliveryExhausted)
 	application.monitor = providers.NewMonitor(log, application.emitFromProvider(envelope.SourceWebsite))
 	application.imap = providers.NewIMAP(log, application.emitFromProvider(envelope.SourceIMAP))
 	application.rss = providers.NewRSS(log, application.emitFromProvider(envelope.SourceRSS))
@@ -416,9 +417,42 @@ func (a *App) notifyDeliveryFailure(ctx context.Context, label string, attempts 
 		}
 	}
 
+	// This fires on the first attempt, before the retry queue has run any of its
+	// three, and in practice almost every one of these recovers within seconds.
+	// So it says what actually happened rather than declaring a failure the
+	// event log then quietly rewrites to success — the permanent verdict is
+	// notifyDeliveryExhausted's to give.
 	a.fireSystemEvent(ctx,
-		fmt.Sprintf("<b>Delivery failure</b><br/>%d target(s) failed for <b>%s</b>: %s",
+		fmt.Sprintf("<b>Delivery failed, retrying</b><br/>%d target(s) failed for <b>%s</b>: %s",
 			len(names), envelope.EscapeHTML(label), envelope.EscapeHTML(strings.Join(names, ", "))),
+		"delivery retrying", "system.delivery.retrying")
+}
+
+// notifyDeliveryExhausted announces a delivery the retry queue has given up on.
+func (a *App) notifyDeliveryExhausted(target settings.DeliveryTarget, message delivery.Message) {
+	if !a.store.Get().System.Events.DeliveryFailure {
+		return
+	}
+
+	// A delivery notice is itself delivered, and system events route like any
+	// other, so a target that stays down would fail the notice about its own
+	// failure and announce that too, without end. The first pass guards this
+	// with inFailureNotice, but the retry queue runs minutes after that flag is
+	// gone, so the cycle is cut on the event type instead.
+	if strings.HasPrefix(message.Envelope.Event.Type, "system.delivery.") {
+		a.log.Error("a delivery notice could not be delivered either",
+			slog.String("target", target.Name))
+		return
+	}
+
+	label := "an event"
+	if message.Envelope.Event.Title != nil && *message.Envelope.Event.Title != "" {
+		label = *message.Envelope.Event.Title
+	}
+
+	a.fireSystemEvent(context.Background(),
+		fmt.Sprintf("<b>Delivery failure</b><br/><b>%s</b> could not be delivered to <b>%s</b> after %d attempts",
+			envelope.EscapeHTML(label), envelope.EscapeHTML(target.Name), delivery.MaxRetryAttempts),
 		"delivery failure", "system.delivery.failure")
 }
 
