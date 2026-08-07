@@ -68,7 +68,7 @@ func Load() (Config, error) {
 		AdminUsername: troncenv.String("ANTENNE_ADMIN_USERNAME", "admin"),
 		AdminPassword: troncenv.String("ANTENNE_ADMIN_PASSWORD", ""),
 		SessionSecret: troncenv.String("ANTENNE_SESSION_SECRET", ""),
-		PoolSecret:    troncenv.String("POOL_SECRET", ""),
+		PoolSecret:    troncenv.String("ANTENNE_SECRET", ""),
 		ClientDir:     troncenv.String("CLIENT_DIR", "./client"),
 		Timeout:       timeout,
 	}

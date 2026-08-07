@@ -17,7 +17,7 @@ Read once at startup. Every error `env.Load` returns is a reason not to boot.
 | `ANTENNE_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
 | `ANTENNE_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open to anyone who can reach the server | — |
 | `ANTENNE_SESSION_SECRET` | Required in production so sessions survive a restart | — |
-| `POOL_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
+| `ANTENNE_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set for anything to ship | — |
 
