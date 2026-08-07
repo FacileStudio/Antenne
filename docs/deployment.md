@@ -1,6 +1,6 @@
-# Nook — Deployment
+# Antenne — Deployment
 
-Building the image, the port that must not drift, and putting Nook behind Traefik on la ruche.
+Building the image, the port that must not drift, and putting Antenne behind Traefik on la ruche.
 
 ## The image
 
@@ -24,8 +24,8 @@ Postgres — so there is no volume whose ownership could fight the process.
 docker compose up -d
 ```
 
-Two services: `postgres` and `app`. `POSTGRES_PASSWORD`, `NOOK_ADMIN_PASSWORD` and
-`NOOK_SESSION_SECRET` use the `${VAR:?message}` form, so an unset one fails the compose file
+Two services: `postgres` and `app`. `POSTGRES_PASSWORD`, `ANTENNE_ADMIN_PASSWORD` and
+`ANTENNE_SESSION_SECRET` use the `${VAR:?message}` form, so an unset one fails the compose file
 loudly instead of booting an open dashboard with a Postgres nobody can authenticate to.
 
 `app` waits on `service_healthy`, so it does not race the database on a cold start.
@@ -33,7 +33,7 @@ loudly instead of booting an open dashboard with a Postgres nobody can authentic
 ### The healthcheck
 
 ```yaml
-test: ["CMD", "/nook", "healthcheck"]
+test: ["CMD", "/antenne", "healthcheck"]
 ```
 
 The binary probes itself, which is the only option in a container with no shell and no curl.
@@ -55,7 +55,7 @@ the Traefik service port.
 
 ## Volumes
 
-One volume, `nook-postgres`, holding everything: settings, providers, targets, the event log,
+One volume, `antenne-postgres`, holding everything: settings, providers, targets, the event log,
 spaces and the pool queue. Nothing else is written to disk.
 
 It bakes in `POSTGRES_PASSWORD` at first init. Changing the variable later without wiping the
@@ -67,8 +67,8 @@ The compose file carries the labels for la ruche: an HTTP router redirecting to 
 HTTPS router with the Let's Encrypt resolver, and one service on port 9090.
 
 ```yaml
-traefik.http.routers.nook-secure.rule: "Host(`nook.facile.studio`)"
-traefik.http.services.nook-svc.loadbalancer.server.port: "9090"
+traefik.http.routers.antenne-secure.rule: "Host(`antenne.facile.studio`)"
+traefik.http.services.antenne-svc.loadbalancer.server.port: "9090"
 ```
 
 There is **no `stripprefix`**, and there must not be. The API lives at `/api` inside the
@@ -83,8 +83,8 @@ which is why no host port is published.
 Both are mounted at the root and under `/api`:
 
 ```sh
-curl https://nook.facile.studio/health
-curl https://nook.facile.studio/api/health
+curl https://antenne.facile.studio/health
+curl https://antenne.facile.studio/api/health
 ```
 
 `/health` reports the process; `/ready` also checks the database. An external monitor should
@@ -94,7 +94,7 @@ every monitor reads it as green.
 ## Logs
 
 Structured JSON on stdout. With `JOURNAL_URL` and `JOURNAL_TOKEN` both set, the same records
-are teed to [Journal](https://journal.facile.studio) under the app name `nook`. Use a per-app
-key from Journal's Keys page; Nook is not on Journal's docker network, so the URL is
+are teed to [Journal](https://journal.facile.studio) under the app name `antenne`. Use a per-app
+key from Journal's Keys page; Antenne is not on Journal's docker network, so the URL is
 `https://journal.facile.studio/api` — with the `/api` suffix, which the SPA catch-all on the
 other end would otherwise answer with a silent 200.

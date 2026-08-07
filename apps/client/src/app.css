@@ -75,7 +75,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Facile Suite palette — chroma-zero OKLCH throughout, so Nook reads as one
+ * Facile Suite palette — chroma-zero OKLCH throughout, so Antenne reads as one
  * product with Sablier, Casier, Nuage, Plume and Vision. The only chroma in the
  * system is carried by the two status tones below, because a delivery that
  * failed has to be legible at a glance and a grey pill is not.

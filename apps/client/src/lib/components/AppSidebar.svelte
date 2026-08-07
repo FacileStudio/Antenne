@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Icon from './Icon.svelte';
-	import NookLogo from './NookLogo.svelte';
+	import AntenneLogo from './AntenneLogo.svelte';
 	import SpaceSwitcher from './SpaceSwitcher.svelte';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { cn } from '$lib/utils';
@@ -28,8 +28,8 @@
 	class="flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
 >
 	<div class="flex items-center gap-2.5 px-5 pt-7 pb-5">
-		<NookLogo size={26} class="text-foreground" />
-		<span class="font-heading text-xl font-bold tracking-tight">Nook</span>
+		<AntenneLogo size={26} class="text-foreground" />
+		<span class="font-heading text-xl font-bold tracking-tight">Antenne</span>
 	</div>
 
 	<div class="px-3 pb-3">

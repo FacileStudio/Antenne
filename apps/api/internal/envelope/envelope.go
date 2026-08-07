@@ -1,7 +1,7 @@
-// Package envelope builds the structured event Nook signs and ships to HTTP and
+// Package envelope builds the structured event Antenne signs and ships to HTTP and
 // Perception delivery targets.
 //
-// This is Nook's own schema, not the suite `enveloppe` contract. In particular
+// This is Antenne's own schema, not the suite `enveloppe` contract. In particular
 // Actor.Email is whatever a third-party payload happened to carry — it is never
 // a Facile SSO identity, and nothing downstream should read it as `actor_email`.
 package envelope
@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Source names where an event entered Nook.
+// Source names where an event entered Antenne.
 type Source string
 
 // Event sources.
@@ -61,7 +61,7 @@ type Subject struct {
 	URL  *string     `json:"url"`
 }
 
-// Provider identifies the Nook provider the event came through.
+// Provider identifies the Antenne provider the event came through.
 type Provider struct {
 	ID   *string  `json:"id"`
 	Type string   `json:"type"`
@@ -90,7 +90,7 @@ type Privacy struct {
 	RawPayloadAllowed bool `json:"rawPayloadAllowed"`
 }
 
-// Envelope is a Nook event, schema version 1.
+// Envelope is a Antenne event, schema version 1.
 type Envelope struct {
 	SchemaVersion int      `json:"schemaVersion"`
 	ID            string   `json:"id"`
@@ -250,7 +250,7 @@ func deriveID(input Input, occurredAt string) string {
 		hash.Write([]byte(stableJSON(input.MessageHTML)))
 	}
 
-	return "nook_" + hex.EncodeToString(hash.Sum(nil))[:32]
+	return "antenne_" + hex.EncodeToString(hash.Sum(nil))[:32]
 }
 
 // stableJSON serializes with object keys sorted, so an id derived from a map

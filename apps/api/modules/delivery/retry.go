@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // retryDelays are the waits before attempts 1, 2 and 3. The spread is

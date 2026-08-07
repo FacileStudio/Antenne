@@ -1,4 +1,4 @@
-// Package app is Nook's alert pipeline: the one path every event takes from a
+// Package app is Antenne's alert pipeline: the one path every event takes from a
 // provider to the delivery targets, and the runtime that keeps the pollers in
 // step with the settings.
 package app
@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/delivery"
-	"github.com/FacileStudio/Nook/apps/api/modules/events"
-	"github.com/FacileStudio/Nook/apps/api/modules/providers"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
+	"github.com/FacileStudio/Antenne/apps/api/modules/events"
+	"github.com/FacileStudio/Antenne/apps/api/modules/providers"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // dedupWindow is how long an identical message from the same provider is
@@ -230,11 +230,11 @@ func (a *App) fireSystemEvent(ctx context.Context, message, event, eventType str
 		MessageHTML:  message,
 		Source:       envelope.SourceSystem,
 		ProviderID:   settings.SystemProviderID,
-		ProviderName: "Nook",
+		ProviderName: "Antenne",
 		ProviderType: "system",
 		Event:        event,
 		EventType:    eventType,
-		Subject:      &envelope.Subject{Type: envelope.SubjectSystem, Name: envelope.Str("Nook")},
+		Subject:      &envelope.Subject{Type: envelope.SubjectSystem, Name: envelope.Str("Antenne")},
 	})
 	if err != nil {
 		a.log.Error("system event was not delivered",
@@ -256,14 +256,14 @@ func (a *App) AnnounceStartup(ctx context.Context) {
 	}
 
 	attempts, err := a.Dispatch(ctx, Alert{
-		MessageHTML:  "<b>Nook started</b><br/>Dashboard and API ready.",
+		MessageHTML:  "<b>Antenne started</b><br/>Dashboard and API ready.",
 		Source:       envelope.SourceSystem,
 		ProviderID:   settings.SystemProviderID,
-		ProviderName: "Nook",
+		ProviderName: "Antenne",
 		ProviderType: "system",
-		Event:        "nook started",
+		Event:        "antenne started",
 		EventType:    "system.startup",
-		Subject:      &envelope.Subject{Type: envelope.SubjectSystem, Name: envelope.Str("Nook")},
+		Subject:      &envelope.Subject{Type: envelope.SubjectSystem, Name: envelope.Str("Antenne")},
 	})
 	switch {
 	case err != nil:
@@ -314,7 +314,7 @@ func (a *App) Dispatch(ctx context.Context, alert Alert) ([]delivery.Attempt, er
 		Source:            defaultSource(alert.Source),
 		ProviderID:        envelope.Str(providerID),
 		ProviderType:      defaultString(alert.ProviderType, "system"),
-		ProviderName:      defaultString(alert.ProviderName, "Nook"),
+		ProviderName:      defaultString(alert.ProviderName, "Antenne"),
 		ProviderTags:      tags,
 		EventType:         defaultString(alert.EventType, label),
 		EventTitle:        defaultString(alert.EventTitle, label),
@@ -491,15 +491,15 @@ func (a *App) SendTestAlert(ctx context.Context) error {
 	}
 
 	_, err := a.Dispatch(ctx, Alert{
-		MessageHTML: fmt.Sprintf("🧪 <b>Nook test alert</b><br/>Dashboard config for <b>%s</b> is live.",
+		MessageHTML: fmt.Sprintf("🧪 <b>Antenne test alert</b><br/>Dashboard config for <b>%s</b> is live.",
 			envelope.EscapeHTML(label)),
 		Source:       envelope.SourceTest,
 		ProviderID:   settings.SystemProviderID,
-		ProviderName: "Nook",
+		ProviderName: "Antenne",
 		ProviderType: "system",
 		Event:        "test alert",
 		EventType:    "system.test",
-		Subject:      &envelope.Subject{Type: envelope.SubjectSystem, Name: envelope.Str("Nook")},
+		Subject:      &envelope.Subject{Type: envelope.SubjectSystem, Name: envelope.Str("Antenne")},
 	})
 	return err
 }
@@ -513,7 +513,7 @@ func (a *App) TestTarget(ctx context.Context, targetID string) error {
 		return errors.New("delivery target not found")
 	}
 
-	message := fmt.Sprintf("🧪 <b>Nook target test</b><br/>Target <b>%s</b> is configured.",
+	message := fmt.Sprintf("🧪 <b>Antenne target test</b><br/>Target <b>%s</b> is configured.",
 		envelope.EscapeHTML(target.Name))
 
 	return a.sender.SendTo(ctx, target, delivery.Message{
@@ -522,9 +522,9 @@ func (a *App) TestTarget(ctx context.Context, targetID string) error {
 			Source:       envelope.SourceTest,
 			ProviderID:   envelope.Str(settings.SystemProviderID),
 			ProviderType: "system",
-			ProviderName: "Nook",
+			ProviderName: "Antenne",
 			EventType:    "target test",
-			EventTitle:   "Nook target test",
+			EventTitle:   "Antenne target test",
 			MessageHTML:  message,
 			Subject: &envelope.Subject{
 				Type: envelope.SubjectSystem,

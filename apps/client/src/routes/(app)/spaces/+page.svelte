@@ -55,7 +55,7 @@
 
 	{#if spaces.spaces.length === 0}
 		<p class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-			No space yet. Spaces group members; Nook's providers and targets are instance-wide.
+			No space yet. Spaces group members; Antenne's providers and targets are instance-wide.
 		</p>
 	{:else}
 		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

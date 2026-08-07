@@ -1,4 +1,4 @@
-module github.com/FacileStudio/Nook/apps/api
+module github.com/FacileStudio/Antenne/apps/api
 
 go 1.25.7
 

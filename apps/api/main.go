@@ -28,16 +28,16 @@ import (
 	"github.com/FacileStudio/tronc/spa"
 	"github.com/go-chi/chi/v5"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/app"
-	"github.com/FacileStudio/Nook/apps/api/internal/database"
-	"github.com/FacileStudio/Nook/apps/api/internal/env"
-	"github.com/FacileStudio/Nook/apps/api/internal/server"
-	"github.com/FacileStudio/Nook/apps/api/modules/auth"
-	"github.com/FacileStudio/Nook/apps/api/modules/delivery"
-	"github.com/FacileStudio/Nook/apps/api/modules/events"
-	"github.com/FacileStudio/Nook/apps/api/modules/pool"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
-	"github.com/FacileStudio/Nook/apps/api/modules/spaces"
+	"github.com/FacileStudio/Antenne/apps/api/internal/app"
+	"github.com/FacileStudio/Antenne/apps/api/internal/database"
+	"github.com/FacileStudio/Antenne/apps/api/internal/env"
+	"github.com/FacileStudio/Antenne/apps/api/internal/server"
+	"github.com/FacileStudio/Antenne/apps/api/modules/auth"
+	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
+	"github.com/FacileStudio/Antenne/apps/api/modules/events"
+	"github.com/FacileStudio/Antenne/apps/api/modules/pool"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/modules/spaces"
 )
 
 //go:embed migrations/*.sql
@@ -45,14 +45,14 @@ var migrationsFS embed.FS
 
 // refConfig describes the reference served at /docs.
 //
-// Servers is "/" rather than "/api" because Nook's surface genuinely is not all
+// Servers is "/" rather than "/api" because Antenne's surface genuinely is not all
 // under one prefix: the webhook receivers and the pool endpoints live at the
 // root, where the systems that call them have them registered. Every route is
 // therefore documented by its full path.
 func refConfig() apiref.Config {
 	return apiref.Config{
-		Title:       "Nook API",
-		Description: "Alert aggregation and the Facile Suite's event bus. Configuration, the activity log, the third-party webhook intake and the Nook Pool.",
+		Title:       "Antenne API",
+		Description: "Alert aggregation and the Facile Suite's event bus. Configuration, the activity log, the third-party webhook intake and the Antenne Pool.",
 		Servers:     []string{"/"},
 		Registry: apiref.Registry{Modules: []apiref.Module{
 			auth.Documentation,
@@ -261,15 +261,15 @@ func buildRouter(
 		// The pool's own endpoints authenticate with the pool secret and a
 		// connection token, not with a dashboard session, so they sit outside
 		// RequireAuth.
-		protected.Post("/pool/register", poolServer.HandleRegister)
-		protected.Get("/pool/ws", poolServer.HandleWebSocket)
+		protected.Post("/antenne/register", poolServer.HandleRegister)
+		protected.Get("/antenne/ws", poolServer.HandleWebSocket)
 
 		protected.Group(func(sessioned chi.Router) {
 			sessioned.Use(auth.RequireAuth(authService))
 			authService.RegisterRoutes(sessioned)
 			api.RegisterRoutes(sessioned)
 			spaceService.RegisterRoutes(sessioned)
-			sessioned.Get("/pool/stats", func(w http.ResponseWriter, r *http.Request) {
+			sessioned.Get("/antenne/stats", func(w http.ResponseWriter, r *http.Request) {
 				httpjson.WriteJSON(w, http.StatusOK, poolServer.Stats())
 			})
 		})
@@ -280,8 +280,8 @@ func buildRouter(
 	// every one of them. Same for /pool/ws, which pool clients pin.
 	webhookHandler := server.NewWebhookHandler(application, log)
 	router.Post("/webhook/*", webhookHandler.ServeHTTP)
-	router.Post("/pool/register", poolServer.HandleRegister)
-	router.Get("/pool/ws", poolServer.HandleWebSocket)
+	router.Post("/antenne/register", poolServer.HandleRegister)
+	router.Get("/antenne/ws", poolServer.HandleWebSocket)
 
 	// The dashboard used to live under /dashboard; the SPA is at the root now,
 	// so old bookmarks and the post-login redirect are moved rather than 404ed.
@@ -329,7 +329,7 @@ func logStartup(log *slog.Logger, cfg env.Config, current settings.AppSettings, 
 		}
 	}
 
-	log.Info("nook booting",
+	log.Info("antenne booting",
 		slog.String("app_env", string(cfg.AppEnv)),
 		slog.Int("port", cfg.Port),
 		slog.Bool("persisted_settings", store.Persisted()),
@@ -342,7 +342,7 @@ func logStartup(log *slog.Logger, cfg env.Config, current settings.AppSettings, 
 		slog.Int("webhooks", webhookCount))
 
 	if cfg.AdminPassword == "" {
-		log.Warn("NOOK_ADMIN_PASSWORD is not set — the dashboard and its API are open to anyone who can reach this server")
+		log.Warn("ANTENNE_ADMIN_PASSWORD is not set — the dashboard and its API are open to anyone who can reach this server")
 	}
 	log.Warn("rate limiting trusts X-Forwarded-For — make sure the reverse proxy overwrites it")
 }
@@ -368,7 +368,7 @@ func journalWrap(cfg env.Config) func(slog.Handler) slog.Handler {
 	client := journal.New(journal.Config{
 		URL:   cfg.JournalURL,
 		Token: cfg.JournalToken,
-		App:   "nook",
+		App:   "antenne",
 	})
 	return func(next slog.Handler) slog.Handler {
 		return journal.NewHandler(client, next)

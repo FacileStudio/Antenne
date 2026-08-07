@@ -14,8 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // matrixSession is the live credential for one Matrix target, kept in memory so
@@ -172,7 +172,7 @@ type matrixLoginResponse struct {
 }
 
 func (s *Sender) loginMatrix(ctx context.Context, target settings.DeliveryTarget, session *matrixSession) error {
-	// A full user id (@nook:server) has to be reduced to its localpart for the
+	// A full user id (@antenne:server) has to be reduced to its localpart for the
 	// m.id.user identifier; passing the full id makes some homeservers 403.
 	loginUser := target.UserID
 	if strings.HasPrefix(loginUser, "@") && strings.Contains(loginUser, ":") {
@@ -183,7 +183,7 @@ func (s *Sender) loginMatrix(ctx context.Context, target settings.DeliveryTarget
 		"type":                        "m.login.password",
 		"identifier":                  map[string]string{"type": "m.id.user", "user": loginUser},
 		"password":                    deref(target.Password),
-		"initial_device_display_name": "Nook",
+		"initial_device_display_name": "Antenne",
 		"refresh_token":               true,
 	}
 	if session.deviceID != "" {
@@ -255,7 +255,7 @@ func (s *Sender) matrixJSON(ctx context.Context, homeserver, token, method, path
 		return err
 	}
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("User-Agent", "Nook/1.0 uptime-bot")
+	request.Header.Set("User-Agent", "Antenne/1.0 uptime-bot")
 	if token != "" {
 		request.Header.Set("Authorization", "Bearer "+token)
 	}

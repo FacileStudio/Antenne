@@ -1,6 +1,6 @@
 // Package auth authenticates dashboard callers.
 //
-// The implementation is deliberately thin and sits behind one interface. Nook
+// The implementation is deliberately thin and sits behind one interface. Antenne
 // owns a users table, an opaque session token hashed at rest, and a password
 // login — no OIDC, no shared identity engine. When the suite's unified auth
 // package arrives, it replaces Service as the Authenticator and supplies its own
@@ -22,14 +22,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/authcontext"
-	"github.com/FacileStudio/Nook/apps/api/internal/ratelimit"
+	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Antenne/apps/api/internal/ratelimit"
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
 )
 
 // SessionCookie is the cookie the dashboard session travels in.
-const SessionCookie = "nook_session"
+const SessionCookie = "antenne_session"
 
 const sessionLifetime = 30 * 24 * time.Hour
 
@@ -41,7 +41,7 @@ var ErrUnauthenticated = errors.New("auth: unauthenticated")
 type Authenticator interface {
 	Authenticate(r *http.Request) (authcontext.Identity, error)
 	// Optional reports whether an unauthenticated caller is still allowed
-	// through. Nook leaves the dashboard open when no admin password is set,
+	// through. Antenne leaves the dashboard open when no admin password is set,
 	// which is how a fresh local install is usable at all.
 	Optional() bool
 }
@@ -79,7 +79,7 @@ type Config struct {
 	AdminPassword string
 }
 
-// Service is Nook's own Authenticator.
+// Service is Antenne's own Authenticator.
 type Service struct {
 	db     *gorm.DB
 	log    *slog.Logger
@@ -113,7 +113,7 @@ func (s *Service) Username() string { return s.cfg.AdminUsername }
 
 // ensureAdmin seeds or re-syncs the bootstrap account from the environment.
 //
-// NOOK_ADMIN_PASSWORD stays the source of truth so an operator can recover
+// ANTENNE_ADMIN_PASSWORD stays the source of truth so an operator can recover
 // access by changing one variable and restarting, exactly as before the users
 // table existed.
 func (s *Service) ensureAdmin() error {
@@ -123,7 +123,7 @@ func (s *Service) ensureAdmin() error {
 
 	email := s.cfg.AdminUsername
 	if !strings.Contains(email, "@") {
-		email = email + "@nook.local"
+		email = email + "@antenne.local"
 	}
 
 	hash, err := bcrypt.GenerateFromPassword(prehash(s.cfg.AdminPassword), bcrypt.DefaultCost)
@@ -215,7 +215,7 @@ func (s *Service) Login(clientIP, password string) (string, time.Time, error) {
 
 	email := s.cfg.AdminUsername
 	if !strings.Contains(email, "@") {
-		email = email + "@nook.local"
+		email = email + "@antenne.local"
 	}
 
 	var user User

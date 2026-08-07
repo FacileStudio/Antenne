@@ -35,13 +35,13 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgres://${POSTGRES_USER:-nook}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nook}?sslmode=disable
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
-      NOOK_ADMIN_USERNAME: ${NOOK_ADMIN_USERNAME:-admin}
-      NOOK_ADMIN_PASSWORD: ${NOOK_ADMIN_PASSWORD:?NOOK_ADMIN_PASSWORD is required}
-      NOOK_SESSION_SECRET: ${NOOK_SESSION_SECRET:?NOOK_SESSION_SECRET is required}
+      ANTENNE_ADMIN_USERNAME: ${ANTENNE_ADMIN_USERNAME:-admin}
+      ANTENNE_ADMIN_PASSWORD: ${ANTENNE_ADMIN_PASSWORD:?ANTENNE_ADMIN_PASSWORD is required}
+      ANTENNE_SESSION_SECRET: ${ANTENNE_SESSION_SECRET:?ANTENNE_SESSION_SECRET is required}
       POOL_SECRET: ${POOL_SECRET:-}
       TIMEOUT: ${TIMEOUT:-10}
-      # NOOK_SETTINGS_PATH is deliberately unset. The one-time import from the
-      # pre-Postgres nook.json has run and the volume is gone; point it at a
+      # ANTENNE_SETTINGS_PATH is deliberately unset. The one-time import from the
+      # pre-Postgres antenne.json has run and the volume is gone; point it at a
       # file again only to re-import into an empty database.
       # Journal log shipping (optional — per-app key from Journal's Keys page)
       JOURNAL_URL: ${JOURNAL_URL:-}
@@ -52,17 +52,17 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: dokploy-network
-      traefik.http.routers.nook-web.rule: "Host(`nook.facile.studio`)"
-      traefik.http.routers.nook-web.entrypoints: web
-      traefik.http.routers.nook-web.middlewares: redirect-to-https@file
-      traefik.http.routers.nook-web.service: nook-svc
-      traefik.http.routers.nook-secure.rule: "Host(`nook.facile.studio`)"
-      traefik.http.routers.nook-secure.entrypoints: websecure
-      traefik.http.routers.nook-secure.tls.certresolver: letsencrypt
-      traefik.http.routers.nook-secure.service: nook-svc
-      traefik.http.services.nook-svc.loadbalancer.server.port: "9090"
+      traefik.http.routers.antenne-web.rule: "Host(`antenne.facile.studio`)"
+      traefik.http.routers.antenne-web.entrypoints: web
+      traefik.http.routers.antenne-web.middlewares: redirect-to-https@file
+      traefik.http.routers.antenne-web.service: antenne-svc
+      traefik.http.routers.antenne-secure.rule: "Host(`antenne.facile.studio`)"
+      traefik.http.routers.antenne-secure.entrypoints: websecure
+      traefik.http.routers.antenne-secure.tls.certresolver: letsencrypt
+      traefik.http.routers.antenne-secure.service: antenne-svc
+      traefik.http.services.antenne-svc.loadbalancer.server.port: "9090"
     healthcheck:
-      test: ["CMD", "/nook", "healthcheck"]
+      test: ["CMD", "/antenne", "healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 3

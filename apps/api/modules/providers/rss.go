@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // seenGUIDLimit caps the per-feed memory of already-reported items. Well past
@@ -134,7 +134,7 @@ func (r *RSS) poll(ctx context.Context, provider settings.Provider) {
 		r.log.Error("feed poll failed", slog.String("provider", provider.Name), slog.Any("error", err))
 		return
 	}
-	request.Header.Set("User-Agent", "Nook/1.0 rss-bot")
+	request.Header.Set("User-Agent", "Antenne/1.0 rss-bot")
 
 	response, err := r.client.Do(request)
 	if err != nil {

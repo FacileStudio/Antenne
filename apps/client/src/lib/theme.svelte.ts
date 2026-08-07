@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 
-const STORAGE_KEY = 'nook-theme';
+const STORAGE_KEY = 'antenne-theme';
 
 type Theme = 'light' | 'dark';
 

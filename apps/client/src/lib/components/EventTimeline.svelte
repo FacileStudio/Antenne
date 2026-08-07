@@ -71,7 +71,7 @@
 
 						<div class="flex flex-wrap items-center gap-1.5">
 							<Badge variant="outline">{sourceLabel(entry.source)}</Badge>
-							{#if entry.providerName && entry.providerName !== 'Nook' && entry.providerName !== 'system'}
+							{#if entry.providerName && entry.providerName !== 'Antenne' && entry.providerName !== 'system'}
 								<Badge>{entry.providerName}</Badge>
 							{/if}
 						</div>

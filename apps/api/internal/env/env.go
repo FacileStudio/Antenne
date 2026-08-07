@@ -1,4 +1,4 @@
-// Package env loads the Nook API configuration from the process environment
+// Package env loads the Antenne API configuration from the process environment
 // once, at startup, so a misconfigured service refuses to boot instead of
 // running half-configured.
 package env
@@ -9,16 +9,16 @@ import (
 	troncenv "github.com/FacileStudio/tronc/env"
 )
 
-// DefaultPort is the port Nook binds when PORT is unset. It is the port the
+// DefaultPort is the port Antenne binds when PORT is unset. It is the port the
 // published webhook URLs and the pool clients already point at, so it does not
 // follow troncenv.Core's 8080 default.
 const DefaultPort = 9090
 
-// Config is the Nook server configuration.
+// Config is the Antenne server configuration.
 //
 // It embeds troncenv.Core so the shared fields carry the same names as in every
 // other Facile API. Core is filled field by field rather than through
-// troncenv.LoadCore only because Nook keeps its own PORT default; DATABASE_URL
+// troncenv.LoadCore only because Antenne keeps its own PORT default; DATABASE_URL
 // is still required, and Required is called for it explicitly.
 type Config struct {
 	troncenv.Core
@@ -65,9 +65,9 @@ func Load() (Config, error) {
 			JournalURL:         troncenv.String("JOURNAL_URL", ""),
 			JournalToken:       troncenv.String("JOURNAL_TOKEN", ""),
 		},
-		AdminUsername: troncenv.String("NOOK_ADMIN_USERNAME", "admin"),
-		AdminPassword: troncenv.String("NOOK_ADMIN_PASSWORD", ""),
-		SessionSecret: troncenv.String("NOOK_SESSION_SECRET", ""),
+		AdminUsername: troncenv.String("ANTENNE_ADMIN_USERNAME", "admin"),
+		AdminPassword: troncenv.String("ANTENNE_ADMIN_PASSWORD", ""),
+		SessionSecret: troncenv.String("ANTENNE_SESSION_SECRET", ""),
 		PoolSecret:    troncenv.String("POOL_SECRET", ""),
 		ClientDir:     troncenv.String("CLIENT_DIR", "./client"),
 		Timeout:       timeout,
@@ -96,10 +96,10 @@ func corsOrigins() []string {
 
 func (c Config) validate() error {
 	if c.IsProduction() && c.AdminPassword == "" {
-		return fmt.Errorf("env: APP_ENV=production requires NOOK_ADMIN_PASSWORD, otherwise the dashboard and its API are open to anyone who can reach this server")
+		return fmt.Errorf("env: APP_ENV=production requires ANTENNE_ADMIN_PASSWORD, otherwise the dashboard and its API are open to anyone who can reach this server")
 	}
 	if c.IsProduction() && c.SessionSecret == "" {
-		return fmt.Errorf("env: APP_ENV=production requires NOOK_SESSION_SECRET, otherwise every session dies on restart")
+		return fmt.Errorf("env: APP_ENV=production requires ANTENNE_SESSION_SECRET, otherwise every session dies on restart")
 	}
 	return nil
 }

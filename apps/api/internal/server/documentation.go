@@ -33,7 +33,7 @@ var SettingsDocumentation = apiref.Module{
 			Method:       "POST",
 			Path:         "/api/test-alert",
 			Summary:      "Send a test alert",
-			Description:  "Goes through the whole pipeline, routing rules included, so it stays silent unless a target lists the reserved provider id __nook_system__.",
+			Description:  "Goes through the whole pipeline, routing rules included, so it stays silent unless a target lists the reserved provider id __antenne_system__.",
 			Auth:         "session",
 			ResponseBody: "OkResponse",
 			Errors:       []apiref.Error{{Status: 400, Code: "invalid_argument", Description: "no delivery target is configured"}},
@@ -64,7 +64,7 @@ var SettingsDocumentation = apiref.Module{
 // EventsDocumentation covers the activity log.
 var EventsDocumentation = apiref.Module{
 	Name: "Events",
-	Description: "The activity log: every event Nook handled, what it was delivered to, and whether " +
+	Description: "The activity log: every event Antenne handled, what it was delivered to, and whether " +
 		"that worked. The log keeps the most recent 5000 entries.",
 	Routes: []apiref.Route{
 		{

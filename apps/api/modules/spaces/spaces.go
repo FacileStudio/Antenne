@@ -1,4 +1,4 @@
-// Package spaces holds Nook's teams and their members.
+// Package spaces holds Antenne's teams and their members.
 //
 // `space` is the suite-wide name for a team, so the shape here matches Agenda,
 // Ardoise and Mycelium rather than inventing a fourth one.
@@ -10,7 +10,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // Role is a member's privilege inside one space.

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// SignedHeaders builds the headers Nook sends with an outbound event.
+// SignedHeaders builds the headers Antenne sends with an outbound event.
 //
 // The signature covers `timestamp.eventId.body`, so a receiver that only checks
 // the body cannot be fooled by a replay of an older event under a new
@@ -20,10 +20,10 @@ func SignedHeaders(secret string, eventID string, body []byte) http.Header {
 
 	headers := http.Header{}
 	headers.Set("Content-Type", "application/json")
-	headers.Set("User-Agent", "Nook/1.0 uptime-bot")
-	headers.Set("x-nook-event-id", eventID)
-	headers.Set("x-nook-timestamp", timestamp)
-	headers.Set("x-nook-schema-version", "1")
+	headers.Set("User-Agent", "Antenne/1.0 uptime-bot")
+	headers.Set("x-antenne-event-id", eventID)
+	headers.Set("x-antenne-timestamp", timestamp)
+	headers.Set("x-antenne-schema-version", "1")
 
 	if secret != "" {
 		mac := hmac.New(sha256.New, []byte(secret))
@@ -32,7 +32,7 @@ func SignedHeaders(secret string, eventID string, body []byte) http.Header {
 		mac.Write([]byte(eventID))
 		mac.Write([]byte("."))
 		mac.Write(body)
-		headers.Set("x-nook-signature-256", "sha256="+hex.EncodeToString(mac.Sum(nil)))
+		headers.Set("x-antenne-signature-256", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 	}
 
 	return headers

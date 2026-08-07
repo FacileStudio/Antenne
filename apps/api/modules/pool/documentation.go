@@ -9,13 +9,13 @@ import "github.com/FacileStudio/tronc/apiref"
 // dropping either would break them.
 var Documentation = apiref.Module{
 	Name: "Pool",
-	Description: "The Nook Pool: a WebSocket bus with a durable offset-based queue that other " +
+	Description: "The Antenne Pool: a WebSocket bus with a durable offset-based queue that other " +
 		"Facile apps register with and sync through. These endpoints authenticate with the pool " +
 		"secret and a connection token, not with a dashboard session.",
 	Routes: []apiref.Route{
 		{
 			Method:       "POST",
-			Path:         "/pool/register",
+			Path:         "/antenne/register",
 			Summary:      "Register an app",
 			Description:  "Exchanges the shared secret for a connection token. Re-registering an app keeps its existing token, so a restarting client does not invalidate the token another instance is using.",
 			Auth:         "pool secret",
@@ -28,7 +28,7 @@ var Documentation = apiref.Module{
 		},
 		{
 			Method:       "POST",
-			Path:         "/api/pool/register",
+			Path:         "/api/antenne/register",
 			Summary:      "Register an app (prefixed)",
 			Description:  "Identical to POST /pool/register. Both forms exist because clients pin whichever they were given.",
 			Auth:         "pool secret",
@@ -37,7 +37,7 @@ var Documentation = apiref.Module{
 		},
 		{
 			Method:      "GET",
-			Path:        "/pool/ws",
+			Path:        "/antenne/ws",
 			Summary:     "Open the pool socket",
 			Description: "Upgrades to WebSocket. The token goes in the query string. One live connection per app: a second replaces the first with close code 1000 'replaced by new connection'. See docs/api.md for the frame protocol.",
 			Auth:        "pool token",
@@ -48,14 +48,14 @@ var Documentation = apiref.Module{
 		},
 		{
 			Method:      "GET",
-			Path:        "/api/pool/ws",
+			Path:        "/api/antenne/ws",
 			Summary:     "Open the pool socket (prefixed)",
 			Description: "Identical to GET /pool/ws.",
 			Auth:        "pool token",
 		},
 		{
 			Method:       "GET",
-			Path:         "/api/pool/stats",
+			Path:         "/api/antenne/stats",
 			Summary:      "Read the live pool state",
 			Description:  "The boot epoch, the live connection count, and every connected app with the channels it subscribed to.",
 			Auth:         "session",
