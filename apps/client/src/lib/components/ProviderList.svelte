@@ -1,32 +1,41 @@
 <script lang="ts">
-	import { toast } from 'svelte-sonner';
-	import Icon from './Icon.svelte';
+	import {
+		Badge,
+		Button,
+		Card,
+		ConfirmModal,
+		Drawer,
+		EmptyState,
+		Field,
+		Select,
+		Switch,
+		cn,
+		icons,
+		toast
+	} from '@facile/muse';
 	import ProviderEditorFields from './ProviderEditorFields.svelte';
 	import TagPill from './TagPill.svelte';
 	import ViewToggle from './ViewToggle.svelte';
-	import Badge from './ui/badge.svelte';
-	import Button from './ui/button.svelte';
-	import Select from './ui/select.svelte';
-	import Sheet from './ui/sheet.svelte';
-	import Switch from './ui/switch.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { providerIcon } from '$lib/icons';
 	import { tagToneMap } from '$lib/tags';
 	import { createProvider, providerLabel, providerTypes, type Provider, type ProviderType } from '$lib/types';
-	import { cn } from '$lib/utils';
 
 	const providers = $derived(dashboard.settings.providers.items);
 	const tones = $derived(tagToneMap(dashboard.availableTags));
 
-	let nextType = $state<ProviderType>('website');
+	let nextType = $state<string>('website');
 	let view = $state<'list' | 'card'>('card');
 	let selectedTags = $state<string[]>([]);
 
 	let editing = $state<Provider | null>(null);
 	let editingIndex = $state(-1);
-	let sheetOpen = $state(false);
+	let drawerOpen = $state(false);
 	let testing = $state(false);
+
+	let pendingRemoval = $state(-1);
+	let confirmOpen = $state(false);
 
 	const visible = $derived(
 		providers
@@ -37,17 +46,17 @@
 			)
 	);
 
-	const typeOptions = providerTypes.map((type) => ({ value: type, label: providerLabel(type) }));
+	const doomed = $derived(pendingRemoval >= 0 ? providers[pendingRemoval] : null);
 
 	function open(index: number) {
 		editingIndex = index;
 		// A structured clone, so closing without saving discards the edit.
 		editing = structuredClone($state.snapshot(providers[index])) as Provider;
-		sheetOpen = true;
+		drawerOpen = true;
 	}
 
 	function add() {
-		const provider = createProvider(nextType);
+		const provider = createProvider(nextType as ProviderType);
 		dashboard.setProviders([provider, ...providers]);
 		open(0);
 	}
@@ -57,7 +66,7 @@
 		const draft = structuredClone($state.snapshot(editing)) as Provider;
 		dashboard.setProviders(providers.map((current, index) => (index === editingIndex ? draft : current)));
 		await dashboard.save();
-		sheetOpen = false;
+		drawerOpen = false;
 	}
 
 	async function toggleEnabled(index: number, enabled: boolean) {
@@ -69,9 +78,17 @@
 		await dashboard.save({ silent: true });
 	}
 
-	async function remove(index: number) {
+	function askRemoval(index: number) {
+		pendingRemoval = index;
+		confirmOpen = true;
+	}
+
+	async function remove() {
+		const index = pendingRemoval;
+		if (index < 0) return;
 		dashboard.setProviders(providers.filter((_, position) => position !== index));
-		if (editingIndex === index) sheetOpen = false;
+		if (editingIndex === index) drawerOpen = false;
+		pendingRemoval = -1;
 		await dashboard.save();
 	}
 
@@ -88,35 +105,49 @@
 			await api.testProvider(editing.id);
 			toast.success(`Connection OK for ${editing.name}.`);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : 'The connection test failed');
+			toast.danger(error instanceof Error ? error.message : 'The connection test failed');
 		} finally {
 			testing = false;
 		}
 	}
 </script>
 
-<div class="grid gap-4">
-	<div class="flex flex-wrap items-end gap-3">
-		<div class="grid gap-1.5">
-			<span class="text-xs text-muted-foreground">New provider type</span>
-			<Select bind:value={nextType as string} options={typeOptions} class="w-56" />
-		</div>
+<!--
+	`label` rather than `aria-label`: muse's Switch renders its own <label> element and the
+	text span is the only accessible name it exposes, so the name is hidden visually instead
+	of being dropped. The row toggle saves on the spot — the draft toggles inside the editor
+	are the ones that wait for the shell's Save.
+-->
+{#snippet enableSwitch(provider: Provider, index: number)}
+	<Switch
+		label={`Enable ${provider.name}`}
+		class="[&>span:last-child]:sr-only"
+		bind:checked={() => provider.enabled, (enabled) => void toggleEnabled(index, enabled)}
+	/>
+{/snippet}
 
-		<Button onclick={add}>
-			<Icon icon="solar:add-circle-linear" size={15} />
-			Add provider
-		</Button>
+<div class="flex flex-col gap-4">
+	<div class="flex flex-wrap items-end gap-4">
+		<Field label="New provider type" class="w-56">
+			<Select bind:value={nextType}>
+				{#each providerTypes as type (type)}
+					<option value={type}>{providerLabel(type)}</option>
+				{/each}
+			</Select>
+		</Field>
 
-		<div class="ml-auto">
-			{#if providers.length > 0}
+		<Button size="lg" icon={icons.plus} onclick={add}>Add provider</Button>
+
+		{#if providers.length > 0}
+			<div class="ml-auto">
 				<ViewToggle bind:value={view} />
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</div>
 
 	{#if dashboard.availableTags.length > 0}
 		<div class="flex flex-wrap items-center gap-2">
-			<span class="text-xs text-muted-foreground">Filter by tag</span>
+			<span class="text-fc-sm text-fc-fg-muted">Filter by tag</span>
 			{#each dashboard.availableTags as tag (tag)}
 				<TagPill
 					{tag}
@@ -133,134 +164,145 @@
 	{/if}
 
 	{#if providers.length === 0}
-		<p class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-			No provider configured yet.
-		</p>
+		<EmptyState
+			icon={icons.plug}
+			title="No provider configured yet"
+			description="A provider is a source Antenne watches or listens to — a website, an inbox, a feed or an incoming webhook."
+		>
+			<Button icon={icons.plus} onclick={add}>Add provider</Button>
+		</EmptyState>
 	{:else if visible.length === 0}
-		<p class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-			No provider matches the current tag filter.
-		</p>
+		<EmptyState
+			icon={icons.filter}
+			title="No provider matches the current tag filter"
+			description="Every selected tag has to be on the provider for it to show up here."
+		>
+			<Button variant="outline" onclick={() => (selectedTags = [])}>Clear the filter</Button>
+		</EmptyState>
 	{:else if view === 'card'}
-		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 			{#each visible as { provider, index } (provider.id)}
-				<article
-					class={cn(
-						'flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/20',
-						!provider.enabled && 'opacity-55'
-					)}
-				>
-					<div class="flex items-start justify-between">
+				<Card class={cn('flex flex-col gap-4', !provider.enabled && 'opacity-60')}>
+					<div class="flex items-start justify-between gap-4">
 						<span
-							class="flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground"
+							class="flex size-10 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted"
 						>
-							<Icon icon={providerIcon(provider.type)} size={22} />
+							<iconify-icon icon={providerIcon(provider.type)} width="22" height="22" class="block"
+							></iconify-icon>
 						</span>
-						<Switch
-							size="sm"
-							checked={provider.enabled}
-							aria-label={`Enable ${provider.name}`}
-							onCheckedChange={(checked: boolean) => toggleEnabled(index, checked)}
-						/>
+						{@render enableSwitch(provider, index)}
 					</div>
 
-					<div class="grid min-w-0 gap-0.5">
-						<span class="truncate text-sm font-semibold">{provider.name}</span>
-						<span class="text-xs text-muted-foreground">{providerLabel(provider.type)}</span>
+					<div class="flex min-w-0 flex-col gap-1">
+						<span class="truncate text-fc-sm font-semibold text-fc-fg">{provider.name}</span>
+						<span class="text-fc-xs text-fc-fg-muted">{providerLabel(provider.type)}</span>
 					</div>
 
 					{#if provider.tags.length > 0}
-						<div class="flex flex-wrap gap-1.5">
+						<div class="flex flex-wrap gap-2">
 							{#each provider.tags as tag (tag)}
 								<TagPill {tag} {tones} />
 							{/each}
 						</div>
 					{/if}
 
-					<div class="mt-auto flex gap-1 border-t border-border pt-2.5">
-						<Button variant="ghost" size="sm" class="flex-1" onclick={() => open(index)} title="Edit">
-							<Icon icon="solar:pen-linear" size={14} />
-						</Button>
-						<Button variant="ghost" size="sm" class="flex-1" href={`/providers/${provider.id}`} title="Activity">
-							<Icon icon="solar:chart-2-linear" size={14} />
+					<div class="mt-auto flex items-center gap-1 border-t border-fc-border pt-4">
+						<Button variant="ghost" icon={icons.edit} class="flex-1" onclick={() => open(index)}>
+							Edit
 						</Button>
 						<Button
-							variant="destructive"
-							size="sm"
-							class="flex-1"
-							onclick={() => remove(index)}
-							title="Delete"
-						>
-							<Icon icon="solar:trash-bin-trash-linear" size={14} />
-						</Button>
+							variant="ghost"
+							icon={icons.dashboard}
+							href={`/providers/${provider.id}`}
+							aria-label={`Activity for ${provider.name}`}
+						/>
+						<Button
+							variant="ghost-danger"
+							icon={icons.remove}
+							onclick={() => askRemoval(index)}
+							aria-label={`Delete ${provider.name}`}
+						/>
 					</div>
-				</article>
+				</Card>
 			{/each}
 		</div>
 	{:else}
-		<div class="grid gap-2">
-			{#each visible as { provider, index } (provider.id)}
-				<article
-					class={cn(
-						'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:border-foreground/20',
-						!provider.enabled && 'opacity-55'
-					)}
-				>
-					<div class="flex min-w-0 flex-wrap items-center gap-2.5">
-						<Switch
-							size="sm"
-							checked={provider.enabled}
-							aria-label={`Enable ${provider.name}`}
-							onCheckedChange={(checked: boolean) => toggleEnabled(index, checked)}
-						/>
-						<Icon icon={providerIcon(provider.type)} size={19} class="text-muted-foreground" />
-						<strong class="truncate text-sm font-semibold">{provider.name}</strong>
-						<Badge variant="outline">{providerLabel(provider.type)}</Badge>
-						{#each provider.tags as tag (tag)}
-							<TagPill {tag} {tones} />
-						{/each}
-					</div>
+		<Card class="p-0">
+			<ul class="divide-y divide-fc-border">
+				{#each visible as { provider, index } (provider.id)}
+					<li
+						class={cn(
+							'flex flex-wrap items-center justify-between gap-4 px-5 py-4',
+							!provider.enabled && 'opacity-60'
+						)}
+					>
+						<div class="flex min-w-0 flex-wrap items-center gap-3">
+							{@render enableSwitch(provider, index)}
+							<iconify-icon
+								icon={providerIcon(provider.type)}
+								width="20"
+								height="20"
+								class="block shrink-0 text-fc-fg-muted"
+							></iconify-icon>
+							<span class="truncate text-fc-sm font-semibold text-fc-fg">{provider.name}</span>
+							<Badge>{providerLabel(provider.type)}</Badge>
+							{#each provider.tags as tag (tag)}
+								<TagPill {tag} {tones} />
+							{/each}
+						</div>
 
-					<div class="flex items-center gap-1">
-						<Button variant="ghost" size="sm" onclick={() => open(index)}>
-							<Icon icon="solar:pen-linear" size={14} />
-							Edit
-						</Button>
-						<Button variant="ghost" size="icon" href={`/providers/${provider.id}`} title="Activity">
-							<Icon icon="solar:chart-2-linear" size={14} />
-						</Button>
-						<Button variant="destructive" size="icon" onclick={() => remove(index)} title="Delete">
-							<Icon icon="solar:trash-bin-trash-linear" size={14} />
-						</Button>
-					</div>
-				</article>
-			{/each}
-		</div>
+						<div class="flex items-center gap-1">
+							<Button variant="ghost" icon={icons.edit} onclick={() => open(index)}>Edit</Button>
+							<Button
+								variant="ghost"
+								icon={icons.dashboard}
+								href={`/providers/${provider.id}`}
+								aria-label={`Activity for ${provider.name}`}
+							/>
+							<Button
+								variant="ghost-danger"
+								icon={icons.remove}
+								onclick={() => askRemoval(index)}
+								aria-label={`Delete ${provider.name}`}
+							/>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		</Card>
 	{/if}
 </div>
 
-<Sheet
-	bind:open={sheetOpen}
+<Drawer
+	bind:open={drawerOpen}
+	showClose
 	title={editing ? `Edit ${editing.name}` : 'Edit provider'}
-	description={editing ? providerLabel(editing.type) : ''}
+	description={editing ? providerLabel(editing.type) : undefined}
 >
 	{#if editing}
-		<ProviderEditorFields
-			bind:provider={editing}
-			availableTags={dashboard.availableTags}
-			{tones}
-		/>
+		<ProviderEditorFields bind:provider={editing} availableTags={dashboard.availableTags} {tones} />
 	{/if}
 
 	{#snippet footer()}
 		{#if editing?.type === 'imap'}
-			<Button variant="outline" onclick={testConnection} disabled={testing}>
-				<Icon icon="solar:plug-circle-linear" size={15} />
+			<Button variant="outline" icon={icons.plug} onclick={testConnection} disabled={testing}>
 				{testing ? 'Testing…' : 'Test connection'}
 			</Button>
 		{/if}
-		<Button onclick={commit} disabled={dashboard.saving}>
-			<Icon icon="solar:diskette-linear" size={15} />
+		<Button icon={icons.check} onclick={commit} disabled={dashboard.saving}>
 			{dashboard.saving ? 'Saving…' : 'Save'}
 		</Button>
 	{/snippet}
-</Sheet>
+</Drawer>
+
+<ConfirmModal
+	bind:open={confirmOpen}
+	tone="danger"
+	title="Delete this provider?"
+	description={doomed
+		? `${doomed.name} stops being watched and every delivery target routing on it — by id or by tag — loses that source. Events already in the log are kept.`
+		: ''}
+	confirmLabel="Delete"
+	onConfirm={remove}
+	onCancel={() => (pendingRemoval = -1)}
+/>

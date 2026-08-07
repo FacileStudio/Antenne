@@ -1,206 +1,47 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
-
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Hairline-BF6646d5d845dae.otf') format('opentype');
-	font-weight: 100;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Thin-BF6646d5d8040a9.otf') format('opentype');
-	font-weight: 200;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Extralight-BF6646d5d82fb83.otf') format('opentype');
-	font-weight: 300;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Light-BF6646d5d84c8a2.otf') format('opentype');
-	font-weight: 350;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Regular-BF6646d5d84f69b.otf') format('opentype');
-	font-weight: 400;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Medium-BF6646d5d84754e.otf') format('opentype');
-	font-weight: 500;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Semibold-BF6646d5d8544cf.otf') format('opentype');
-	font-weight: 600;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Bold-BF6646d5d83c978.otf') format('opentype');
-	font-weight: 700;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Extrabold-BF6646d5d7d0a2b.otf') format('opentype');
-	font-weight: 800;
-	font-style: normal;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Goga';
-	src: url('/fonts/GogaTest-Black-BF6646d5d78e551.otf') format('opentype');
-	font-weight: 900;
-	font-style: normal;
-	font-display: swap;
-}
-
-@custom-variant dark (&:is(.dark *));
+/*
+ * muse is the design system. tokens.css imports tailwind itself and carries the Goga
+ * @font-face rules, the fc-* theme, dark mode and the base layer — so this file never
+ * imports tailwind a second time and never redeclares a colour.
+ */
+@import '@facile/muse/styles';
+@source '../node_modules/@facile/muse/src';
 
 /*
- * Facile Suite palette — chroma-zero OKLCH throughout, so Antenne reads as one
- * product with Sablier, Casier, Nuage, Plume and Vision. The only chroma in the
- * system is carried by the two status tones below, because a delivery that
- * failed has to be legible at a glance and a grey pill is not.
+ * The suite's semantic names, aliased onto muse tokens. The login screen is deliberately
+ * raw markup shared byte-for-byte across the Facile repos (see the auth-screen
+ * convention), so it speaks `bg-background` / `text-muted-foreground` / `border-input`
+ * rather than `fc-*`. Aliasing rather than forking means those class strings keep
+ * rendering, in muse's palette, without a second set of values to keep in sync.
  */
-:root {
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.145 0 0);
-	--primary-foreground: oklch(1 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--border: oklch(0.9 0 0);
-	--input: oklch(0.9 0 0);
-	--ring: oklch(0.4 0 0);
-	--destructive: oklch(0.55 0.19 25);
-	--destructive-foreground: oklch(1 0 0);
-	--success: oklch(0.58 0.14 155);
-	--success-foreground: oklch(1 0 0);
-	--sidebar: oklch(0.99 0 0);
-	--sidebar-foreground: oklch(0.145 0 0);
-	--sidebar-primary: oklch(0.145 0 0);
-	--sidebar-primary-foreground: oklch(1 0 0);
-	--sidebar-accent: oklch(0.96 0 0);
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-	--sidebar-border: oklch(0.92 0 0);
-	--radius: 0.625rem;
-}
-
-.dark {
-	--background: oklch(0.09 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.13 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.13 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.985 0 0);
-	--primary-foreground: oklch(0.09 0 0);
-	--secondary: oklch(0.18 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.18 0 0);
-	--muted-foreground: oklch(0.62 0 0);
-	--accent: oklch(0.18 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 12%);
-	--ring: oklch(0.6 0 0);
-	--destructive: oklch(0.68 0.17 25);
-	--destructive-foreground: oklch(0.09 0 0);
-	--success: oklch(0.72 0.14 155);
-	--success-foreground: oklch(0.09 0 0);
-	--sidebar: oklch(0.11 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.985 0 0);
-	--sidebar-primary-foreground: oklch(0.09 0 0);
-	--sidebar-accent: oklch(0.18 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(1 0 0 / 10%);
-}
-
 @theme inline {
-	--font-sans: 'Goga', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-	--font-heading: 'Goga', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-	--font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--color-card: var(--card);
-	--color-card-foreground: var(--card-foreground);
-	--color-popover: var(--popover);
-	--color-popover-foreground: var(--popover-foreground);
-	--color-primary: var(--primary);
-	--color-primary-foreground: var(--primary-foreground);
-	--color-secondary: var(--secondary);
-	--color-secondary-foreground: var(--secondary-foreground);
-	--color-muted: var(--muted);
-	--color-muted-foreground: var(--muted-foreground);
-	--color-accent: var(--accent);
-	--color-accent-foreground: var(--accent-foreground);
-	--color-border: var(--border);
-	--color-input: var(--input);
-	--color-ring: var(--ring);
-	--color-destructive: var(--destructive);
-	--color-destructive-foreground: var(--destructive-foreground);
-	--color-success: var(--success);
-	--color-success-foreground: var(--success-foreground);
-	--color-sidebar: var(--sidebar);
-	--color-sidebar-foreground: var(--sidebar-foreground);
-	--color-sidebar-primary: var(--sidebar-primary);
-	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-	--color-sidebar-accent: var(--sidebar-accent);
-	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-	--color-sidebar-border: var(--sidebar-border);
-
-	--radius-sm: calc(var(--radius) - 4px);
-	--radius-md: calc(var(--radius) - 2px);
-	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) + 4px);
+	--color-background: var(--color-fc-page);
+	--color-foreground: var(--color-fc-fg);
+	--color-card: var(--color-fc-component);
+	--color-card-foreground: var(--color-fc-fg);
+	--color-popover: var(--color-fc-component);
+	--color-popover-foreground: var(--color-fc-fg);
+	--color-muted: var(--color-fc-surface);
+	--color-muted-foreground: var(--color-fc-fg-muted);
+	--color-border: var(--color-fc-border);
+	--color-input: var(--color-fc-border);
+	--color-ring: var(--color-fc-ring);
+	--color-primary: var(--color-fc-accent);
+	--color-primary-foreground: var(--color-fc-accent-fg);
+	--color-secondary: var(--color-fc-surface);
+	--color-secondary-foreground: var(--color-fc-fg);
+	--color-accent: var(--color-fc-surface);
+	--color-accent-foreground: var(--color-fc-fg);
+	--color-destructive: var(--color-fc-danger);
+	--color-destructive-foreground: var(--color-fc-danger-fg);
+	--font-heading: var(--font-fc-title);
 }
 
 @layer base {
-	* {
-		border-color: var(--border);
-	}
-
-	body {
-		background-color: var(--background);
-		color: var(--foreground);
-		font-family: var(--font-sans);
-		-webkit-font-smoothing: antialiased;
-		letter-spacing: -0.011em;
-	}
-
 	/*
-	 * Tag tones are the one place a categorical scale is needed. Twelve evenly
-	 * spaced hues at a fixed low chroma: distinguishable side by side, and still
-	 * quiet enough not to fight the greyscale everything else lives in. The
-	 * lightness flips in dark mode so the pills keep the same contrast.
+	 * Tags are the one categorical scale Antenne owns. muse stops at six chart slots and
+	 * these are user-created labels, so the hue is derived from the tag name instead of
+	 * assigned — twelve evenly spaced hues at a fixed low chroma, quiet enough to sit in a
+	 * chroma-zero interface. Lightness flips in dark mode so the pills keep their contrast.
 	 */
 	[data-tag-tone] {
 		--tag-chroma: 0.055;
@@ -208,6 +49,13 @@
 		--tag-text-lightness: 0.38;
 		background-color: oklch(var(--tag-lightness) var(--tag-chroma) var(--tag-hue));
 		color: oklch(var(--tag-text-lightness) calc(var(--tag-chroma) * 2) var(--tag-hue));
+	}
+
+	:root:not(.light) [data-tag-tone] {
+		@media (prefers-color-scheme: dark) {
+			--tag-lightness: 0.26;
+			--tag-text-lightness: 0.85;
+		}
 	}
 
 	.dark [data-tag-tone] {

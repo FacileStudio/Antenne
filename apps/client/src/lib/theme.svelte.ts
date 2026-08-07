@@ -1,39 +1,34 @@
 import { browser } from '$app/environment';
 
+export type ThemeMode = 'system' | 'light' | 'dark';
+
 const STORAGE_KEY = 'antenne-theme';
 
-type Theme = 'light' | 'dark';
-
-function initial(): Theme {
-	if (!browser) return 'light';
-	const stored = localStorage.getItem(STORAGE_KEY);
-	if (stored === 'light' || stored === 'dark') return stored;
-	return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+function stored(): ThemeMode {
+	if (!browser) return 'system';
+	const raw = localStorage.getItem(STORAGE_KEY);
+	return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system';
 }
 
-class ThemeStore {
-	current = $state<Theme>('light');
+export const theme = $state({ mode: stored() });
 
-	/**
-	 * Called from the root layout on mount. app.html already applied the class
-	 * before the first paint; this only syncs the reactive copy, so the toggle
-	 * renders the right icon without a flash.
-	 */
-	hydrate() {
-		this.current = initial();
-		this.apply();
-	}
-
-	toggle() {
-		this.current = this.current === 'dark' ? 'light' : 'dark';
-		if (browser) localStorage.setItem(STORAGE_KEY, this.current);
-		this.apply();
-	}
-
-	private apply() {
-		if (!browser) return;
-		document.documentElement.classList.toggle('dark', this.current === 'dark');
-	}
+/**
+ * Writes both classes, and `system` writes neither.
+ *
+ * muse's tokens flip on `prefers-color-scheme` scoped to `:root:not(.light)`, so the
+ * `.light` class is the only thing that lets someone force light on a dark OS. A store
+ * that only ever adds `.dark` silently strands exactly those users.
+ */
+export function setTheme(mode: ThemeMode) {
+	theme.mode = mode;
+	if (!browser) return;
+	const root = document.documentElement;
+	root.classList.toggle('dark', mode === 'dark');
+	root.classList.toggle('light', mode === 'light');
+	localStorage.setItem(STORAGE_KEY, mode);
 }
 
-export const theme = new ThemeStore();
+/** Re-applies the stored choice on hydration; app.html already painted it. */
+export function applyStoredTheme() {
+	setTheme(theme.mode);
+}

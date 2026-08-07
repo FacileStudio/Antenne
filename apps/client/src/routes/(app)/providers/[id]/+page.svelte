@@ -1,12 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { toast } from 'svelte-sonner';
+	import { Badge, Button, EmptyState, Spinner, StatCard, icons, toast } from '@facile/muse';
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
-	import Icon from '$lib/components/Icon.svelte';
-	import StatCard from '$lib/components/StatCard.svelte';
 	import TagPill from '$lib/components/TagPill.svelte';
-	import Badge from '$lib/components/ui/badge.svelte';
-	import Button from '$lib/components/ui/button.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { providerIcon } from '$lib/icons';
@@ -31,7 +27,7 @@
 			events = payload.events;
 			stats = payload.stats;
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : 'Failed to load the event log');
+			toast.danger(error instanceof Error ? error.message : 'Failed to load the event log');
 		} finally {
 			loading = false;
 		}
@@ -43,42 +39,72 @@
 	});
 </script>
 
-<div class="grid gap-5">
-	<a
-		href="/providers"
-		class="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-	>
-		<Icon icon="solar:arrow-left-linear" size={15} />
-		Back to providers
-	</a>
+<div class="flex flex-col gap-10">
+	<div class="flex flex-col gap-2">
+		<Button
+			variant="ghost"
+			size="sm"
+			icon={icons.chevronLeft}
+			href="/providers"
+			class="-ml-3.5 w-fit"
+		>
+			Back to providers
+		</Button>
+
+		{#if provider}
+			<div class="flex flex-wrap items-center gap-3">
+				<span
+					class="flex size-10 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted"
+				>
+					<iconify-icon icon={providerIcon(provider.type)} width="22" height="22" class="block"
+					></iconify-icon>
+				</span>
+				<h1 class="text-fc-2xl font-semibold text-fc-fg">{provider.name}</h1>
+				<Badge>{providerLabel(provider.type)}</Badge>
+				{#each provider.tags as tag (tag)}
+					<TagPill {tag} {tones} />
+				{/each}
+			</div>
+		{/if}
+	</div>
 
 	{#if provider}
-		<div class="flex flex-wrap items-center gap-3">
-			<span class="flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground">
-				<Icon icon={providerIcon(provider.type)} size={22} />
-			</span>
-			<h2 class="font-heading text-xl font-semibold tracking-tight">{provider.name}</h2>
-			<Badge variant="outline">{providerLabel(provider.type)}</Badge>
-			{#each provider.tags as tag (tag)}
-				<TagPill {tag} {tones} />
-			{/each}
+		<div class="grid gap-4 sm:grid-cols-3">
+			<StatCard label="Events" value={stats?.totalEvents ?? 0} />
+			<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0} />
+			<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0} />
+		</div>
+
+		<div class="flex flex-col gap-4">
+			<div class="flex items-start justify-between gap-4">
+				<div class="flex flex-col gap-1">
+					<h2 class="text-fc-lg font-semibold text-fc-fg">Event log</h2>
+					<p class="text-fc-sm text-fc-fg-muted">The last 100 events this provider produced.</p>
+				</div>
+				<Button
+					variant="ghost"
+					icon={icons.refresh}
+					onclick={refresh}
+					disabled={loading}
+					aria-label="Refresh the event log"
+				/>
+			</div>
+
+			{#if loading && events.length === 0}
+				<div class="flex justify-center py-12">
+					<Spinner />
+				</div>
+			{:else}
+				<EventTimeline {events} />
+			{/if}
 		</div>
 	{:else}
-		<p class="text-sm text-muted-foreground">This provider no longer exists.</p>
+		<EmptyState
+			icon={icons.warning}
+			title="This provider no longer exists"
+			description="It was deleted, or the link points at an id this Antenne has never known."
+		>
+			<Button href="/providers">Back to providers</Button>
+		</EmptyState>
 	{/if}
-
-	<div class="grid gap-3 sm:grid-cols-3">
-		<StatCard label="Events" value={stats?.totalEvents ?? 0} />
-		<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0} tone="success" />
-		<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0} tone="destructive" />
-	</div>
-
-	<div class="flex items-center justify-between gap-3">
-		<h3 class="font-heading text-base font-semibold">Event log</h3>
-		<Button variant="ghost" size="icon" onclick={refresh} disabled={loading} title="Refresh">
-			<Icon icon="solar:refresh-linear" size={15} class={loading ? 'animate-spin' : ''} />
-		</Button>
-	</div>
-
-	<EventTimeline {events} />
 </div>

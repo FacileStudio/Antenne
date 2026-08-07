@@ -1,14 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { toast } from 'svelte-sonner';
+	import { Badge, Button, Input, Select, Spinner, StatCard, icons, toast } from '@facile/muse';
 	import ActivityChart from '$lib/components/ActivityChart.svelte';
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
-	import Icon from '$lib/components/Icon.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import StatCard from '$lib/components/StatCard.svelte';
-	import Button from '$lib/components/ui/button.svelte';
-	import Input from '$lib/components/ui/input.svelte';
-	import Select from '$lib/components/ui/select.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import type { EventEntry, EventStats } from '$lib/types';
@@ -67,7 +61,7 @@
 			total = payload.total;
 			stats = payload.stats;
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : 'Failed to load the activity log');
+			toast.danger(error instanceof Error ? error.message : 'Failed to load the activity log');
 		} finally {
 			loading = false;
 			loadingMore = false;
@@ -83,7 +77,7 @@
 		const targets = dashboard.settings.delivery.items;
 		const target = targets.find((candidate) => candidate.enabled) ?? targets[0];
 		if (!target) {
-			toast.error('No delivery target configured.');
+			toast.danger('No delivery target configured.');
 			return;
 		}
 
@@ -91,7 +85,7 @@
 			await api.replay(eventId, target.id);
 			toast.success(`Replayed to ${target.name}.`);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : 'The replay failed');
+			toast.danger(error instanceof Error ? error.message : 'The replay failed');
 		}
 	}
 
@@ -121,66 +115,89 @@
 	});
 </script>
 
-<section class="grid gap-5">
-	<PageHeader eyebrow="Overview" title="Stats">
-		{#snippet actions()}
-			<span
-				class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground"
-			>
-				<Icon icon="solar:clock-circle-linear" size={13} />
+<div class="flex flex-col gap-10">
+	<div class="flex flex-wrap items-start justify-between gap-4">
+		<div class="flex flex-col gap-2">
+			<h1 class="text-fc-2xl font-semibold text-fc-fg">Activity</h1>
+			<p class="text-fc-sm text-fc-fg-muted">
+				Every alert Antenne received, and how each delivery went.
+			</p>
+		</div>
+
+		<div class="flex flex-wrap items-center gap-2">
+			<Badge>
+				<iconify-icon icon={icons.clock} width="13" height="13" class="block"></iconify-icon>
 				{stats?.lastEventAt ? formatDateTime(stats.lastEventAt) : 'No events yet'}
-			</span>
-			<Button variant="outline" onclick={() => fetchEvents()} disabled={loading}>
-				<Icon icon="solar:refresh-linear" size={14} class={loading ? 'animate-spin' : ''} />
+			</Badge>
+			<Button
+				variant="outline"
+				icon={icons.refresh}
+				onclick={() => fetchEvents()}
+				disabled={loading}
+			>
 				{loading ? 'Refreshing…' : 'Refresh'}
 			</Button>
-		{/snippet}
-	</PageHeader>
-
-	<div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-		<StatCard label="Tracked" value={stats?.totalEvents ?? events.length} />
-		<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0} tone="success" />
-		<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0} tone="destructive" />
-		<StatCard label="Hit rate" value={`${successRate}%`} />
-		<StatCard label="Recent (6h)" value={recentCount} live />
+		</div>
 	</div>
 
-	<ActivityChart {events} />
-</section>
+	<section class="flex flex-col gap-4">
+		<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+			<StatCard label="Tracked" value={stats?.totalEvents ?? events.length} />
+			<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0} />
+			<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0} />
+			<StatCard label="Hit rate" value={`${successRate}%`} />
+			<StatCard label="Recent (6h)" value={recentCount} />
+		</div>
 
-<section class="grid gap-5">
-	<PageHeader eyebrow="Recent feed" title="Activity stream" />
+		<ActivityChart {events} />
+	</section>
 
-	<div class="flex flex-wrap gap-2">
-		<Input
-			bind:value={search}
-			placeholder="Search events…"
-			oninput={onSearchInput}
-			class="min-w-56 flex-1"
-		/>
-		<!-- The value is read off the event rather than bound, so the refetch
-		     cannot race the binding's own change listener. -->
-		<Select
-			value={source}
-			options={sourceOptions}
-			class="w-44 flex-none"
-			onchange={(event) => {
-				source = (event.currentTarget as HTMLSelectElement).value;
-				fetchEvents();
-			}}
-		/>
-	</div>
+	<section class="flex flex-col gap-4">
+		<div class="flex flex-col gap-2">
+			<h2 class="text-fc-lg font-semibold text-fc-fg">Activity stream</h2>
+			<p class="text-fc-sm text-fc-fg-muted">Live — new events arrive without a refresh.</p>
+		</div>
 
-	<EventTimeline {events} onreplay={replay} />
+		<div class="flex flex-wrap gap-4">
+			<Input
+				bind:value={search}
+				placeholder="Search events…"
+				oninput={onSearchInput}
+				class="min-w-56 flex-1"
+			/>
+			<!-- The value is read off the event rather than bound, so the refetch
+			     cannot race the binding's own change listener. -->
+			<Select
+				value={source}
+				class="w-44 flex-none"
+				onchange={(event) => {
+					source = event.currentTarget.value;
+					fetchEvents();
+				}}
+			>
+				{#each sourceOptions as option (option.value)}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</Select>
+		</div>
 
-	{#if hasMore}
-		<Button
-			variant="outline"
-			class="h-10 w-full border-dashed"
-			disabled={loadingMore}
-			onclick={() => fetchEvents({ append: true })}
-		>
-			{loadingMore ? 'Loading…' : 'Load more'}
-		</Button>
-	{/if}
-</section>
+		{#if loading && events.length === 0}
+			<div class="flex justify-center py-16">
+				<Spinner />
+			</div>
+		{:else}
+			<EventTimeline {events} onreplay={replay} />
+		{/if}
+
+		{#if hasMore}
+			<Button
+				variant="outline"
+				class="w-full"
+				disabled={loadingMore}
+				onclick={() => fetchEvents({ append: true })}
+			>
+				{loadingMore ? 'Loading…' : 'Load more'}
+			</Button>
+		{/if}
+	</section>
+</div>
