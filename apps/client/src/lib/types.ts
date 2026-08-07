@@ -201,7 +201,7 @@ export interface SpaceMember {
 	joinedAt: string;
 }
 
-export interface PoolStats {
+export interface BusStats {
 	epoch: string;
 	connections: number;
 	apps: { app_id: string; app: string; channels: string[] }[];
