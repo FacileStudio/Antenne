@@ -61,7 +61,7 @@ func Normalize(raw json.RawMessage, fallback AppSettings) (AppSettings, error) {
 	}
 	next.Delivery = DeliveryConfig{Items: targets}
 
-	next.Pool = normalizePool(document, fallback.Pool)
+	next.Bus = normalizeBus(document, fallback.Bus)
 
 	return next, nil
 }
@@ -301,14 +301,17 @@ func normalizeTarget(raw json.RawMessage, existing map[string]DeliveryTarget) (D
 	return seed, nil
 }
 
-func normalizePool(document map[string]json.RawMessage, fallback *PoolSettings) *PoolSettings {
-	pool := &PoolSettings{}
+func normalizeBus(document map[string]json.RawMessage, fallback *BusSettings) *BusSettings {
+	pool := &BusSettings{}
 	if fallback != nil {
 		copied := *fallback
 		pool = &copied
 	}
 
-	rawPool, ok := document["pool"]
+	rawPool, ok := document["bus"]
+	if !ok {
+		rawPool, ok = document["pool"]
+	}
 	if !ok {
 		return pool
 	}

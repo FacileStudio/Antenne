@@ -571,15 +571,15 @@ func (a *App) Replay(ctx context.Context, eventID, targetID string) error {
 	return a.sender.SendTo(ctx, target, delivery.Message{HTML: message, Envelope: *entry.Envelope})
 }
 
-// LogPoolActivity records a pool lifecycle event in the activity feed.
-func (a *App) LogPoolActivity(eventType, app, detail string) {
-	if !a.store.Get().Pool.LogActivityEnabled() {
+// LogBusActivity records a bus lifecycle event in the activity feed.
+func (a *App) LogBusActivity(eventType, app, detail string) {
+	if !a.store.Get().Bus.LogActivityEnabled() {
 		return
 	}
 	a.events.Push(events.New{
 		Source:       string(envelope.SourceSystem),
 		ProviderName: app,
-		ProviderType: "pool",
+		ProviderType: "bus",
 		Event:        eventType,
 		Message:      detail,
 	})

@@ -39,8 +39,8 @@ func Redact(source AppSettings) AppSettings {
 		}
 	}
 
-	if redacted.Pool != nil && redacted.Pool.Secret != "" {
-		redacted.Pool.Secret = Redacted
+	if redacted.Bus != nil && redacted.Bus.Secret != "" {
+		redacted.Bus.Secret = Redacted
 	}
 
 	return redacted
@@ -72,8 +72,14 @@ func MergeSecrets(raw json.RawMessage, current AppSettings) json.RawMessage {
 	if merged, ok := mergeTargetSecrets(document["delivery"], current); ok {
 		document["delivery"] = merged
 	}
-	if merged, ok := mergePoolSecret(document["pool"], current); ok {
-		document["pool"] = merged
+	busKey := "bus"
+	if _, ok := document[busKey]; !ok {
+		if _, legacy := document["pool"]; legacy {
+			busKey = "pool"
+		}
+	}
+	if merged, ok := mergeBusSecret(document[busKey], current); ok {
+		document[busKey] = merged
 	}
 
 	rewritten, err := json.Marshal(document)
@@ -157,8 +163,8 @@ func mergeTargetSecrets(raw json.RawMessage, current AppSettings) (json.RawMessa
 	return reencodeItems(block, items)
 }
 
-func mergePoolSecret(raw json.RawMessage, current AppSettings) (json.RawMessage, bool) {
-	if len(raw) == 0 || current.Pool == nil || current.Pool.Secret == "" {
+func mergeBusSecret(raw json.RawMessage, current AppSettings) (json.RawMessage, bool) {
+	if len(raw) == 0 || current.Bus == nil || current.Bus.Secret == "" {
 		return nil, false
 	}
 
@@ -166,7 +172,7 @@ func mergePoolSecret(raw json.RawMessage, current AppSettings) (json.RawMessage,
 	if err := json.Unmarshal(raw, &block); err != nil {
 		return nil, false
 	}
-	restoreValue(block, "secret", current.Pool.Secret)
+	restoreValue(block, "secret", current.Bus.Secret)
 
 	rewritten, err := json.Marshal(block)
 	if err != nil {

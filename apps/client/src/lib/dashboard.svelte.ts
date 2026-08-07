@@ -17,7 +17,7 @@ function emptySettings(): AppSettings {
 		},
 		timeout: 10,
 		providers: { port: 9090, items: [] },
-		pool: { secret: '', logActivity: true }
+		bus: { secret: '', logActivity: true }
 	};
 }
 
@@ -28,9 +28,9 @@ function emptySettings(): AppSettings {
 function withPool(settings: AppSettings): AppSettings {
 	return {
 		...settings,
-		pool: {
-			secret: settings.pool?.secret ?? '',
-			logActivity: settings.pool?.logActivity ?? true
+		bus: {
+			secret: settings.bus?.secret ?? '',
+			logActivity: settings.bus?.logActivity ?? true
 		}
 	};
 }
