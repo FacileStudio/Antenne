@@ -9,7 +9,7 @@ import (
 )
 
 // A long passphrase has to work. bcrypt refuses anything past 72 bytes, and the
-// deployed NOOK_ADMIN_PASSWORD is a hyphenated word list well past that — which
+// deployed ANTENNE_ADMIN_PASSWORD is a hyphenated word list well past that — which
 // crash-looped the service on the first boot after the move off HMAC.
 func TestALongPassphraseCanBeHashedAndVerified(t *testing.T) {
 	password := strings.Repeat("correct-horse-battery-staple-", 8)

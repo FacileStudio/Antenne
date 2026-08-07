@@ -20,14 +20,14 @@ RUN go mod download
 COPY apps/api/ .
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} \
-    go build -trimpath -ldflags="-s -w" -o /out/nook .
+    go build -trimpath -ldflags="-s -w" -o /out/antenne .
 
 # :nonroot, because the binary writes nothing to disk — every byte of state is in
 # Postgres. The root variant was only needed while a legacy settings file had to
 # be read off a root-owned named volume, and that volume is gone.
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=api-build /out/nook /nook
+COPY --from=api-build /out/antenne /antenne
 COPY --from=client-build /client/build /client
 
 # Obligatory: a relative ./client would resolve against the image's working
@@ -39,4 +39,4 @@ EXPOSE 9090
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/nook"]
+ENTRYPOINT ["/antenne"]

@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 func (s *Sender) sendDiscord(ctx context.Context, target settings.DeliveryTarget, message string) error {
@@ -30,7 +30,7 @@ func (s *Sender) sendDiscord(ctx context.Context, target settings.DeliveryTarget
 		return err
 	}
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("User-Agent", "Nook/1.0 uptime-bot")
+	request.Header.Set("User-Agent", "Antenne/1.0 uptime-bot")
 
 	return s.expectOK(request, "Discord webhook")
 }
@@ -52,8 +52,8 @@ func (s *Sender) sendNtfy(ctx context.Context, target settings.DeliveryTarget, m
 		return err
 	}
 	request.Header.Set("Content-Type", "text/plain; charset=utf-8")
-	request.Header.Set("User-Agent", "Nook/1.0 uptime-bot")
-	request.Header.Set("Title", "Nook Alert")
+	request.Header.Set("User-Agent", "Antenne/1.0 uptime-bot")
+	request.Header.Set("Title", "Antenne Alert")
 	if target.AccessToken != "" {
 		request.Header.Set("Authorization", "Bearer "+target.AccessToken)
 	}
@@ -101,7 +101,7 @@ func (s *Sender) sendPerception(ctx context.Context, target settings.DeliveryTar
 	return s.expectOK(request, "Perception")
 }
 
-// sendSMTP speaks SMTP directly rather than through a mailer dependency: Nook
+// sendSMTP speaks SMTP directly rather than through a mailer dependency: Antenne
 // sends one short multipart message per alert and needs no queue, no templating
 // and no attachments.
 func (s *Sender) sendSMTP(target settings.DeliveryTarget, message string) error {
@@ -135,7 +135,7 @@ func (s *Sender) sendSMTP(target settings.DeliveryTarget, message string) error 
 	}
 	defer client.Close()
 
-	if err := client.Hello("nook"); err != nil {
+	if err := client.Hello("antenne"); err != nil {
 		return err
 	}
 
@@ -171,9 +171,9 @@ func (s *Sender) sendSMTP(target settings.DeliveryTarget, message string) error 
 }
 
 func buildMIME(target settings.DeliveryTarget, message string) []byte {
-	subject := "Nook Alert"
+	subject := "Antenne Alert"
 	if prefix := sanitizeHeader(target.SubjectPrefix); prefix != "" {
-		subject = prefix + " Nook Alert"
+		subject = prefix + " Antenne Alert"
 	}
 
 	recipients := make([]string, 0, len(target.ToAddresses))
@@ -181,7 +181,7 @@ func buildMIME(target settings.DeliveryTarget, message string) []byte {
 		recipients = append(recipients, sanitizeHeader(recipient))
 	}
 
-	boundary := "nook-" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	boundary := "antenne-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	plain := envelope.HTMLToPlainText(message)
 
 	var body bytes.Buffer

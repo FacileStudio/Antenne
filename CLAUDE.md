@@ -1,4 +1,4 @@
-# Nook
+# Antenne
 
 Modular alert aggregation service and the suite's event bus — watches providers, receives
 webhooks, and delivers notifications to Matrix, Discord, HTTP, SMTP, ntfy and Perception.
@@ -28,15 +28,15 @@ Run from the repository root. Development configuration comes from
 | Go only | `mise run check-go` |
 | Format Go | `mise run format` |
 
-`.casier.toml` pins this repo to the `nook` project and its `dev` environment, so `mise run
+`.casier.toml` pins this repo to the `antenne` project and its `dev` environment, so `mise run
 dev` wraps the API in `casier run` and the process starts with `DATABASE_URL`,
-`NOOK_ADMIN_PASSWORD`, `NOOK_SESSION_SECRET` and `POOL_SECRET` already in its environment.
+`ANTENNE_ADMIN_PASSWORD`, `ANTENNE_SESSION_SECRET` and `POOL_SECRET` already in its environment.
 `casier run` is network-first with a last-known-good cache, so a Casier outage falls back to
 the previously fetched values and says so on stderr. Add a value with
-`casier secrets set -p nook -e dev KEY value`.
+`casier secrets set -p antenne -e dev KEY value`.
 
 Production values live in Casier's `prod` environment and are pushed into Dokploy with
-`casier push dokploy -p nook -e prod <composeId>`; the container reads them from the Dokploy
+`casier push dokploy -p antenne -e prod <composeId>`; the container reads them from the Dokploy
 env, never from Casier at boot. Casier owns and versions the values; Dokploy is the bootstrap
 tier.
 
@@ -53,7 +53,7 @@ apps/
       database/             The GORM handle
       authcontext/          Identity on the request context — the auth seam
       ratelimit/            Fixed-window counter for login attempts
-      envelope/             The Nook event envelope, its HMAC signing and its text rendering
+      envelope/             The Antenne event envelope, its HMAC signing and its text rendering
       app/                  The alert pipeline: dedup, envelope, log, route, deliver, retry
       server/               Dashboard API, webhook intake
     modules/
@@ -61,9 +61,9 @@ apps/
       settings/             Providers, delivery targets, normalization, redaction, storage
       delivery/             Senders (Matrix, Discord, HTTP, SMTP, ntfy, Perception) + retry
       events/               Activity log and the SSE fan-out
-      providers/            The pollers Nook drives: website, IMAP, RSS
+      providers/            The pollers Antenne drives: website, IMAP, RSS
       webhooks/             The intake registry and one file per provider
-      pool/                 The Nook Pool: WebSocket server and its Postgres-backed queue
+      pool/                 The Antenne Pool: WebSocket server and its Postgres-backed queue
       spaces/               Teams and members
   client/                   SvelteKit dashboard, built to apps/client/build
 ```
@@ -88,8 +88,8 @@ The URL layout is not uniform, and that is deliberate — see the conventions be
 - **The `/api` subtree has its own 404.** Without it the SPA catch-all answers an unknown API
   path with 200 and HTML, and a machine client reads that as a successful write.
 - **Delivery routing is opt-in with no fallthrough.** A target receives an event only if it
-  names the provider id or shares one of its tags. Nook's own events need the reserved
-  `__nook_system__` id listed explicitly — enabling a system event is not enough.
+  names the provider id or shares one of its tags. Antenne's own events need the reserved
+  `__antenne_system__` id listed explicitly — enabling a system event is not enough.
 - **Secrets are redacted on the way out and merged back on the way in.** The dashboard only
   ever holds `••••••••`; `settings.MergeSecrets` restores the stored value before
   normalization.
@@ -107,11 +107,11 @@ The URL layout is not uniform, and that is deliberate — see the conventions be
 
 ## Authentication
 
-Nook owns a `users` table, an opaque session token hashed at rest, and a password login. No
+Antenne owns a `users` table, an opaque session token hashed at rest, and a password login. No
 OIDC and no shared identity engine yet — that is deliberate, and the whole implementation
 sits behind one interface so it can be replaced without touching a handler:
 
-- `auth.Authenticator` is the seam. `auth.Service` is Nook's implementation of it.
+- `auth.Authenticator` is the seam. `auth.Service` is Antenne's implementation of it.
 - `auth.RequireAuth(authenticator)` is the only thing routers use.
 - Handlers read `authcontext.Identity` and never see a cookie, a token or a user row.
 
@@ -119,7 +119,7 @@ When the suite's unified auth package lands, it supplies a new `Authenticator` a
 login routes. `Identity` keeps its shape — `UserID` / `Email` / `Name` / `Role` / `ClientIP`,
 with the suite's `USER` / `ADMIN` hierarchy — so nothing downstream changes.
 
-`NOOK_ADMIN_PASSWORD` stays the source of truth for the bootstrap account: changing it and
+`ANTENNE_ADMIN_PASSWORD` stays the source of truth for the bootstrap account: changing it and
 restarting re-seeds the password and revokes that user's sessions, which is the recovery path.
 
 ## Environment Variables
@@ -131,9 +131,9 @@ restarting re-seeds the password and revokes that user's sessions, which is the 
 | `PORT` | HTTP port for the API, dashboard, health, webhooks and pool | `9090` |
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | `info` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins, read through `tronc/env`. `ALLOWED_ORIGINS` and `DOMAINS` remain accepted fallbacks | unset denies every cross-origin caller |
-| `NOOK_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
-| `NOOK_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open | — (required in production) |
-| `NOOK_SESSION_SECRET` | Required in production so sessions survive a restart | — |
+| `ANTENNE_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
+| `ANTENNE_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open | — (required in production) |
+| `ANTENNE_SESSION_SECRET` | Required in production so sessions survive a restart | — |
 | `POOL_SECRET` | Shared secret pool clients register with. The dashboard value wins | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set | — |
@@ -155,7 +155,7 @@ driver appears in `go.mod`.
 docker compose up -d
 ```
 
-Compose brings up Postgres and the app. `POSTGRES_PASSWORD`, `NOOK_ADMIN_PASSWORD` and
-`NOOK_SESSION_SECRET` are required and fail the compose file loudly when unset. The container
-probes itself with `/nook healthcheck`, which answers before any config is read, so a missing
+Compose brings up Postgres and the app. `POSTGRES_PASSWORD`, `ANTENNE_ADMIN_PASSWORD` and
+`ANTENNE_SESSION_SECRET` are required and fail the compose file loudly when unset. The container
+probes itself with `/antenne healthcheck`, which answers before any config is read, so a missing
 `DATABASE_URL` cannot break the probe.

@@ -2,7 +2,7 @@
 	import { cn } from '$lib/utils';
 
 	/**
-	 * Nook's mark: concentric signal arcs around a dot. Inline rather than an
+	 * Antenne's mark: concentric signal arcs around a dot. Inline rather than an
 	 * icon-set lookup because the opacity ramp across the three arcs is part of
 	 * the logo, and it has to inherit currentColor for the dark theme.
 	 */

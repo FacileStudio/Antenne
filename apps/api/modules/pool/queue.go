@@ -1,4 +1,4 @@
-// Package pool is the Nook Pool: a WebSocket bus with an offset-based queue
+// Package pool is the Antenne Pool: a WebSocket bus with an offset-based queue
 // that other Facile apps register with and sync through.
 package pool
 
@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // Retention policy. Interest-based rather than time-based: events stay until

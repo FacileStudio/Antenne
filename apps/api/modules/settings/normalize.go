@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Normalize turns whatever the dashboard PUT into a settings document Nook can
+// Normalize turns whatever the dashboard PUT into a settings document Antenne can
 // run, falling back to the previous value field by field.
 //
 // It is deliberately forgiving in the same places the TypeScript service was:

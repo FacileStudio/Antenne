@@ -26,7 +26,7 @@
 	} = $props();
 
 	const options = $derived([
-		{ id: SYSTEM_PROVIDER_ID, name: 'Nook system', typeLabel: 'System' },
+		{ id: SYSTEM_PROVIDER_ID, name: 'Antenne system', typeLabel: 'System' },
 		...providers.map((provider) => ({
 			id: provider.id,
 			name: provider.name || providerLabel(provider.type),
@@ -49,7 +49,7 @@
 
 <Field
 	label="Providers"
-	hint="Routing is opt-in with no fallthrough: a target with nothing selected here and no tag below receives nothing. Nook's own events need “Nook system”."
+	hint="Routing is opt-in with no fallthrough: a target with nothing selected here and no tag below receives nothing. Antenne's own events need “Antenne system”."
 >
 	<div class="grid gap-1.5">
 		{#each options as option (option.id)}
@@ -95,8 +95,8 @@
 		<SecretInput bind:value={target.accessToken} placeholder="syt_xxx" />
 	</Field>
 
-	<Field label="User ID" hint="With a password, lets Nook log back in on its own.">
-		<Input bind:value={target.userId} placeholder="@nook:matrix.example.com" />
+	<Field label="User ID" hint="With a password, lets Antenne log back in on its own.">
+		<Input bind:value={target.userId} placeholder="@antenne:matrix.example.com" />
 	</Field>
 
 	<Field label="Password">
@@ -104,7 +104,7 @@
 	</Field>
 
 	<Field label="Device ID" hint="Optional. Keep it stable so the homeserver reissues for one device.">
-		<Input bind:value={target.deviceId as string} placeholder="NOOKABC123" />
+		<Input bind:value={target.deviceId as string} placeholder="ANTENNEABC123" />
 	</Field>
 
 	<Field label="Refresh token" hint="Optional. Used when the access token expires.">
@@ -142,7 +142,7 @@
 	</Field>
 
 	<Field label="From address" required>
-		<Input type="email" bind:value={target.fromAddress} placeholder="nook@example.com" />
+		<Input type="email" bind:value={target.fromAddress} placeholder="antenne@example.com" />
 	</Field>
 
 	<Field label="To addresses" required>
@@ -155,7 +155,7 @@
 	</Field>
 
 	<Field label="Subject prefix">
-		<Input bind:value={target.subjectPrefix} placeholder="[Nook]" />
+		<Input bind:value={target.subjectPrefix} placeholder="[Antenne]" />
 	</Field>
 {:else if target.type === 'ntfy'}
 	<Field label="Server URL" required>
@@ -201,12 +201,12 @@
 	/>
 {:else}
 	<Field label="URL" required>
-		<Input type="url" bind:value={target.url} placeholder="https://example.com/hooks/nook" />
+		<Input type="url" bind:value={target.url} placeholder="https://example.com/hooks/antenne" />
 	</Field>
 
 	<Field
 		label="Signing secret"
-		hint="Signs timestamp.eventId.body as x-nook-signature-256. Empty sends unsigned."
+		hint="Signs timestamp.eventId.body as x-antenne-signature-256. Empty sends unsigned."
 	>
 		<SecretInput bind:value={target.secretValue as string} />
 	</Field>

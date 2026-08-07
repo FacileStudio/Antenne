@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import Icon from '$lib/components/Icon.svelte';
-	import NookLogo from '$lib/components/NookLogo.svelte';
+	import AntenneLogo from '$lib/components/AntenneLogo.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SecretInput from '$lib/components/SecretInput.svelte';
 	import ToggleRow from '$lib/components/ToggleRow.svelte';
@@ -75,7 +75,7 @@
 				{#if entry.icon}
 					<Icon icon={entry.icon} size={16} />
 				{:else}
-					<NookLogo size={16} />
+					<AntenneLogo size={16} />
 				{/if}
 				{entry.label}
 			</button>
@@ -161,7 +161,7 @@
 			<PageHeader eyebrow="Settings" title="System events" />
 
 			<div class="grid max-w-2xl gap-2">
-				<ToggleRow label="Nook started" bind:checked={events.startup} />
+				<ToggleRow label="Antenne started" bind:checked={events.startup} />
 				<ToggleRow label="A provider was enabled" bind:checked={events.providerEnabled} />
 				<ToggleRow label="A provider was disabled" bind:checked={events.providerDisabled} />
 				<ToggleRow label="A provider was added" bind:checked={events.providerAdded} />
@@ -171,7 +171,7 @@
 
 			<p class="max-w-2xl text-sm text-muted-foreground">
 				Enabling an event is not enough on its own: a delivery target only receives these once it
-				lists <strong class="font-medium text-foreground">Nook system</strong> in its provider filter.
+				lists <strong class="font-medium text-foreground">Antenne system</strong> in its provider filter.
 			</p>
 		</section>
 	{:else}

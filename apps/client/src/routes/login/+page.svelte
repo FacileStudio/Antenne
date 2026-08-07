@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import NookLogo from '$lib/components/NookLogo.svelte';
+	import AntenneLogo from '$lib/components/AntenneLogo.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import Input from '$lib/components/ui/input.svelte';
 	import Label from '$lib/components/ui/label.svelte';
@@ -46,8 +46,8 @@
 		class="hidden w-1/2 flex-col justify-between bg-foreground p-12 text-background lg:flex"
 	>
 		<div class="flex items-center gap-2.5">
-			<NookLogo size={26} />
-			<span class="font-heading text-xl font-bold tracking-tight">Nook</span>
+			<AntenneLogo size={26} />
+			<span class="font-heading text-xl font-bold tracking-tight">Antenne</span>
 		</div>
 
 		<div>
@@ -59,14 +59,14 @@
 			</p>
 		</div>
 
-		<p class="text-xs opacity-40">© {new Date().getFullYear()} Nook by Facile.</p>
+		<p class="text-xs opacity-40">© {new Date().getFullYear()} Antenne by Facile.</p>
 	</aside>
 
 	<main class="flex w-full flex-col items-center justify-center p-8 lg:w-1/2">
 		<div class="w-full max-w-sm">
 			<div class="mb-8 flex items-center gap-2.5 lg:hidden">
-				<NookLogo size={24} class="text-foreground" />
-				<span class="font-heading text-lg font-bold tracking-tight">Nook</span>
+				<AntenneLogo size={24} class="text-foreground" />
+				<span class="font-heading text-lg font-bold tracking-tight">Antenne</span>
 			</div>
 
 			<h1 class="font-heading text-2xl font-bold tracking-tight">Welcome back</h1>

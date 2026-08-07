@@ -18,7 +18,7 @@ type contextKey int
 
 const identityKey contextKey = 0
 
-// Role is the caller's privilege level. Nook has one tier today; the constants
+// Role is the caller's privilege level. Antenne has one tier today; the constants
 // exist so the shared package's USER/ADMIN hierarchy maps onto it unchanged.
 type Role string
 
@@ -57,7 +57,7 @@ func From(r *http.Request) Identity {
 // to the socket address.
 //
 // It trusts X-Forwarded-For, which is only safe because every deployment puts
-// Traefik in front and Traefik overwrites the header. A directly exposed Nook
+// Traefik in front and Traefik overwrites the header. A directly exposed Antenne
 // lets a caller spoof its own rate-limit bucket.
 func ClientIP(r *http.Request) string {
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {

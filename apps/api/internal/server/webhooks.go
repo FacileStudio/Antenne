@@ -8,10 +8,10 @@ import (
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/app"
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
-	"github.com/FacileStudio/Nook/apps/api/modules/webhooks"
+	"github.com/FacileStudio/Antenne/apps/api/internal/app"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/modules/webhooks"
 )
 
 // maxWebhookBody caps an incoming webhook. Third-party senders are not trusted

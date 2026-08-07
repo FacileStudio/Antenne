@@ -15,10 +15,10 @@ import (
 	"github.com/FacileStudio/tronc/httpjson"
 	"github.com/go-chi/chi/v5"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/app"
-	"github.com/FacileStudio/Nook/apps/api/modules/delivery"
-	"github.com/FacileStudio/Nook/apps/api/modules/events"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/app"
+	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
+	"github.com/FacileStudio/Antenne/apps/api/modules/events"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // maxSettingsBody caps a settings PUT. Generous for a config document, small
@@ -193,7 +193,7 @@ func (a *API) handleEventStream(w http.ResponseWriter, r *http.Request) {
 	stream, unsubscribe := a.app.Events().Subscribe()
 	defer unsubscribe()
 
-	// A quiet Nook can go minutes without an event, and every proxy in front of
+	// A quiet Antenne can go minutes without an event, and every proxy in front of
 	// one culls an idle connection — Cloudflare at 100 seconds, Traefik at 180.
 	// Without this the stream simply dies mid-session and the client reconnects,
 	// which a browser's EventSource hides and anything else reports as an error.

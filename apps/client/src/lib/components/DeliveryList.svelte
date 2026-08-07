@@ -107,7 +107,7 @@
 
 	{#if targets.length === 0}
 		<p class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-			No delivery target configured yet. Nothing Nook sees will be delivered anywhere.
+			No delivery target configured yet. Nothing Antenne sees will be delivered anywhere.
 		</p>
 	{:else if view === 'card'}
 		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

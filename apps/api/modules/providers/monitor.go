@@ -1,6 +1,6 @@
-// Package providers drives the sources Nook polls itself: websites, IMAP
+// Package providers drives the sources Antenne polls itself: websites, IMAP
 // inboxes and RSS feeds. Webhook providers are handled by the webhooks package;
-// these three are the ones Nook has to go and ask.
+// these three are the ones Antenne has to go and ask.
 package providers
 
 import (
@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // Alert is what a poller emits. The manager itself never delivers anything; the
@@ -138,7 +138,7 @@ func (m *Monitor) check(ctx context.Context, provider settings.Provider, timeout
 		m.fail(provider, err.Error())
 		return
 	}
-	request.Header.Set("User-Agent", "Nook/1.0 uptime-bot")
+	request.Header.Set("User-Agent", "Antenne/1.0 uptime-bot")
 
 	response, err := m.client.Do(request)
 	if err != nil {
