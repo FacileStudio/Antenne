@@ -76,7 +76,7 @@ The URL layout is not uniform, and that is deliberate — see the conventions be
 - `GET /docs`, `/docs/openapi.json` — the generated Scalar reference
 - `/api/*` — the dashboard API, session-authenticated
 - `/webhook/<provider>` — **at the root**, third-party receivers
-- `/pool/register`, `/pool/ws` — **at the root** and mirrored under `/api`
+- `/antenne/register`, `/antenne/ws` — **at the root** and mirrored under `/api`
 - `/dashboard`, `/dashboard/*` — 301 to the equivalent root path
 - everything else — the SPA
 

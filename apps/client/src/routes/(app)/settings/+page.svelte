@@ -12,13 +12,13 @@
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { appIcon } from '$lib/icons';
-	import type { PoolStats } from '$lib/types';
+	import type { BusStats } from '$lib/types';
 	import { cn, formatDateTime } from '$lib/utils';
 
 	type Tab = 'general' | 'pool' | 'events' | 'advanced';
 
 	let tab = $state<Tab>('general');
-	let poolStats = $state<PoolStats | null>(null);
+	let busStats = $state<BusStats | null>(null);
 	let importInput = $state<HTMLInputElement | null>(null);
 
 	const tabs: { key: Tab; label: string; icon: string | null }[] = [
@@ -37,7 +37,7 @@
 
 	async function loadPoolStats() {
 		try {
-			poolStats = await api.poolStats();
+			busStats = await api.busStats();
 		} catch {
 			// The pool panel is informational; a failure here must not toast on a
 			// ten-second timer.
@@ -119,13 +119,13 @@
 			</div>
 
 			<PageHeader eyebrow="Pool" title="Connected apps" />
-			{#if !poolStats || poolStats.apps.length === 0}
+			{#if !busStats || busStats.apps.length === 0}
 				<p class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
 					No app is connected.
 				</p>
 			{:else}
 				<div class="grid gap-2">
-					{#each poolStats.apps as app (app.app_id)}
+					{#each busStats.apps as app (app.app_id)}
 						<div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
 							<div class="flex min-w-0 items-center gap-2.5">
 								<span class="size-2 shrink-0 rounded-full bg-success"></span>
@@ -141,17 +141,17 @@
 				</div>
 			{/if}
 
-			{#if poolStats}
+			{#if busStats}
 				<dl class="grid max-w-2xl divide-y divide-border overflow-hidden rounded-xl border border-border">
 					<div class="flex items-center justify-between gap-4 px-4 py-3">
 						<dt class="text-sm text-muted-foreground">Epoch</dt>
-						<dd class="truncate font-mono text-sm" title={poolStats.epoch}>
-							{poolStats.epoch.slice(0, 8)}
+						<dd class="truncate font-mono text-sm" title={busStats.epoch}>
+							{busStats.epoch.slice(0, 8)}
 						</dd>
 					</div>
 					<div class="flex items-center justify-between gap-4 px-4 py-3">
 						<dt class="text-sm text-muted-foreground">Live connections</dt>
-						<dd class="text-sm font-medium tabular">{poolStats.connections}</dd>
+						<dd class="text-sm font-medium tabular">{busStats.connections}</dd>
 					</div>
 				</dl>
 			{/if}

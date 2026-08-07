@@ -3,7 +3,7 @@ import type {
 	AppSettings,
 	EventEntry,
 	EventStats,
-	PoolStats,
+	BusStats,
 	SessionPayload,
 	SettingsPayload,
 	Space,
@@ -136,7 +136,7 @@ export const api = {
 			body: JSON.stringify({ targetId })
 		}),
 
-	poolStats: () => request<PoolStats>('/pool/stats'),
+	busStats: () => request<BusStats>('/antenne/stats'),
 
 	spaces: () => request<{ spaces: Space[] }>('/spaces'),
 	space: (id: string) =>
