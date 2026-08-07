@@ -290,14 +290,14 @@ type SystemSettings struct {
 	Events SystemEvents `json:"events"`
 }
 
-// PoolSettings configures the Antenne Pool.
-type PoolSettings struct {
+// BusSettings configures the Antenne Pool.
+type BusSettings struct {
 	Secret      string `json:"secret,omitempty"`
 	LogActivity *bool  `json:"logActivity,omitempty"`
 }
 
 // LogActivityEnabled reports whether pool traffic reaches the activity feed.
-func (p *PoolSettings) LogActivityEnabled() bool {
+func (p *BusSettings) LogActivityEnabled() bool {
 	return p == nil || p.LogActivity == nil || *p.LogActivity
 }
 
@@ -318,7 +318,7 @@ type AppSettings struct {
 	System    SystemSettings  `json:"system"`
 	Timeout   int             `json:"timeout"`
 	Providers ProvidersConfig `json:"providers"`
-	Pool      *PoolSettings   `json:"pool,omitempty"`
+	Bus       *BusSettings    `json:"bus,omitempty"`
 }
 
 // FindProvider returns the provider with this id, if any.

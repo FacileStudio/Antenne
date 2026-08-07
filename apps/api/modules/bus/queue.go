@@ -1,6 +1,6 @@
 // Package pool is the Antenne Pool: a WebSocket bus with an offset-based queue
 // that other Facile apps register with and sync through.
-package pool
+package bus
 
 import (
 	"encoding/json"
