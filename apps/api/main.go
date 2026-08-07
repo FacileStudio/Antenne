@@ -33,9 +33,9 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/internal/env"
 	"github.com/FacileStudio/Antenne/apps/api/internal/server"
 	"github.com/FacileStudio/Antenne/apps/api/modules/auth"
+	"github.com/FacileStudio/Antenne/apps/api/modules/bus"
 	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 	"github.com/FacileStudio/Antenne/apps/api/modules/events"
-	"github.com/FacileStudio/Antenne/apps/api/modules/pool"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 	"github.com/FacileStudio/Antenne/apps/api/modules/spaces"
 )
@@ -59,7 +59,7 @@ func refConfig() apiref.Config {
 			server.SettingsDocumentation,
 			server.EventsDocumentation,
 			server.WebhooksDocumentation,
-			pool.Documentation,
+			bus.Documentation,
 			spaces.Documentation,
 		}},
 	}
@@ -156,18 +156,18 @@ func run() int {
 		LastReloadedAt:         time.Now().UTC().Format(time.RFC3339),
 	})
 
-	poolServer := pool.NewServer(db, appLogger, poolSecret(cfg, current))
-	poolServer.OnActivity(func(activity pool.Activity) {
-		application.LogPoolActivity(activity.Type, activity.App, activity.Detail)
+	busServer := bus.NewServer(db, appLogger, busSecret(cfg, current))
+	busServer.OnActivity(func(activity bus.Activity) {
+		application.LogBusActivity(activity.Type, activity.App, activity.Detail)
 	})
 	// A secret rotated from the dashboard takes effect on save, not on the next
 	// restart — otherwise an operator changes it, sees it saved, and every pool
 	// client keeps authenticating against the old one.
 	application.OnSettingsApplied(func(next settings.AppSettings) {
-		poolServer.SetSecret(poolSecret(cfg, next))
+		busServer.SetSecret(busSecret(cfg, next))
 	})
 
-	router := buildRouter(cfg, appLogger, sqlDB, application, authService, spaceService, poolServer)
+	router := buildRouter(cfg, appLogger, sqlDB, application, authService, spaceService, busServer)
 	// /dashboard is a legacy redirect, not API surface.
 	if missing := apiref.Undocumented(router, refConfig(), "/dashboard"); len(missing) > 0 {
 		appLogger.Warn("routes are missing from the API reference", slog.Any("routes", missing))
@@ -178,7 +178,7 @@ func run() int {
 	application.Start(ctx)
 	defer application.Stop()
 
-	go maintenance(ctx, appLogger, authService, eventLog, poolServer)
+	go maintenance(ctx, appLogger, authService, eventLog, busServer)
 
 	application.AnnounceStartup(ctx)
 
@@ -221,7 +221,7 @@ func buildRouter(
 	application *app.App,
 	authService *auth.Service,
 	spaceService *spaces.Service,
-	poolServer *pool.Server,
+	busServer *bus.Server,
 ) chi.Router {
 	router := httpx.NewRouter(httpx.Config{
 		Logger: log,
@@ -261,8 +261,8 @@ func buildRouter(
 		// The pool's own endpoints authenticate with the pool secret and a
 		// connection token, not with a dashboard session, so they sit outside
 		// RequireAuth.
-		protected.Post("/antenne/register", poolServer.HandleRegister)
-		protected.Get("/antenne/ws", poolServer.HandleWebSocket)
+		protected.Post("/antenne/register", busServer.HandleRegister)
+		protected.Get("/antenne/ws", busServer.HandleWebSocket)
 
 		protected.Group(func(sessioned chi.Router) {
 			sessioned.Use(auth.RequireAuth(authService))
@@ -270,7 +270,7 @@ func buildRouter(
 			api.RegisterRoutes(sessioned)
 			spaceService.RegisterRoutes(sessioned)
 			sessioned.Get("/antenne/stats", func(w http.ResponseWriter, r *http.Request) {
-				httpjson.WriteJSON(w, http.StatusOK, poolServer.Stats())
+				httpjson.WriteJSON(w, http.StatusOK, busServer.Stats())
 			})
 		})
 	})
@@ -280,8 +280,8 @@ func buildRouter(
 	// every one of them. Same for /pool/ws, which pool clients pin.
 	webhookHandler := server.NewWebhookHandler(application, log)
 	router.Post("/webhook/*", webhookHandler.ServeHTTP)
-	router.Post("/antenne/register", poolServer.HandleRegister)
-	router.Get("/antenne/ws", poolServer.HandleWebSocket)
+	router.Post("/antenne/register", busServer.HandleRegister)
+	router.Get("/antenne/ws", busServer.HandleWebSocket)
 
 	// The dashboard used to live under /dashboard; the SPA is at the root now,
 	// so old bookmarks and the post-login redirect are moved rather than 404ed.
@@ -299,7 +299,7 @@ func buildRouter(
 
 // maintenance runs the periodic chores: pool retention, session expiry and
 // event-log pruning.
-func maintenance(ctx context.Context, log *slog.Logger, authService *auth.Service, eventLog *events.Service, poolServer *pool.Server) {
+func maintenance(ctx context.Context, log *slog.Logger, authService *auth.Service, eventLog *events.Service, busServer *bus.Server) {
 	daily := time.NewTicker(24 * time.Hour)
 	hourly := time.NewTicker(time.Hour)
 	defer daily.Stop()
@@ -314,7 +314,7 @@ func maintenance(ctx context.Context, log *slog.Logger, authService *auth.Servic
 			eventLog.Prune()
 		case <-daily.C:
 			log.Debug("running pool retention")
-			poolServer.Cleanup()
+			busServer.Cleanup()
 		}
 	}
 }
@@ -350,9 +350,9 @@ func logStartup(log *slog.Logger, cfg env.Config, current settings.AppSettings, 
 // poolSecret resolves the secret the pool accepts registrations under. The
 // dashboard value wins over the environment, which is what lets an operator
 // rotate it without a redeploy.
-func poolSecret(cfg env.Config, current settings.AppSettings) string {
-	if current.Pool != nil && current.Pool.Secret != "" {
-		return current.Pool.Secret
+func busSecret(cfg env.Config, current settings.AppSettings) string {
+	if current.Bus != nil && current.Bus.Secret != "" {
+		return current.Bus.Secret
 	}
 	return cfg.PoolSecret
 }

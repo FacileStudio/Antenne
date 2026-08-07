@@ -105,6 +105,6 @@ func Defaults(port, timeout int) AppSettings {
 			Port:  port,
 			Items: []Provider{},
 		},
-		Pool: &PoolSettings{},
+		Bus: &BusSettings{},
 	}
 }

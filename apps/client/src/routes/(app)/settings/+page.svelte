@@ -32,7 +32,7 @@
 	const runtime = $derived(dashboard.runtime);
 
 	const poolSecretSource = $derived(
-		dashboard.settings.pool.secret ? 'Dashboard config' : 'Environment variable or default'
+		dashboard.settings.bus.secret ? 'Dashboard config' : 'Environment variable or default'
 	);
 
 	async function loadPoolStats() {
@@ -105,7 +105,7 @@
 
 			<div class="grid max-w-2xl gap-2">
 				<Field label="Registration secret" hint={`Source: ${poolSecretSource}`}>
-					<SecretInput bind:value={dashboard.settings.pool.secret} placeholder="pool" />
+					<SecretInput bind:value={dashboard.settings.bus.secret} placeholder="bus" />
 				</Field>
 			</div>
 
@@ -114,7 +114,7 @@
 				<ToggleRow
 					label="Log pool events to the activity feed"
 					hint="Connections, disconnections and relayed events appear in Activity."
-					bind:checked={dashboard.settings.pool.logActivity}
+					bind:checked={dashboard.settings.bus.logActivity}
 				/>
 			</div>
 

@@ -16,7 +16,7 @@ type appSettingsRow struct {
 	Timeout    int
 	ListenPort int
 	System     []byte `gorm:"type:jsonb"`
-	Pool       []byte `gorm:"type:jsonb"`
+	Bus        []byte `gorm:"type:jsonb"`
 	UpdatedAt  time.Time
 }
 
@@ -140,10 +140,10 @@ func (s *Store) load() (AppSettings, bool, error) {
 	if len(row.System) > 0 {
 		_ = json.Unmarshal(row.System, &loaded.System)
 	}
-	if len(row.Pool) > 0 {
-		pool := PoolSettings{}
-		if err := json.Unmarshal(row.Pool, &pool); err == nil {
-			loaded.Pool = &pool
+	if len(row.Bus) > 0 {
+		pool := BusSettings{}
+		if err := json.Unmarshal(row.Bus, &pool); err == nil {
+			loaded.Bus = &pool
 		}
 	}
 
@@ -217,7 +217,7 @@ func (s *Store) persist(next AppSettings) error {
 		if err != nil {
 			return err
 		}
-		pool, err := json.Marshal(next.Pool)
+		pool, err := json.Marshal(next.Bus)
 		if err != nil {
 			return err
 		}
@@ -227,12 +227,12 @@ func (s *Store) persist(next AppSettings) error {
 			Timeout:    next.Timeout,
 			ListenPort: next.Providers.Port,
 			System:     system,
-			Pool:       pool,
+			Bus:        pool,
 			UpdatedAt:  time.Now(),
 		}
 		if err := tx.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "id"}},
-			DoUpdates: clause.AssignmentColumns([]string{"timeout", "listen_port", "system", "pool", "updated_at"}),
+			DoUpdates: clause.AssignmentColumns([]string{"timeout", "listen_port", "system", "bus", "updated_at"}),
 		}).Create(&row).Error; err != nil {
 			return err
 		}
@@ -329,9 +329,9 @@ func cloneSettings(source AppSettings) AppSettings {
 		copied.Tags = append([]string{}, target.Tags...)
 		clone.Delivery.Items[index] = copied
 	}
-	if source.Pool != nil {
-		pool := *source.Pool
-		clone.Pool = &pool
+	if source.Bus != nil {
+		pool := *source.Bus
+		clone.Bus = &pool
 	}
 	return clone
 }
