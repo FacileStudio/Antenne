@@ -1,7 +1,6 @@
 <script lang="ts">
-	import Icon from './Icon.svelte';
+	import { Input, icons } from '@facile/muse';
 	import TagPill from './TagPill.svelte';
-	import Input from './ui/input.svelte';
 
 	let {
 		value = $bindable<string[]>([]),
@@ -49,19 +48,19 @@
 	}
 </script>
 
-<div class="grid gap-2">
+<div class="flex flex-col gap-2">
 	{#if value.length > 0}
-		<div class="flex flex-wrap gap-1.5">
+		<div class="flex flex-wrap gap-2">
 			{#each value as tag (tag)}
-				<TagPill {tag} {tones} class="gap-1 pr-1">
+				<TagPill {tag} {tones} class="h-8 gap-1 pr-1.5">
 					{tag}
 					<button
 						type="button"
-						class="rounded-full p-0.5 opacity-60 transition-opacity hover:opacity-100"
+						class="rounded-fc-pill p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
 						onclick={() => remove(tag)}
 						aria-label={`Remove the ${tag} tag`}
 					>
-						<Icon icon="solar:close-circle-linear" size={11} />
+						<iconify-icon icon={icons.close} width="12" height="12" class="block"></iconify-icon>
 					</button>
 				</TagPill>
 			{/each}
@@ -71,7 +70,7 @@
 	<Input bind:value={draft} {placeholder} onkeydown={onKeydown} onblur={() => add(draft)} />
 
 	{#if unused.length > 0}
-		<div class="flex flex-wrap gap-1.5">
+		<div class="flex flex-wrap gap-2">
 			{#each unused.slice(0, 12) as tag (tag)}
 				<TagPill {tag} {tones} interactive onclick={() => add(tag)} />
 			{/each}

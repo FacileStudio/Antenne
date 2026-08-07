@@ -1,7 +1,5 @@
 <script lang="ts">
-	import Icon from './Icon.svelte';
-	import Button from './ui/button.svelte';
-	import Input from './ui/input.svelte';
+	import { Button, Input, icons } from '@facile/muse';
 
 	/** An ordered list of free-text values: Matrix room ids, SMTP recipients. */
 	let {
@@ -29,29 +27,27 @@
 	}
 </script>
 
-<div class="grid gap-2">
+<div class="flex flex-col gap-2">
 	{#each value as entry, index (index)}
-		<div class="flex gap-2">
+		<div class="flex items-center gap-2">
 			<Input
 				{type}
 				{placeholder}
 				value={entry}
 				oninput={(event) => update(index, (event.currentTarget as HTMLInputElement).value)}
 			/>
+			<!-- No confirmation here: this is one row of an unsaved draft field, not a stored
+			     entity, and the shell's Save is still the only thing that persists it. -->
 			<Button
-				variant="ghost"
-				size="icon"
+				variant="ghost-danger"
+				icon={icons.remove}
 				onclick={() => remove(index)}
 				aria-label="Remove this entry"
-				class="hover:text-destructive"
-			>
-				<Icon icon="solar:trash-bin-trash-linear" size={15} />
-			</Button>
+			/>
 		</div>
 	{/each}
 
-	<Button variant="outline" size="sm" onclick={add} class="w-fit">
-		<Icon icon="solar:add-circle-linear" size={14} />
+	<Button variant="outline" size="sm" icon={icons.plus} onclick={add} class="w-fit">
 		{addLabel}
 	</Button>
 </div>

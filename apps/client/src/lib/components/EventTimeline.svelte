@@ -1,6 +1,5 @@
 <script lang="ts">
-	import Icon from './Icon.svelte';
-	import Badge from './ui/badge.svelte';
+	import { Badge, Button, Card, EmptyState, icons } from '@facile/muse';
 	import { sourceIcon } from '$lib/icons';
 	import type { EventEntry } from '$lib/types';
 	import { formatRelative, plainText } from '$lib/utils';
@@ -47,54 +46,63 @@
 	}
 </script>
 
-<div class="overflow-hidden rounded-xl border border-border bg-card">
-	{#if events.length === 0}
-		<p class="px-5 py-10 text-center text-sm text-muted-foreground">No events recorded yet.</p>
-	{:else}
-		<div class="divide-y divide-border">
+{#if events.length === 0}
+	<EmptyState
+		icon="solar:inbox-linear"
+		title="No events recorded yet"
+		description="Every alert Antenne receives, and every delivery it attempts, lands here."
+	/>
+{:else}
+	<!-- `p-0` because the rows carry the padding: a divider has to reach both edges of the
+	     card, and a divider inset by `p-5` reads as a stray line. -->
+	<Card class="overflow-hidden p-0">
+		<div class="divide-y divide-fc-border">
 			{#each events as entry (entry.id)}
-				<article class="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
-					<span class="mt-0.5 rounded-lg bg-muted p-1.5 text-muted-foreground">
-						<Icon icon={sourceIcon(entry.source)} size={14} />
+				<article class="flex items-start gap-3 p-4 transition-colors hover:bg-fc-surface">
+					<span class="mt-0.5 rounded-fc-sm bg-fc-surface p-1.5 text-fc-fg-muted">
+						<iconify-icon icon={sourceIcon(entry.source)} width="14" height="14" class="block"
+						></iconify-icon>
 					</span>
 
-					<div class="grid min-w-0 flex-1 gap-1.5">
+					<div class="flex min-w-0 flex-1 flex-col gap-2">
 						<div class="flex items-baseline justify-between gap-3">
-							<span class="truncate text-sm leading-tight font-semibold">{titleFor(entry)}</span>
+							<span class="truncate text-fc-sm font-semibold text-fc-fg">{titleFor(entry)}</span>
 							<time
-								class="shrink-0 text-xs whitespace-nowrap text-muted-foreground tabular"
+								class="shrink-0 text-fc-xs whitespace-nowrap text-fc-fg-muted tabular-nums"
 								datetime={entry.timestamp}
 							>
 								{formatRelative(entry.timestamp)}
 							</time>
 						</div>
 
-						<div class="flex flex-wrap items-center gap-1.5">
-							<Badge variant="outline">{sourceLabel(entry.source)}</Badge>
+						<div class="flex flex-wrap items-center gap-2">
+							<Badge>{sourceLabel(entry.source)}</Badge>
 							{#if entry.providerName && entry.providerName !== 'Antenne' && entry.providerName !== 'system'}
-								<Badge>{entry.providerName}</Badge>
+								<Badge tone="info">{entry.providerName}</Badge>
 							{/if}
 						</div>
 
 						{#if previewFor(entry)}
-							<p class="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+							<p class="line-clamp-2 text-fc-sm text-fc-fg-muted">
 								{previewFor(entry)}
 							</p>
 						{/if}
 
 						{#if entry.deliveries.length > 0}
-							<div class="flex flex-wrap items-center gap-1.5">
+							<div class="flex flex-wrap items-center gap-2">
 								{#each entry.deliveries as attempt (attempt.targetId)}
 									<Badge
-										variant={attempt.status === 'success' ? 'success' : 'destructive'}
+										tone={attempt.status === 'success' ? 'success' : 'danger'}
 										title={attempt.error ?? `${attempt.durationMs}ms`}
 									>
-										<Icon
+										<iconify-icon
 											icon={attempt.status === 'success'
 												? 'solar:check-circle-linear'
 												: 'solar:close-circle-linear'}
-											size={11}
-										/>
+											width="12"
+											height="12"
+											class="block"
+										></iconify-icon>
 										{attempt.targetName}
 									</Badge>
 								{/each}
@@ -102,19 +110,20 @@
 						{/if}
 
 						{#if entry.envelope && onreplay}
-							<button
-								type="button"
-								class="mt-0.5 inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-								onclick={() => onreplay?.(entry.id)}
+							<Button
+								variant="ghost"
+								size="sm"
+								icon={icons.refresh}
+								class="-ml-3.5 w-fit"
 								title="Send this event again"
+								onclick={() => onreplay?.(entry.id)}
 							>
-								<Icon icon="solar:refresh-linear" size={12} />
 								Replay
-							</button>
+							</Button>
 						{/if}
 					</div>
 				</article>
 			{/each}
 		</div>
-	{/if}
-</div>
+	</Card>
+{/if}

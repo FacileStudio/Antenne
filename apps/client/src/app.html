@@ -6,14 +6,16 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.ico" />
 		<title>Antenne</title>
 		<script>
-			// Applied before the first paint so a dark-mode reload does not flash
-			// white. The same key the theme store writes.
+			// Applied before the first paint so a themed reload does not flash the other
+			// mode. Both classes are written and `system` writes neither: muse's tokens
+			// flip on prefers-color-scheme scoped to `:root:not(.light)`, so `.light` is
+			// the only thing that lets someone force light on a dark OS. A script that
+			// only ever adds `.dark` strands exactly those users.
 			try {
 				const stored = localStorage.getItem('antenne-theme');
-				const dark =
-					stored === 'dark' ||
-					(!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
-				if (dark) document.documentElement.classList.add('dark');
+				if (stored === 'dark' || stored === 'light') {
+					document.documentElement.classList.add(stored);
+				}
 			} catch {}
 		</script>
 		%sveltekit.head%
