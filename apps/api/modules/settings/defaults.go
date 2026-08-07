@@ -25,7 +25,7 @@ func NewID() string {
 
 func newMatrixDeviceID() string {
 	compact := strings.ToUpper(strings.ReplaceAll(NewID(), "-", ""))
-	return "NOOK" + compact[:12]
+	return "ANTENNE" + compact[:12]
 }
 
 // DefaultProvider builds a provider of this type with the field defaults the
@@ -82,7 +82,7 @@ func DefaultTarget(targetType DeliveryTargetType) DeliveryTarget {
 		target.Port = 587
 		target.Secure = true
 		target.ToAddresses = []string{}
-		target.SubjectPrefix = "[Nook]"
+		target.SubjectPrefix = "[Antenne]"
 	case TargetNtfy:
 		target.ServerURL = "https://ntfy.sh"
 		priority := 3

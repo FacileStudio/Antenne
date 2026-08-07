@@ -219,8 +219,8 @@ export interface SessionPayload {
 	username: string;
 }
 
-/** The reserved provider id Nook's own events carry. */
-export const SYSTEM_PROVIDER_ID = '__nook_system__';
+/** The reserved provider id Antenne's own events carry. */
+export const SYSTEM_PROVIDER_ID = '__antenne_system__';
 
 /** What a stored secret reads as. Sending it back keeps the stored value. */
 export const REDACTED = '••••••••';
@@ -340,7 +340,7 @@ export function createProvider(type: ProviderType): Provider {
 }
 
 function matrixDeviceId(): string {
-	return `NOOK${crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+	return `ANTENNE${crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
 }
 
 export function createTarget(type: DeliveryTargetType): DeliveryTarget {
@@ -378,7 +378,7 @@ export function createTarget(type: DeliveryTargetType): DeliveryTarget {
 				password: null,
 				fromAddress: '',
 				toAddresses: [],
-				subjectPrefix: '[Nook]'
+				subjectPrefix: '[Antenne]'
 			};
 		case 'ntfy':
 			return {

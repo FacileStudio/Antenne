@@ -22,7 +22,7 @@ const (
 	readLimitBytes = 4 << 20
 
 	// A pool socket carries nothing at all while the suite is quiet, and every
-	// proxy in front of Nook culls an idle connection — Cloudflare at 100
+	// proxy in front of Antenne culls an idle connection — Cloudflare at 100
 	// seconds, Traefik at 180. The interval matches the SSE keep-alive for the
 	// same reason, and the deadline is three of them so a single dropped ping
 	// does not evict a healthy client.

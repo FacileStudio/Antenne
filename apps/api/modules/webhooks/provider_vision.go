@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 type visionEntry struct {
@@ -93,7 +93,7 @@ var vision = Definition{
 				"status":             "delivered",
 			},
 			// The analytics digest carries no personal data, so the raw payload
-			// is the one Nook forwards intact — a receiver can chart it.
+			// is the one Antenne forwards intact — a receiver can chart it.
 			RawPayloadAllowed: true,
 		}, nil
 	},

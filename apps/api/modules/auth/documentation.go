@@ -6,7 +6,7 @@ import "github.com/FacileStudio/tronc/apiref"
 // absent from it fails TestEveryRouteIsDocumented.
 var Documentation = apiref.Module{
 	Name:        "Auth",
-	Description: "Dashboard sessions. Nook owns its users; there is no OIDC yet.",
+	Description: "Dashboard sessions. Antenne owns its users; there is no OIDC yet.",
 	Routes: []apiref.Route{
 		{
 			Method:       "POST",

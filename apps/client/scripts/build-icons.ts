@@ -1,7 +1,7 @@
 /**
  * Generates src/lib/icon-data.ts from the Iconify collections.
  *
- * Nook is self-hosted with no cloud dependency, so the icons cannot come from
+ * Antenne is self-hosted with no cloud dependency, so the icons cannot come from
  * a CDN script or the Iconify API at runtime. Bundling a whole collection would
  * cost several megabytes for the forty icons this dashboard uses, so the set is
  * enumerated here and only those are inlined.

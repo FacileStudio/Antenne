@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 func target(id string, providerIDs, providerTags []string) settings.DeliveryTarget {
@@ -45,7 +45,7 @@ func TestASharedTagSelects(t *testing.T) {
 	}
 }
 
-// Nook's own events need the reserved id listed explicitly: enabling a system
+// Antenne's own events need the reserved id listed explicitly: enabling a system
 // event is not enough on its own.
 func TestSystemEventsNeedTheReservedProviderID(t *testing.T) {
 	if Accepts(target("t", []string{"p1"}, nil), settings.SystemProviderID, nil) {

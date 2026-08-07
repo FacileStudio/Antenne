@@ -1,6 +1,6 @@
-# Nook — API
+# Antenne — API
 
-Every HTTP route the server handles, and the WebSocket protocol the Nook Pool speaks.
+Every HTTP route the server handles, and the WebSocket protocol the Antenne Pool speaks.
 
 A generated reference is served by the running instance at **`/docs`**, with the OpenAPI 3.1
 document at `/docs/openapi.json`. It is built from a route registry each module owns
@@ -30,7 +30,7 @@ Mounted at both prefixes so an external monitor cannot mistake the SPA shell for
 
 | Route | Body | Notes |
 |---|---|---|
-| `POST /api/login` | `{"password":"…"}` | sets the `nook_session` cookie |
+| `POST /api/login` | `{"password":"…"}` | sets the `antenne_session` cookie |
 | `POST /api/logout` | — | revokes the session and expires the cookie |
 | `GET /api/session/public` | — | public: whether a password is required at all |
 | `GET /api/session` | — | authenticated: the current caller |
@@ -42,7 +42,7 @@ Failed logins are rate-limited per client IP: five within ten minutes blocks tha
 minutes. The bucket keys on `X-Forwarded-For`, which is only safe because the reverse proxy
 overwrites it.
 
-With no `NOOK_ADMIN_PASSWORD` configured, every caller is served as the admin and `/api/login`
+With no `ANTENNE_ADMIN_PASSWORD` configured, every caller is served as the admin and `/api/login`
 answers `{"ok":true}` without doing anything.
 
 ## Settings
@@ -70,7 +70,7 @@ replaces it; an empty string clears it. A rejected `PUT` leaves the current sett
 | `POST /api/test-delivery-target` | `{"targetId":"…"}` | straight to one target, bypassing routing |
 | `POST /api/test-provider-connection` | `{"providerId":"…"}` | IMAP only |
 
-`test-alert` respects routing, so it is silent unless a target lists `__nook_system__`.
+`test-alert` respects routing, so it is silent unless a target lists `__antenne_system__`.
 `test-delivery-target` is the one that answers "does this target work at all".
 
 ## Events
@@ -139,10 +139,10 @@ HTTP and Perception targets receive the envelope, signed:
 
 | Header | |
 |---|---|
-| `x-nook-event-id` | the envelope id |
-| `x-nook-timestamp` | Unix seconds |
-| `x-nook-schema-version` | `1` |
-| `x-nook-signature-256` | `sha256=` + HMAC-SHA256 of `timestamp.eventId.body` |
+| `x-antenne-event-id` | the envelope id |
+| `x-antenne-timestamp` | Unix seconds |
+| `x-antenne-schema-version` | `1` |
+| `x-antenne-signature-256` | `sha256=` + HMAC-SHA256 of `timestamp.eventId.body` |
 
 The signature binds all three, so a receiver that also bounds the timestamp's age can reject a
 replay. A target with no secret configured gets the first three headers and no signature.
@@ -156,9 +156,9 @@ payload withheld".
 
 | Route | Notes |
 |---|---|
-| `POST /pool/register`, `POST /api/pool/register` | exchange the shared secret for a token |
-| `GET /pool/ws`, `GET /api/pool/ws` | the WebSocket, `?token=…` |
-| `GET /api/pool/stats` | authenticated: epoch, live connections, connected apps |
+| `POST /pool/register`, `POST /api/antenne/register` | exchange the shared secret for a token |
+| `GET /pool/ws`, `GET /api/antenne/ws` | the WebSocket, `?token=…` |
+| `GET /api/antenne/stats` | authenticated: epoch, live connections, connected apps |
 
 ```jsonc
 // POST /pool/register

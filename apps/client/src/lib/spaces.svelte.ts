@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import { api } from './backend';
 import type { Space } from './types';
 
-const STORAGE_KEY = 'nook-current-space-id';
+const STORAGE_KEY = 'antenne-current-space-id';
 
 class SpacesStore {
 	spaces = $state<Space[]>([]);

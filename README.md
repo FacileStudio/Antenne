@@ -1,7 +1,7 @@
-# Nook
+# Antenne
 
-Alert aggregation and the suite's event bus — Nook watches providers, routes what they emit to
-delivery targets, and hosts the Nook Pool that other Facile apps sync through.
+Alert aggregation and the suite's event bus — Antenne watches providers, routes what they emit to
+delivery targets, and hosts the Antenne Pool that other Facile apps sync through.
 
 It is a Go service on the [`tronc`](https://github.com/FacileStudio/tronc) chassis: chi, GORM
 and PostgreSQL, with goose migrations embedded in the binary. One container serves the API,
@@ -9,7 +9,7 @@ the webhook receivers, the pool and a SvelteKit dashboard. Provider and delivery
 configuration is edited entirely from that dashboard; environment variables cover the server
 itself and its bootstrap credentials.
 
-Live at [nook.facile.studio](https://nook.facile.studio).
+Live at [antenne.facile.studio](https://antenne.facile.studio).
 
 ## What it does
 
@@ -21,7 +21,7 @@ Live at [nook.facile.studio](https://nook.facile.studio).
   target by provider id or provider tag
 - Signs structured event envelopes with HMAC-SHA256 for HTTP and Perception targets
 - Retries failed deliveries three times with backoff, and keeps a replayable event log
-- Hosts the Nook Pool: a WebSocket bus with a durable offset-based queue that other suite apps
+- Hosts the Antenne Pool: a WebSocket bus with a durable offset-based queue that other suite apps
   register with and sync through
 
 ## Stack
@@ -38,8 +38,8 @@ Live at [nook.facile.studio](https://nook.facile.studio).
 docker compose up -d
 ```
 
-Compose starts Postgres and the app. `POSTGRES_PASSWORD`, `NOOK_ADMIN_PASSWORD` and
-`NOOK_SESSION_SECRET` are required. The service listens on `9090` and serves the API, the
+Compose starts Postgres and the app. `POSTGRES_PASSWORD`, `ANTENNE_ADMIN_PASSWORD` and
+`ANTENNE_SESSION_SECRET` are required. The service listens on `9090` and serves the API, the
 dashboard, the health check, the webhook receivers and the pool from that one port. Compose
 uses `expose` rather than `ports`, so publish the port or put Traefik in front of it.
 
@@ -52,7 +52,7 @@ mise run client     # the dashboard dev server, proxying /api to the API
 ```
 
 Configuration for the developer loop comes from [Casier](https://casier.facile.studio);
-`.casier.toml` pins this repo to the `nook` project. `mise run dev-offline` runs from the
+`.casier.toml` pins this repo to the `antenne` project. `mise run dev-offline` runs from the
 cached values. See [docs/development.md](docs/development.md).
 
 ## Configuration
@@ -61,8 +61,8 @@ cached values. See [docs/development.md](docs/development.md).
 |---|---|
 | `DATABASE_URL` | Postgres connection string. Required |
 | `PORT` | HTTP port for the API, dashboard, health check, webhooks and pool. Default `9090` |
-| `NOOK_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Required in production |
-| `NOOK_SESSION_SECRET` | Keeps sessions alive across a restart. Required in production |
+| `ANTENNE_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Required in production |
+| `ANTENNE_SESSION_SECRET` | Keeps sessions alive across a restart. Required in production |
 | `POOL_SECRET` | Shared secret apps present when registering with the pool |
 
 Everything else — providers, delivery targets, credentials, routing — lives in the database

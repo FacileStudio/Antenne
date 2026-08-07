@@ -1,4 +1,4 @@
-// Package settings owns Nook's configuration: the provider list, the delivery
+// Package settings owns Antenne's configuration: the provider list, the delivery
 // target list, the system event switches and the pool settings.
 //
 // The JSON these types marshal to is the dashboard's contract and is unchanged
@@ -11,20 +11,20 @@ import (
 	"fmt"
 )
 
-// SystemProviderID is the reserved provider id Nook's own events carry. A
+// SystemProviderID is the reserved provider id Antenne's own events carry. A
 // delivery target must list it explicitly to receive them; there is no
 // catch-all.
-const SystemProviderID = "__nook_system__"
+const SystemProviderID = "__antenne_system__"
 
 // Redacted is what a secret reads as over the wire. A PUT echoing it back means
 // "keep the stored value".
 const Redacted = "••••••••"
 
-// ProviderType names a source Nook watches or receives from.
+// ProviderType names a source Antenne watches or receives from.
 type ProviderType string
 
 // Provider types. The first twelve are webhook receivers; the last three are
-// pollers Nook drives itself.
+// pollers Antenne drives itself.
 const (
 	ProviderUptimeKuma ProviderType = "uptime-kuma"
 	ProviderDocuSeal   ProviderType = "docuseal"
@@ -64,7 +64,7 @@ func (t ProviderType) IsWebhook() bool {
 	return false
 }
 
-// IsValid reports whether the type is one Nook knows.
+// IsValid reports whether the type is one Antenne knows.
 func (t ProviderType) IsValid() bool {
 	for _, candidate := range ProviderTypes {
 		if candidate == t {
@@ -165,7 +165,7 @@ var DeliveryTargetTypes = []DeliveryTargetType{
 	TargetMatrix, TargetDiscord, TargetWebhook, TargetSMTP, TargetNtfy, TargetPerception,
 }
 
-// IsValid reports whether the type is one Nook can deliver to.
+// IsValid reports whether the type is one Antenne can deliver to.
 func (t DeliveryTargetType) IsValid() bool {
 	for _, candidate := range DeliveryTargetTypes {
 		if candidate == t {
@@ -275,7 +275,7 @@ func (t DeliveryTarget) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-// SystemEvents are the switches for Nook's own events.
+// SystemEvents are the switches for Antenne's own events.
 type SystemEvents struct {
 	Startup          bool `json:"startup"`
 	ProviderEnabled  bool `json:"providerEnabled"`
@@ -290,7 +290,7 @@ type SystemSettings struct {
 	Events SystemEvents `json:"events"`
 }
 
-// PoolSettings configures the Nook Pool.
+// PoolSettings configures the Antenne Pool.
 type PoolSettings struct {
 	Secret      string `json:"secret,omitempty"`
 	LogActivity *bool  `json:"logActivity,omitempty"`

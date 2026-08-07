@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FacileStudio/Nook/apps/api/internal/envelope"
-	"github.com/FacileStudio/Nook/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // gitPayload is the union of the GitHub, Gitea and GitLab push/issue/PR bodies.
