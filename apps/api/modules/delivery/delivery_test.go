@@ -1,7 +1,11 @@
 package delivery
 
 import (
+	"context"
+	"io"
+	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/FacileStudio/Nook/apps/api/modules/settings"
 )
@@ -102,5 +106,37 @@ func TestCanSendChecksTheFieldsEachTypeNeeds(t *testing.T) {
 		if got := CanSend(testCase.target); got != testCase.want {
 			t.Errorf("%s: CanSend = %v, want %v", testCase.name, got, testCase.want)
 		}
+	}
+}
+
+// A delivery that never recovers has to announce itself exactly once, when the
+// queue gives up — not on the first attempt, where nearly every failure turns
+// out to be a blip the retries fix, and not once per attempt.
+func TestTheQueueAnnouncesADeliveryItGivesUpOnExactlyOnce(t *testing.T) {
+	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queue := NewRetryQueue(NewSender(discard), discard, nil)
+
+	announced := 0
+	queue.OnExhausted(func(settings.DeliveryTarget, Message) { announced++ })
+
+	// An empty URL fails inside the sender, before any network call.
+	queue.Enqueue("event-1", settings.DeliveryTarget{
+		ID: "t1", Name: "Broken", Type: settings.TargetWebhook, Enabled: true,
+	}, Message{})
+
+	for range MaxRetryAttempts {
+		queue.mu.Lock()
+		for i := range queue.entries {
+			queue.entries[i].dueAt = time.Now().Add(-time.Second)
+		}
+		queue.mu.Unlock()
+		queue.process(context.Background())
+	}
+
+	if announced != 1 {
+		t.Errorf("a delivery that never recovered announced itself %d times, want exactly 1", announced)
+	}
+	if queue.Size() != 0 {
+		t.Errorf("%d entries left after the attempts ran out, want 0", queue.Size())
 	}
 }

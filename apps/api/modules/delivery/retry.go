@@ -14,7 +14,9 @@ import (
 // down for a deploy gets five minutes before the last try.
 var retryDelays = []time.Duration{5 * time.Second, 30 * time.Second, 5 * time.Minute}
 
-const maxRetryAttempts = 3
+// MaxRetryAttempts is how many times a failed delivery is re-sent before the
+// queue gives up. It is exported so an operator-facing message can say it.
+const MaxRetryAttempts = 3
 
 type retryEntry struct {
 	eventID string
@@ -27,6 +29,13 @@ type retryEntry struct {
 // RetryOutcome reports a retry's final result to whoever owns the event log.
 type RetryOutcome func(eventID, targetID, status string)
 
+// Exhausted reports a delivery that has run out of attempts.
+//
+// It is separate from RetryOutcome because the two have different audiences: the
+// event log wants every outcome, success included, while an operator only wants
+// the one that is still broken after the queue has done all it can.
+type Exhausted func(target settings.DeliveryTarget, message Message)
+
 // RetryQueue re-sends failed deliveries in the background.
 //
 // It is in-memory on purpose: a retry is only useful within minutes of the
@@ -37,13 +46,21 @@ type RetryQueue struct {
 	log     *slog.Logger
 	outcome RetryOutcome
 
-	mu      sync.Mutex
-	entries []retryEntry
+	mu        sync.Mutex
+	entries   []retryEntry
+	exhausted Exhausted
 }
 
 // NewRetryQueue builds the queue. outcome may be nil.
 func NewRetryQueue(sender *Sender, log *slog.Logger, outcome RetryOutcome) *RetryQueue {
 	return &RetryQueue{sender: sender, log: log, outcome: outcome}
+}
+
+// OnExhausted installs the handler for a delivery that has run out of attempts.
+func (q *RetryQueue) OnExhausted(handler Exhausted) {
+	q.mu.Lock()
+	q.exhausted = handler
+	q.mu.Unlock()
 }
 
 // Enqueue schedules the first retry for a failed delivery.
@@ -107,12 +124,13 @@ func (q *RetryQueue) process(ctx context.Context) {
 			continue
 		}
 
-		if entry.attempt >= maxRetryAttempts {
+		if entry.attempt >= MaxRetryAttempts {
 			q.log.Error("retry exhausted",
 				slog.String("target", entry.target.Name),
-				slog.Int("attempts", maxRetryAttempts),
+				slog.Int("attempts", MaxRetryAttempts),
 				slog.Any("error", err))
 			q.report(entry.eventID, entry.target.ID, StatusError)
+			q.reportExhausted(entry.target, entry.message)
 			continue
 		}
 
@@ -135,5 +153,14 @@ func (q *RetryQueue) process(ctx context.Context) {
 func (q *RetryQueue) report(eventID, targetID, status string) {
 	if q.outcome != nil {
 		q.outcome(eventID, targetID, status)
+	}
+}
+
+func (q *RetryQueue) reportExhausted(target settings.DeliveryTarget, message Message) {
+	q.mu.Lock()
+	handler := q.exhausted
+	q.mu.Unlock()
+	if handler != nil {
+		handler(target, message)
 	}
 }
