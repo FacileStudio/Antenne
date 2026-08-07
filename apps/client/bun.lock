@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "nook-client",
+      "name": "antenne-client",
       "dependencies": {
         "@facile/muse": "github:FacileStudio/muse#v0.4.0",
         "iconify-icon": "^3.0.2",
