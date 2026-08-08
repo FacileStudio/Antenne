@@ -58,6 +58,40 @@ var SettingsDocumentation = apiref.Module{
 			ResponseBody: "OkResponse",
 			Errors:       []apiref.Error{{Status: 400, Code: "invalid_argument", Description: "providerId is required, unknown, not an IMAP provider, or the connection failed"}},
 		},
+		{
+			Method:  "GET",
+			Path:    "/api/delivery-health",
+			Summary: "Read every target's health",
+			Description: "One row per configured target, so a dashboard renders the whole state in one call. " +
+				"State is one of unknown, ok, pending, down, flapping, stale or probe_error — unknown means never " +
+				"measured or not measurable, and is never the same as ok. probe_error means Antenne's own check " +
+				"could not run, not that the target refused. detail is the far side's own words, verbatim. " +
+				"anyDeliverable is false when no enabled target can currently receive anything, and " +
+				"standingAlerts are the notices that outage swallowed — the only local record that " +
+				"nobody was told.",
+			Auth:         "session",
+			ResponseBody: "DeliveryHealthPage",
+		},
+		{
+			Method:  "POST",
+			Path:    "/api/delivery-health/{targetId}/check",
+			Summary: "Check one target now",
+			Description: "Probes one target on demand. A handshake the far side declined answers 200 with ok:false " +
+				"and its verbatim error, because the check itself worked — a non-2xx here means the request, the " +
+				"session or this endpoint's own rate limit, never the target's verdict. Ten checks per client per " +
+				"minute, on a budget shared with no other endpoint; over it, 429 carries Retry-After. " +
+				"retryAfterSeconds in the body is the far side's own ask and is a different number. " +
+				"state is where the target stands after the policy saw this observation, which is not the " +
+				"observation itself: one failure inside the hysteresis threshold leaves a target pending.",
+			Auth:         "session",
+			PathParams:   []apiref.Field{{Name: "targetId", Type: "string", Description: "the delivery target id"}},
+			ResponseBody: "TargetCheckResult",
+			Errors: []apiref.Error{
+				{Status: 404, Code: "not_found", Description: "no such delivery target"},
+				{Status: 429, Code: "rate_limited", Description: "too many checks from this client; Retry-After says how long to wait"},
+				{Status: 500, Code: "internal", Description: "the check could not run at all"},
+			},
+		},
 	},
 }
 

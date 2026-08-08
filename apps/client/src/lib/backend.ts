@@ -1,9 +1,11 @@
 import { goto } from '$app/navigation';
 import type {
 	AppSettings,
+	DeliveryHealthPage,
 	EventEntry,
 	EventStats,
 	BusStats,
+	TargetCheckResult,
 	SessionPayload,
 	SettingsPayload,
 	Space,
@@ -19,11 +21,20 @@ export class ApiError extends Error {
 	readonly status: number;
 	readonly code: string;
 
-	constructor(message: string, status: number, code: string) {
+	/**
+	 * Seconds the server asked us to wait, from its Retry-After header; zero when
+	 * it sent none. Without this a 429 reaches the UI as an indistinguishable
+	 * failure, and a diagnostic button then reports Antenne's own rate limit as
+	 * the remote end refusing the connection.
+	 */
+	readonly retryAfterSeconds: number;
+
+	constructor(message: string, status: number, code: string, retryAfterSeconds = 0) {
 		super(message);
 		this.name = 'ApiError';
 		this.status = status;
 		this.code = code;
+		this.retryAfterSeconds = retryAfterSeconds;
 	}
 }
 
@@ -35,23 +46,33 @@ export class ApiError extends Error {
  * so a mistyped URL would otherwise throw a bare SyntaxError out of here with
  * nothing pointing at the cause.
  */
-function parseError(body: string, status: number): ApiError {
+function parseError(body: string, response: Response): ApiError {
+	const status = response.status;
+	const wait = retryAfterSeconds(response);
 	try {
 		const payload = JSON.parse(body) as {
 			error?: { code?: string; message?: string } | string;
 			message?: string;
 		};
 		if (typeof payload.error === 'string') {
-			return new ApiError(payload.error, status, 'unknown');
+			return new ApiError(payload.error, status, 'unknown', wait);
 		}
 		const message = payload.error?.message ?? payload.message;
 		if (message) {
-			return new ApiError(message, status, payload.error?.code ?? 'unknown');
+			return new ApiError(message, status, payload.error?.code ?? 'unknown', wait);
 		}
 	} catch {
 		// fall through to the status-only message
 	}
-	return new ApiError(`HTTP ${status}`, status, 'unknown');
+	return new ApiError(`HTTP ${status}`, status, 'unknown', wait);
+}
+
+/** Retry-After in delta-seconds. The HTTP-date form is not used by this API. */
+function retryAfterSeconds(response: Response): number {
+	const raw = response.headers.get('Retry-After');
+	if (!raw) return 0;
+	const seconds = Number(raw);
+	return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 0;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -63,7 +84,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const body = await response.text();
 
 	if (!response.ok) {
-		throw parseError(body, response.status);
+		throw parseError(body, response);
 	}
 
 	return body ? (JSON.parse(body) as T) : (undefined as T);
@@ -76,6 +97,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
  */
 export function isUnauthenticated(error: unknown): boolean {
 	return error instanceof ApiError && error.status === 401;
+}
+
+/**
+ * A 429 is Antenne throttling this browser, and nothing at all about whatever
+ * the request was pointed at. Callers must be able to tell the two apart before
+ * they write a message naming a third party.
+ */
+export function isRateLimited(error: unknown): boolean {
+	return error instanceof ApiError && error.status === 429;
 }
 
 export async function redirectToLogin() {
@@ -104,6 +134,20 @@ export const api = {
 		request<{ ok: boolean }>('/test-provider-connection', {
 			method: 'POST',
 			body: JSON.stringify({ providerId })
+		}),
+
+	deliveryHealth: () => request<DeliveryHealthPage>('/delivery-health'),
+
+	/**
+	 * The operator-triggered probe. It answers 200 with `ok: false` when the far
+	 * side declines — the check itself worked — so a caller must read the body,
+	 * not the status, for the target's verdict. A non-2xx here is about the
+	 * request: 429 for this endpoint's own budget, 401 for the session.
+	 */
+	checkDeliveryTarget: (targetId: string) =>
+		request<TargetCheckResult>(`/delivery-health/${encodeURIComponent(targetId)}/check`, {
+			method: 'POST',
+			body: '{}'
 		}),
 
 	events: (options: {

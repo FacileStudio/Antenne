@@ -117,7 +117,7 @@ func TestTheQueueAnnouncesADeliveryItGivesUpOnExactlyOnce(t *testing.T) {
 	queue := NewRetryQueue(NewSender(discard), discard, nil)
 
 	announced := 0
-	queue.OnExhausted(func(settings.DeliveryTarget, Message) { announced++ })
+	queue.OnExhausted(func(settings.DeliveryTarget, Message, error) { announced++ })
 
 	// An empty URL fails inside the sender, before any network call.
 	queue.Enqueue("event-1", settings.DeliveryTarget{

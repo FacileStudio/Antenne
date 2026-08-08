@@ -36,6 +36,10 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/modules/bus"
 	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 	"github.com/FacileStudio/Antenne/apps/api/modules/events"
+	// Aliased because tronc/health above answers "is this process alive", and this
+	// one answers "can our delivery targets still be reached" — different
+	// questions, and the import list is where that gets confused.
+	targethealth "github.com/FacileStudio/Antenne/apps/api/modules/health"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 	"github.com/FacileStudio/Antenne/apps/api/modules/spaces"
 )
@@ -154,6 +158,26 @@ func run() int {
 		UsingPersistedSettings: store.Persisted(),
 		DashboardBuilt:         spa.Available(cfg.ClientDir),
 		LastReloadedAt:         time.Now().UTC().Format(time.RFC3339),
+	})
+
+	/*
+	 * Target health has to be attached before Start, and without this call the
+	 * whole subsystem is inert: a.health stays nil, every path is a nil-safe
+	 * no-op, and nothing is ever probed. It is wired here rather than inside
+	 * app.New because the store, the prober and the database handle are all
+	 * assembled at this level.
+	 *
+	 * Probe is the sender's own method, so the thing that reports a target
+	 * healthy is the thing that talks to it — a probe path that could drift from
+	 * the send path would eventually certify a target the sender cannot reach.
+	 */
+	application.AttachHealth(app.HealthDeps{
+		Records:           targethealth.NewStore(db),
+		Probe:             sender.Probe,
+		Policy:            targethealth.Evaluate,
+		Ping:              sqlDB.PingContext,
+		HeartbeatURL:      cfg.HeartbeatURL,
+		HeartbeatInterval: cfg.HeartbeatInterval,
 	})
 
 	busServer := bus.NewServer(db, appLogger, busSecret(cfg, current))

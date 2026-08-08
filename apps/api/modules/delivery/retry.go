@@ -29,12 +29,16 @@ type retryEntry struct {
 // RetryOutcome reports a retry's final result to whoever owns the event log.
 type RetryOutcome func(eventID, targetID, status string)
 
-// Exhausted reports a delivery that has run out of attempts.
+// Exhausted reports a delivery that has run out of attempts, with the last
+// error that caused it. The cause travels with the callback because the health
+// alert built from it quotes the far side verbatim, and a handler that had to
+// synthesise its own wording would report a guess of ours as the server's answer
+// — which is how a monitor ends up blaming the wrong thing.
 //
 // It is separate from RetryOutcome because the two have different audiences: the
 // event log wants every outcome, success included, while an operator only wants
 // the one that is still broken after the queue has done all it can.
-type Exhausted func(target settings.DeliveryTarget, message Message)
+type Exhausted func(target settings.DeliveryTarget, message Message, cause error)
 
 // RetryQueue re-sends failed deliveries in the background.
 //
@@ -130,7 +134,7 @@ func (q *RetryQueue) process(ctx context.Context) {
 				slog.Int("attempts", MaxRetryAttempts),
 				slog.Any("error", err))
 			q.report(entry.eventID, entry.target.ID, StatusError)
-			q.reportExhausted(entry.target, entry.message)
+			q.reportExhausted(entry.target, entry.message, err)
 			continue
 		}
 
@@ -156,11 +160,11 @@ func (q *RetryQueue) report(eventID, targetID, status string) {
 	}
 }
 
-func (q *RetryQueue) reportExhausted(target settings.DeliveryTarget, message Message) {
+func (q *RetryQueue) reportExhausted(target settings.DeliveryTarget, message Message, cause error) {
 	q.mu.Lock()
 	handler := q.exhausted
 	q.mu.Unlock()
 	if handler != nil {
-		handler(target, message)
+		handler(target, message, cause)
 	}
 }

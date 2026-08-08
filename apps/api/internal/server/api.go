@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/app"
+	"github.com/FacileStudio/Antenne/apps/api/internal/ratelimit"
 	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 	"github.com/FacileStudio/Antenne/apps/api/modules/events"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
@@ -34,10 +35,19 @@ type settingsResponse struct {
 // API serves the dashboard's endpoints.
 type API struct {
 	app *app.App
+
+	// checks is the on-demand health check's own allowance. It is a field rather
+	// than a limiter borrowed from elsewhere on purpose; see checkBudget.
+	checks *ratelimit.Limiter
 }
 
 // NewAPI builds the dashboard API.
-func NewAPI(application *app.App) *API { return &API{app: application} }
+func NewAPI(application *app.App) *API {
+	return &API{
+		app:    application,
+		checks: ratelimit.New(checkBudget, checkWindow, checkBlock),
+	}
+}
 
 // RegisterRoutes mounts the dashboard API under the caller's router.
 func (a *API) RegisterRoutes(router chi.Router) {
@@ -46,6 +56,10 @@ func (a *API) RegisterRoutes(router chi.Router) {
 	router.Post("/test-alert", a.handleTestAlert)
 	router.Post("/test-delivery-target", a.handleTestTarget)
 	router.Post("/test-provider-connection", a.handleTestProvider)
+	router.Get("/delivery-health", a.handleTargetHealth)
+	// Its own path, so it carries its own rate-limit budget rather than spending
+	// one that normal use also draws on.
+	router.Post("/delivery-health/{targetId}/check", a.handleCheckTargetHealth)
 	router.Get("/events", a.handleEvents)
 	router.Get("/events/stream", a.handleEventStream)
 	router.Get("/events/provider/{providerId}", a.handleProviderEvents)

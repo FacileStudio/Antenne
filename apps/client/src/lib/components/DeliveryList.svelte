@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
+		Alert,
 		Badge,
 		Button,
 		Card,
@@ -15,17 +17,21 @@
 		toast
 	} from '@facile/muse';
 	import DeliveryEditorFields from './DeliveryEditorFields.svelte';
+	import TargetHealthRow from './TargetHealthRow.svelte';
 	import ViewToggle from './ViewToggle.svelte';
-	import { api } from '$lib/backend';
+	import { ApiError, api, isRateLimited } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { deliveryIcon } from '$lib/icons';
 	import { tagToneMap } from '$lib/tags';
+	import { formatRelative } from '$lib/utils';
 	import {
 		createTarget,
 		deliveryTargetTypes,
 		targetLabel,
 		type DeliveryTarget,
-		type DeliveryTargetType
+		type DeliveryTargetType,
+		type StandingAlert,
+		type TargetHealth
 	} from '$lib/types';
 
 	const targets = $derived(dashboard.settings.delivery.items);
@@ -42,6 +48,86 @@
 
 	let pendingRemoval = $state<DeliveryTarget | null>(null);
 	let confirmOpen = $state(false);
+
+	let health = $state<Record<string, TargetHealth>>({});
+	let healthLoaded = $state(false);
+	let anyDeliverable = $state(true);
+	let standingAlerts = $state<StandingAlert[]>([]);
+	let checkingId = $state<string | null>(null);
+
+	/*
+	 * The check budget is per client, not per target, so one countdown covers the
+	 * whole page. It is held as a deadline rather than a counter: a ticking
+	 * counter would restart its own interval on every write, and this way one
+	 * interval runs for the length of the block and stops itself.
+	 */
+	let cooldownUntil = $state(0);
+	let clock = $state(Date.now());
+	const cooldown = $derived(Math.max(0, Math.ceil((cooldownUntil - clock) / 1000)));
+
+	$effect(() => {
+		if (cooldownUntil === 0) return;
+		const timer = setInterval(() => {
+			clock = Date.now();
+			if (clock >= cooldownUntil) cooldownUntil = 0;
+		}, 500);
+		return () => clearInterval(timer);
+	});
+
+	onMount(loadHealth);
+
+	async function loadHealth() {
+		try {
+			const page = await api.deliveryHealth();
+			health = Object.fromEntries(page.targets.map((row) => [row.targetId, row]));
+			anyDeliverable = page.anyDeliverable;
+			standingAlerts = page.standingAlerts ?? [];
+			healthLoaded = true;
+		} catch {
+			// Health is an overlay on a list that already renders without it. A
+			// failure here must not blank the page or bury the operator in toasts.
+			healthLoaded = false;
+		}
+	}
+
+	/**
+	 * The banner for the case the whole feature exists for: nothing can be
+	 * delivered, so Antenne cannot announce anything through itself and this page
+	 * is the only channel left. Suppressed while there are no targets at all —
+	 * the empty state already says that, and better.
+	 */
+	const nothingDeliverable = $derived(healthLoaded && targets.length > 0 && !anyDeliverable);
+
+	async function checkNow(target: DeliveryTarget) {
+		checkingId = target.id;
+		try {
+			const result = await api.checkDeliveryTarget(target.id);
+			// Re-read the page rather than patch the one row: a recovery here can
+			// clear the banner, and whether the *set* of targets can still deliver is
+			// the server's answer to give, not this component's to re-derive.
+			await loadHealth();
+
+			// A refusal from the far side arrived as a 200: the check worked. Its
+			// own words go through untouched, because a paraphrase is the thing an
+			// operator cannot search for.
+			if (result.ok) toast.success(`${target.name} answered.`);
+			else toast.danger(`${target.name} declined: ${result.detail || 'no reason given'}`);
+		} catch (error) {
+			if (isRateLimited(error)) {
+				const wait =
+					error instanceof ApiError && error.retryAfterSeconds > 0 ? error.retryAfterSeconds : 60;
+				cooldownUntil = Date.now() + wait * 1000;
+				clock = Date.now();
+				toast.warning(
+					`Too many checks — Antenne's own limit, not a refusal from ${target.name}. Retry in ${wait}s.`
+				);
+			} else {
+				toast.danger(error instanceof Error ? error.message : 'The check could not run');
+			}
+		} finally {
+			checkingId = null;
+		}
+	}
 
 	/*
 	 * Every optional credential is `string | null` on the wire and the form controls want a
@@ -134,6 +220,27 @@
 </script>
 
 <div class="flex flex-col gap-4">
+	{#if nothingDeliverable}
+		<Alert tone="danger" title="Nothing can be delivered right now">
+			<p>
+				Every enabled target is down, so Antenne cannot raise an alert through any channel it has —
+				including the one that would tell you about this. Until one target recovers, this page is
+				the only place a failure will appear.
+			</p>
+			{#if standingAlerts.length > 0}
+				<p class="mt-2">
+					{standingAlerts.length}
+					{standingAlerts.length === 1 ? 'notice' : 'notices'} could not be carried anywhere:
+				</p>
+				<ul class="mt-1 list-disc pl-5">
+					{#each standingAlerts as alert (alert.targetId)}
+						<li>{alert.title} — since {formatRelative(alert.since)}</li>
+					{/each}
+				</ul>
+			{/if}
+		</Alert>
+	{/if}
+
 	<div class="flex flex-wrap items-end gap-4">
 		<Field label="New target type" class="w-full sm:w-56">
 			<Select bind:value={nextType as string}>
@@ -190,6 +297,13 @@
 						<span class="text-fc-xs text-fc-fg-muted">{routingSummary(target)}</span>
 					{/if}
 
+					<TargetHealthRow
+						health={health[target.id]}
+						checking={checkingId === target.id}
+						{cooldown}
+						onCheck={() => checkNow(target)}
+					/>
+
 					<div class="mt-auto flex items-center gap-2">
 						<Button variant="outline" size="sm" icon={icons.edit} onclick={() => open(index)}>
 							Edit
@@ -222,6 +336,7 @@
 					<th scope="col">Target</th>
 					<th scope="col">Type</th>
 					<th scope="col">Routing</th>
+					<th scope="col">Health</th>
 					<th scope="col"><span class="sr-only">Actions</span></th>
 				</tr>
 			</thead>
@@ -256,6 +371,14 @@
 							{:else}
 								<span class="text-fc-fg-muted">{routingSummary(target)}</span>
 							{/if}
+						</td>
+						<td class="min-w-64">
+							<TargetHealthRow
+								health={health[target.id]}
+								checking={checkingId === target.id}
+								{cooldown}
+								onCheck={() => checkNow(target)}
+							/>
 						</td>
 						<td>
 							<div class="flex items-center justify-end gap-1">
