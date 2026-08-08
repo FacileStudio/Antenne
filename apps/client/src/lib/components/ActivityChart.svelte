@@ -1,58 +1,19 @@
 <script lang="ts">
-	import { BarChart, Card, chartColor } from '@facile/muse';
+	import { Card, LineChart, chartColor } from '@facile/muse';
+	import { hourlyBuckets } from '$lib/activity';
 	import type { EventEntry } from '$lib/types';
 
 	let { events }: { events: EventEntry[] } = $props();
 
-	type Bucket = { key: string; label: string; total: number; errors: number };
-
-	/**
-	 * 24 hourly buckets ending at the current hour. Bucketing by local hour and
-	 * not by "last N minutes" is what makes the x labels readable clock times
-	 * rather than arbitrary offsets.
-	 */
-	const buckets = $derived.by<Bucket[]>(() => {
-		const now = new Date();
-		now.setMinutes(0, 0, 0);
-
-		const items: Bucket[] = Array.from({ length: 24 }, (_, index) => {
-			const at = new Date(now);
-			at.setHours(now.getHours() - (23 - index));
-			return {
-				key: at.toISOString().slice(0, 13),
-				label: at.toLocaleTimeString([], { hour: '2-digit' }),
-				total: 0,
-				errors: 0
-			};
-		});
-
-		const indexByHour = new Map(items.map((bucket, index) => [bucket.key, index]));
-
-		for (const event of events) {
-			const at = new Date(event.timestamp);
-			if (Number.isNaN(at.getTime())) continue;
-			at.setMinutes(0, 0, 0);
-
-			const index = indexByHour.get(at.toISOString().slice(0, 13));
-			if (index === undefined) continue;
-
-			items[index].total += 1;
-			if (event.deliveries.some((delivery) => delivery.status === 'error')) {
-				items[index].errors += 1;
-			}
-		}
-
-		return items;
-	});
-
+	const buckets = $derived(hourlyBuckets(events));
 	const labels = $derived(buckets.map((bucket) => bucket.label));
 
 	/*
-	 * Stacked, with the clean count carved out of the total rather than the failures drawn
-	 * on top of it: the bar height stays the hour's event count and the two segments still
-	 * sum to it, so the tooltip cannot claim more events than happened.
+	 * Two overlapping area series rather than a stack: "Delivered" is the hour's clean
+	 * count and "With errors" is drawn at its own height, so the two curves read as
+	 * independent trends the way the reference dashboard's Billable/Internal pair does.
 	 *
-	 * The failure segment is `chartColor(1)`, not `fc-danger` — the danger token is reserved
+	 * The failure series is `chartColor(1)`, not `fc-danger` — the danger token is reserved
 	 * for status and never carries a series.
 	 */
 	const series = $derived([
@@ -82,10 +43,11 @@
 		</div>
 	</header>
 
-	<BarChart
+	<LineChart
 		{series}
 		{labels}
-		stacked
+		area
+		smooth
 		height={200}
 		yTicks={3}
 		emptyLabel="Nothing in the last 24 hours"

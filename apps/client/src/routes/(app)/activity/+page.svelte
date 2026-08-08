@@ -1,10 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Badge, Button, Input, Select, Spinner, StatCard, icons, toast } from '@facile/muse';
+	import {
+		Badge,
+		Button,
+		Input,
+		Select,
+		Sparkline,
+		Spinner,
+		StatCard,
+		chartColor,
+		icons,
+		toast
+	} from '@facile/muse';
 	import ActivityChart from '$lib/components/ActivityChart.svelte';
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { hourlyBuckets } from '$lib/activity';
 	import type { EventEntry, EventStats } from '$lib/types';
 	import { formatDateTime } from '$lib/utils';
 
@@ -33,6 +45,17 @@
 		const sixHoursAgo = Date.now() - 6 * 60 * 60 * 1000;
 		return events.filter((entry) => new Date(entry.timestamp).getTime() > sixHoursAgo).length;
 	});
+
+	// One shared set of hourly buckets feeds every stat card sparkline, so each trend
+	// reads off the same 24h window as the chart below it.
+	const buckets = $derived(hourlyBuckets(events));
+	const trackedTrend = $derived(buckets.map((bucket) => bucket.total));
+	const deliveredTrend = $derived(buckets.map((bucket) => bucket.total - bucket.errors));
+	const failedTrend = $derived(buckets.map((bucket) => bucket.errors));
+	const hitRateTrend = $derived(
+		buckets.map((bucket) => (bucket.total === 0 ? 100 : Math.round(((bucket.total - bucket.errors) / bucket.total) * 100)))
+	);
+	const recentTrend = $derived(buckets.slice(-6).map((bucket) => bucket.total));
 
 	const sourceOptions = [
 		{ value: '', label: 'All sources' },
@@ -142,11 +165,21 @@
 
 	<section class="flex flex-col gap-4">
 		<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-			<StatCard label="Tracked" value={stats?.totalEvents ?? events.length} />
-			<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0} />
-			<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0} />
-			<StatCard label="Hit rate" value={`${successRate}%`} />
-			<StatCard label="Recent (6h)" value={recentCount} />
+			<StatCard label="Tracked" value={stats?.totalEvents ?? events.length}>
+				<Sparkline data={trackedTrend} color={chartColor(0)} class="mt-2" />
+			</StatCard>
+			<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0}>
+				<Sparkline data={deliveredTrend} color={chartColor(2)} class="mt-2" />
+			</StatCard>
+			<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0}>
+				<Sparkline data={failedTrend} color={chartColor(1)} class="mt-2" />
+			</StatCard>
+			<StatCard label="Hit rate" value={`${successRate}%`}>
+				<Sparkline data={hitRateTrend} color={chartColor(2)} class="mt-2" />
+			</StatCard>
+			<StatCard label="Recent (6h)" value={recentCount}>
+				<Sparkline data={recentTrend} color={chartColor(0)} class="mt-2" />
+			</StatCard>
 		</div>
 
 		<ActivityChart {events} />
