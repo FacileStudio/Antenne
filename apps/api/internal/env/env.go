@@ -5,6 +5,7 @@ package env
 
 import (
 	"fmt"
+	"time"
 
 	troncenv "github.com/FacileStudio/tronc/env"
 )
@@ -29,6 +30,13 @@ type Config struct {
 	PoolSecret    string
 	ClientDir     string
 	Timeout       int
+
+	// HeartbeatURL is an external dead man's switch — healthchecks.io, Dead Man's
+	// Snitch, Grafana OnCall. Empty turns the feature off: it is the only failure
+	// report that survives this process dying, but it needs a third party, so it
+	// cannot be a default.
+	HeartbeatURL      string
+	HeartbeatInterval time.Duration
 }
 
 // Load reads and validates the configuration. Every error it returns is a
@@ -55,6 +63,17 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("env: TIMEOUT must be a positive number of seconds, got %d", timeout)
 	}
 
+	// The receiver's own resolution bounds anything useful here: Grafana OnCall
+	// polls every 13 minutes and wants 15 or more, healthchecks.io has no floor.
+	// Five minutes suits the latter; an OnCall user raises it.
+	heartbeatInterval, err := troncenv.Duration("HEARTBEAT_INTERVAL", 5*time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+	if heartbeatInterval < time.Minute {
+		return Config{}, fmt.Errorf("env: HEARTBEAT_INTERVAL must be at least 1m, got %s", heartbeatInterval)
+	}
+
 	cfg := Config{
 		Core: troncenv.Core{
 			AppEnv:             troncenv.ParseEnvironment(troncenv.String("APP_ENV", string(troncenv.Development))),
@@ -71,6 +90,9 @@ func Load() (Config, error) {
 		PoolSecret:    troncenv.String("ANTENNE_SECRET", ""),
 		ClientDir:     troncenv.String("CLIENT_DIR", "./client"),
 		Timeout:       timeout,
+
+		HeartbeatURL:      troncenv.String("HEARTBEAT_URL", ""),
+		HeartbeatInterval: heartbeatInterval,
 	}
 
 	return cfg, cfg.validate()

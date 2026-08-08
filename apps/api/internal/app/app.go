@@ -58,6 +58,7 @@ type App struct {
 	monitor  *providers.Monitor
 	imap     *providers.IMAP
 	rss      *providers.RSS
+	health   *healthRuntime
 	status   settings.RuntimeStatus
 	statusMu sync.RWMutex
 
@@ -126,6 +127,7 @@ func (a *App) RuntimeStatus() settings.RuntimeStatus {
 func (a *App) Start(ctx context.Context) {
 	a.runtimeCtx = ctx
 	a.retries.Start(ctx)
+	a.health.Start(ctx)
 	a.applyRuntime(a.store.Get())
 }
 
@@ -134,6 +136,7 @@ func (a *App) Stop() {
 	a.monitor.Stop()
 	a.imap.Stop()
 	a.rss.Stop()
+	a.health.Stop()
 }
 
 // OnSettingsApplied registers a callback fired whenever the runtime is
@@ -151,6 +154,7 @@ func (a *App) applyRuntime(current settings.AppSettings) {
 	a.monitor.Apply(ctx, current)
 	a.imap.Apply(ctx, current)
 	a.rss.Apply(ctx, current)
+	a.health.Apply(ctx, current)
 
 	if a.onSettingsApplied != nil {
 		a.onSettingsApplied(current)
@@ -366,6 +370,7 @@ func (a *App) Dispatch(ctx context.Context, alert Alert) ([]delivery.Attempt, er
 	}
 
 	a.events.SetDeliveries(entry.ID, attempts)
+	a.observeDeliveries(ctx, current, attempts)
 
 	failed := 0
 	for _, attempt := range attempts {
@@ -428,32 +433,48 @@ func (a *App) notifyDeliveryFailure(ctx context.Context, label string, attempts 
 		"delivery retrying", "system.delivery.retrying")
 }
 
-// notifyDeliveryExhausted announces a delivery the retry queue has given up on.
-func (a *App) notifyDeliveryExhausted(target settings.DeliveryTarget, message delivery.Message) {
-	if !a.store.Get().System.Events.DeliveryFailure {
-		return
-	}
-
-	// A delivery notice is itself delivered, and system events route like any
-	// other, so a target that stays down would fail the notice about its own
-	// failure and announce that too, without end. The first pass guards this
-	// with inFailureNotice, but the retry queue runs minutes after that flag is
-	// gone, so the cycle is cut on the event type instead.
-	if strings.HasPrefix(message.Envelope.Event.Type, "system.delivery.") {
-		a.log.Error("a delivery notice could not be delivered either",
-			slog.String("target", target.Name))
-		return
-	}
-
+// notifyDeliveryExhausted records a delivery the retry queue has given up on.
+//
+// It no longer alerts anyone, and that is the behaviour change that matters most
+// here. Alerting per undelivered event meant one dead webhook and fifty events
+// produced fifty identical notices, while a dead webhook with no traffic produced
+// none at all — the unit of a health notification is the target. So this keeps the
+// event-log row and hands the outcome to health, which counts it towards the
+// target's blast radius and lets the policy decide whether a human hears about it.
+func (a *App) notifyDeliveryExhausted(target settings.DeliveryTarget, message delivery.Message, cause error) {
 	label := "an event"
 	if message.Envelope.Event.Title != nil && *message.Envelope.Event.Title != "" {
 		label = *message.Envelope.Event.Title
 	}
 
-	a.fireSystemEvent(context.Background(),
-		fmt.Sprintf("<b>Delivery failure</b><br/><b>%s</b> could not be delivered to <b>%s</b> after %d attempts",
+	// A health alert is sent straight to its recipients and never enters the
+	// pipeline, so it cannot reach this path. Antenne's older per-event delivery
+	// notices still route like any other event, and one of those failing must not
+	// be counted as lost payload on top of the event it was already reporting.
+	systemNotice := strings.HasPrefix(message.Envelope.Event.Type, "system.delivery.")
+	if systemNotice {
+		a.log.Error("a delivery notice could not be delivered either",
+			slog.String("target", target.Name))
+	}
+
+	a.events.Push(events.New{
+		Source:       string(envelope.SourceSystem),
+		ProviderName: "Antenne",
+		ProviderType: "health",
+		Event:        "delivery failure: " + target.Name,
+		Message: fmt.Sprintf("<b>Delivery failure</b><br/><b>%s</b> could not be delivered to <b>%s</b> after %d attempts",
 			envelope.EscapeHTML(label), envelope.EscapeHTML(target.Name), delivery.MaxRetryAttempts),
-		"delivery failure", "system.delivery.failure")
+	})
+
+	// The far side's own words, not ours. "gave up after 3 attempts" describes
+	// what Antenne did; the operator needs what the server said, because that is
+	// the string they search for or forward to their provider.
+	detail := fmt.Sprintf("gave up after %d delivery attempts", delivery.MaxRetryAttempts)
+	if cause != nil {
+		detail = fmt.Sprintf("%s: %s", detail, cause)
+	}
+
+	a.health.observeFailure(target, detail, !systemNotice)
 }
 
 // emitFromProvider adapts a poller's alert into the pipeline.

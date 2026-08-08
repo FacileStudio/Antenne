@@ -19,6 +19,12 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
+// smtpEHLOName is what Antenne calls itself in EHLO. RFC 5321 wants a resolvable
+// FQDN or an address literal here, and a bare word is neither — strict receivers
+// reject it. Left as-is for now because changing it changes how every existing
+// relay sees us, but it belongs in configuration.
+const smtpEHLOName = "antenne"
+
 func (s *Sender) sendDiscord(ctx context.Context, target settings.DeliveryTarget, message string) error {
 	body, err := json.Marshal(map[string]string{"content": envelope.HTMLToPlainText(message)})
 	if err != nil {
@@ -126,17 +132,31 @@ func (s *Sender) sendSMTP(target settings.DeliveryTarget, message string) error 
 		if err != nil {
 			return err
 		}
-		if ok, _ := client.Extension("STARTTLS"); ok {
-			if err := client.StartTLS(&tls.Config{ServerName: target.Host}); err != nil {
-				client.Close()
-				return err
-			}
-		}
 	}
 	defer client.Close()
 
-	if err := client.Hello("antenne"); err != nil {
+	/*
+	 * Hello has to come first, and this ordering is the whole reason submission
+	 * over 587 never worked: Extension and StartTLS both call the package's
+	 * private hello() internally, and Hello then refuses with "Hello called
+	 * after other methods" — so every STARTTLS send failed before it reached the
+	 * password. Implicit TLS on 465 was unaffected, because NewClient does not
+	 * greet, which is why the bug hid.
+	 *
+	 * StartTLS re-issues EHLO itself once the handshake is up, which is what
+	 * RFC 3207 requires (the pre-TLS capability list must be discarded), so
+	 * greeting before it is correct rather than merely earlier.
+	 */
+	if err := client.Hello(smtpEHLOName); err != nil {
 		return err
+	}
+
+	if !target.Secure {
+		if ok, _ := client.Extension("STARTTLS"); ok {
+			if err := client.StartTLS(&tls.Config{ServerName: target.Host}); err != nil {
+				return err
+			}
+		}
 	}
 
 	if target.Username != "" && target.Password != nil && *target.Password != "" {
