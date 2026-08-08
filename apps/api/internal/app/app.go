@@ -469,9 +469,13 @@ func (a *App) notifyDeliveryExhausted(target settings.DeliveryTarget, message de
 	// The far side's own words, not ours. "gave up after 3 attempts" describes
 	// what Antenne did; the operator needs what the server said, because that is
 	// the string they search for or forward to their provider.
+	//
+	// Through SafeErrorText, because a transport failure's error carries the URL
+	// it was dialling and a Discord webhook URL contains its token — and this
+	// string ends up in an alert sent to real rooms.
 	detail := fmt.Sprintf("gave up after %d delivery attempts", delivery.MaxRetryAttempts)
 	if cause != nil {
-		detail = fmt.Sprintf("%s: %s", detail, cause)
+		detail = fmt.Sprintf("%s: %s", detail, delivery.SafeErrorText(cause))
 	}
 
 	a.health.observeFailure(target, detail, !systemNotice)
