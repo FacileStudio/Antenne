@@ -212,7 +212,7 @@ func (s *Sender) ProbeMatrixPowerLevels(ctx context.Context, target settings.Del
 func classifyMatrixError(err error) health.Observation {
 	var apiErr *matrixError
 	if !asMatrixError(err, &apiErr) {
-		return probeFail(health.KindUnreachable, err.Error())
+		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 
 	var decoded struct {
@@ -249,7 +249,7 @@ func classifyMatrixError(err error) health.Observation {
 func (s *Sender) probeDiscord(ctx context.Context, target settings.DeliveryTarget) health.Observation {
 	endpoint, err := url.Parse(target.WebhookURL)
 	if err != nil {
-		return probeFail(health.KindUnreachable, err.Error())
+		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 	// ?wait= and ?thread_id= belong to the POST, not to the lookup.
 	endpoint.RawQuery = ""
@@ -257,7 +257,7 @@ func (s *Sender) probeDiscord(ctx context.Context, target settings.DeliveryTarge
 
 	status, body, header, err := s.probeGET(ctx, endpoint.String(), nil)
 	if err != nil {
-		return probeFail(health.KindUnreachable, err.Error())
+		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 	detail := httpDetail("Discord webhook", status, body)
 
@@ -305,12 +305,12 @@ func (s *Sender) probeNtfy(ctx context.Context, target settings.DeliveryTarget) 
 	}
 	server, err := url.Parse(base)
 	if err != nil {
-		return probeFail(health.KindUnreachable, err.Error())
+		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 
 	status, body, header, err := s.probeGET(ctx, server.JoinPath("v1", "health").String(), nil)
 	if err != nil {
-		return probeFail(health.KindUnreachable, err.Error())
+		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 	detail := httpDetail("ntfy", status, body)
 	if status == http.StatusTooManyRequests {
@@ -335,7 +335,7 @@ func (s *Sender) probeNtfy(ctx context.Context, target settings.DeliveryTarget) 
 	status, body, header, err = s.probeGET(ctx, server.JoinPath("v1", "account").String(),
 		http.Header{"Authorization": []string{"Bearer " + target.AccessToken}})
 	if err != nil {
-		return probeFail(health.KindUnreachable, err.Error())
+		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 	detail = httpDetail("ntfy", status, body)
 
@@ -373,12 +373,12 @@ func (s *Sender) probeNtfy(ctx context.Context, target settings.DeliveryTarget) 
 func (s *Sender) probePerception(ctx context.Context, target settings.DeliveryTarget) health.Observation {
 	endpoint, err := siblingURL(target.URL, "health")
 	if err != nil {
-		return probeFail(health.KindUnreachable, err.Error())
+		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 
 	status, body, header, err := s.probeGET(ctx, endpoint, nil)
 	if err != nil {
-		return probeFail(health.KindUnreachable, err.Error())
+		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 	detail := httpDetail("Perception", status, body)
 
@@ -418,7 +418,7 @@ func (s *Sender) probeSMTP(target settings.DeliveryTarget) health.Observation {
 	} else {
 		client, err = smtp.Dial(address)
 		if err != nil {
-			return probeFail(health.KindUnreachable, err.Error())
+			return probeFail(health.KindUnreachable, SafeErrorText(err))
 		}
 	}
 	defer client.Close()
@@ -456,7 +456,7 @@ func classifySMTPError(err error) health.Observation {
 	if errors.As(err, &reply) {
 		return classifySMTPReply(reply.Code, reply.Msg)
 	}
-	return probeFail(health.KindUnreachable, err.Error())
+	return probeFail(health.KindUnreachable, SafeErrorText(err))
 }
 
 // classifySMTPReply maps a reply code to a Kind, and is a pure function because
