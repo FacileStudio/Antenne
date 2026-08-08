@@ -151,7 +151,21 @@ func resolve(current, next Record, obs Observation, cfg Thresholds, at time.Time
 		return Decision{Next: next}
 	}
 
-	if next.ConsecutiveFailures < cfg.FailuresToDown {
+	/*
+	 * A terminal kind skips the entry threshold, because it is certainty rather
+	 * than a sample. The threshold exists to filter blips; `M_FORBIDDEN` on a
+	 * login, a deleted Discord webhook and SMTP 535 are not blips, and waiting
+	 * for a second opinion on them buys nothing.
+	 *
+	 * It is also load-bearing rather than tidy. A terminal kind suspends probing
+	 * for an hour and then longer, which is what stops us hammering a far side
+	 * that has already said no — so a target parked in StatePending would never
+	 * receive the second failure that promotes it, and would sit broken and
+	 * silent indefinitely. Production found this within a minute of the first
+	 * deploy: a Matrix account over its device limit, correctly suspended,
+	 * correctly diagnosed, and reported to nobody.
+	 */
+	if next.ConsecutiveFailures < cfg.FailuresToDown && !obs.Kind.Terminal() {
 		next.State = StatePending
 		return Decision{Next: next}
 	}
