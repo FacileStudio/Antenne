@@ -64,11 +64,62 @@ cached values. See [docs/development.md](docs/development.md).
 | `ANTENNE_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Required in production |
 | `ANTENNE_SESSION_SECRET` | Keeps sessions alive across a restart. Required in production |
 | `ANTENNE_SECRET` | Shared secret apps present when registering with the pool |
+| `HEARTBEAT_URL` | Dead man's switch. Empty disables it. See below |
+| `HEARTBEAT_INTERVAL` | How often to ping it. Default `5m`, rejected under `1m` |
 
 Everything else — providers, delivery targets, credentials, routing — lives in the database
 and is edited through the dashboard.
 
 Full reference: [docs/configuration.md](docs/configuration.md).
+
+## Target health
+
+Antenne watches its own delivery targets, because a channel that has quietly stopped working
+is the one failure it cannot otherwise report. Each target is probed **read-only** — nothing is
+delivered — on its own schedule: Matrix and ntfy every 5 minutes, Discord and Perception every
+10, SMTP every 30 because each probe there is a full TLS handshake plus a credential
+presentation, and repeated auth failures feed fail2ban and provider lockouts.
+
+A **generic webhook is never probed** and stays `unknown`. There is no safe read-only check for
+an arbitrary URL: `GET` may be unimplemented, may mean something else, or may be answered by a
+proxy that never reaches the handler, so both the pass and the fail are meaningless. `unknown`
+is an honest answer, not a failure — a green dot nobody can justify is worse than a grey one.
+
+States are `ok`, `pending` (failing, below the threshold), `down`, `flapping`, `stale`,
+`unknown`, and `probe_error` — the last meaning *our* check broke, not the target.
+
+You are told on the **second** consecutive failure, once, and then on a fixed four-hour repeat
+until it recovers; recovery is announced with the downtime. A failure the retry queue fixes
+within seconds raises nothing, deliberately. Recovery needs two consecutive successes *and* ten
+minutes, because the symmetric rule makes a target that fails every other probe announce itself
+forever. A target that changes state too often is marked `flapping` and its per-transition
+notices are replaced by one "unstable".
+
+An alert about a target is delivered through the **other** healthy targets, never the sick one.
+When nothing can carry it, it goes to the log at error level, which Journal receives.
+
+Probing **stops** on a credential the far side has rejected outright. That is a safety property:
+Discord blocks an IP for about an hour after roughly 10k invalid requests in 10 minutes, so a
+loop of dead-webhook probes is how one broken target takes the whole instance offline. The
+dashboard's *Check now* button is the only way past that suspension.
+
+Two endpoints back this: `GET /api/delivery-health` for every target's state, and
+`POST /api/delivery-health/{id}/check` to probe one now (10 per minute). A **declined handshake
+is a 200** with the reason in the body — the diagnostic worked, the far side declined. Non-2xx
+is reserved for our own faults: 429 for that budget, 404, 500.
+
+### The dead man's switch
+
+None of the above can report that the process is dead, or that every channel is down at once.
+That needs something outside Antenne. Set `HEARTBEAT_URL` and Antenne pings it on a schedule;
+whatever receives it alarms when the pings **stop**. It works with healthchecks.io, Dead Man's
+Snitch or Grafana OnCall today, and — since it is only an HTTP ping to a configurable URL — with
+a self-hosted Sonde once that exists.
+
+The ping is withheld unless the pipeline has actually completed a cycle, so a wedged process
+goes quiet rather than reporting itself healthy. Jitter is downward-only, because symmetric
+jitter sends some pings late and spends the receiver's grace time on nothing. Give the receiver
+a period above `HEARTBEAT_INTERVAL` and real grace.
 
 ## Structure
 
