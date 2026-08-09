@@ -54,10 +54,6 @@ architecture:
     # Owned by internal/server/webhooks.go, which holds the intake, the
     # signature check and the provider dispatch.
     "apps/api/modules/webhooks": []
-    # The one genuine exception: bus/server.go really does serve the pool's
-    # WebSocket and SSE endpoints, so it is a router.go under another name.
-    # Worth renaming, but not in the same change as a deploy.
-    "apps/api/modules/bus": []
 
 style:
   # Off, deliberately. Antenne's function bodies carry why-comments — the Matrix

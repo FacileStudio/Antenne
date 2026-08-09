@@ -64,7 +64,7 @@ apps/
       events/               Activity log and the SSE fan-out
       providers/            The pollers Antenne drives: website, IMAP, RSS
       webhooks/             The intake registry and one file per provider
-      pool/                 The Antenne Pool: WebSocket server and its Postgres-backed queue
+      bus/                  The Antenne Pool: router.go, the WebSocket server and its queue
       spaces/               Teams and members
   client/                   SvelteKit dashboard, built to apps/client/build
 ```

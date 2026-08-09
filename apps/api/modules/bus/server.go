@@ -1,7 +1,6 @@
 package bus
 
 import (
-	"crypto/hmac"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -11,9 +10,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
-
-	apierrors "github.com/FacileStudio/tronc/errors"
-	"github.com/FacileStudio/tronc/httpjson"
 )
 
 const (
@@ -173,113 +169,6 @@ func (s *Server) Stats() Stats {
 		stats.Apps = append(stats.Apps, StatsApp{AppID: conn.app.AppID, App: conn.app.App, Channels: channels})
 	}
 	return stats
-}
-
-type registrationRequest struct {
-	App        string `json:"app"`
-	InstanceID string `json:"instance_id"`
-	Secret     string `json:"secret"`
-	Events     struct {
-		Emit   []string `json:"emit"`
-		Listen []string `json:"listen"`
-	} `json:"events"`
-}
-
-// HandleRegister exchanges the shared secret for a connection token.
-func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
-	var body registrationRequest
-	if err := httpjson.DecodeJSON(w, r, &body); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid("invalid json"))
-		return
-	}
-	if body.App == "" {
-		httpjson.WriteError(w, apierrors.Invalid("app is required"))
-		return
-	}
-
-	s.mu.RLock()
-	secret := s.secret
-	s.mu.RUnlock()
-
-	if !hmac.Equal([]byte(body.Secret), []byte(secret)) {
-		httpjson.WriteError(w, apierrors.Forbidden("invalid secret"))
-		return
-	}
-
-	identity := body.App
-	if body.InstanceID != "" {
-		identity = body.App + ":" + body.InstanceID
-	}
-
-	emit := body.Events.Emit
-	if emit == nil {
-		emit = []string{"*"}
-	}
-	listen := body.Events.Listen
-	if listen == nil {
-		listen = []string{"*"}
-	}
-
-	registered, err := s.queue.Register(identity, emit, listen)
-	if err != nil {
-		httpjson.WriteError(w, err)
-		return
-	}
-	s.queue.Touch(registered.AppID)
-
-	s.log.Info("pool app registered",
-		slog.String("app", registered.App),
-		slog.String("app_id", registered.AppID))
-
-	httpjson.WriteJSON(w, http.StatusOK, map[string]string{
-		"token":  registered.Token,
-		"app_id": registered.AppID,
-	})
-}
-
-// HandleWebSocket upgrades a connection and serves the pool protocol on it.
-func (s *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		httpjson.WriteError(w, apierrors.Unauthorized("token required"))
-		return
-	}
-
-	app, ok := s.queue.ByToken(token)
-	if !ok {
-		httpjson.WriteError(w, apierrors.Forbidden("invalid token"))
-		return
-	}
-
-	socket, err := s.upgrader.Upgrade(hijackable(w), r, nil)
-	if err != nil {
-		s.log.Error("pool websocket upgrade failed", slog.Any("error", err))
-		return
-	}
-	socket.SetReadLimit(readLimitBytes)
-	socket.SetReadDeadline(time.Now().Add(pongTimeout))
-	socket.SetPongHandler(func(string) error {
-		return socket.SetReadDeadline(time.Now().Add(pongTimeout))
-	})
-
-	conn := &connection{app: app, socket: socket, channels: map[string]bool{}, closed: make(chan struct{})}
-	s.attach(conn)
-
-	if err := conn.send(map[string]string{
-		"type":   "welcome",
-		"epoch":  s.queue.Epoch(),
-		"app_id": app.AppID,
-	}); err != nil {
-		s.detach(conn)
-		socket.Close()
-		return
-	}
-
-	s.log.Info("pool app connected", slog.String("app", app.App), slog.String("app_id", app.AppID))
-	s.report(Activity{Type: "pool.connected", App: app.App, Detail: app.App + " joined the pool"})
-
-	go conn.keepAlive(pingInterval)
-	go s.readLoop(conn)
 }
 
 func (s *Server) attach(conn *connection) {
