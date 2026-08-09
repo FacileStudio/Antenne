@@ -293,6 +293,13 @@ func (s *Sender) matrixJSON(ctx context.Context, homeserver, token, method, path
 	return nil
 }
 
+// isUnknownMatrixToken reports the one failure a re-login fixes: the token we
+// hold is no longer a token the homeserver knows.
+func isUnknownMatrixToken(err error) bool {
+	var apiErr *matrixError
+	return asMatrixError(err, &apiErr) && apiErr.errcode == "M_UNKNOWN_TOKEN"
+}
+
 func asMatrixError(err error, target **matrixError) bool {
 	for err != nil {
 		if typed, ok := err.(*matrixError); ok {

@@ -94,8 +94,27 @@ func (s *Sender) probeMatrix(ctx context.Context, target settings.DeliveryTarget
 	}
 
 	var whoami matrixWhoamiResponse
-	if err := s.matrixJSON(ctx, target.Homeserver, token, http.MethodGet,
-		"/_matrix/client/v3/account/whoami", nil, &whoami); err != nil {
+	err = s.matrixJSON(ctx, target.Homeserver, token, http.MethodGet,
+		"/_matrix/client/v3/account/whoami", nil, &whoami)
+	if isUnknownMatrixToken(err) && hasPasswordAuth(target) {
+		// The cached token is gone, which is not the same as the credential
+		// being gone. Revoking a session invalidates its token — removing the
+		// device from Element does exactly that — and so does a homeserver
+		// rotating one. The password that would fix it is right here, and the
+		// send path already re-logs in on this errcode, so a probe that instead
+		// reports KindDead suspends itself for an hour and tells an operator to
+		// rotate a credential that still works.
+		//
+		// Once, and only on this errcode: if the re-login is genuinely refused
+		// it answers M_FORBIDDEN, which classifies as dead on its own merits.
+		token, err = s.ensureMatrixSession(ctx, target, session, true)
+		if err != nil {
+			return classifyMatrixError(err)
+		}
+		err = s.matrixJSON(ctx, target.Homeserver, token, http.MethodGet,
+			"/_matrix/client/v3/account/whoami", nil, &whoami)
+	}
+	if err != nil {
 		return classifyMatrixError(err)
 	}
 
