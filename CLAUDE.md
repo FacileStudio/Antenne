@@ -29,7 +29,7 @@ Run from the repository root. Development configuration comes from
 | Go only | `mise run check-go` |
 | Format Go | `mise run format` |
 
-`.casier.toml` pins this repo to the `antenne` project and its `dev` environment, so `mise run
+`casier.yml` pins this repo to the `antenne` project and its `dev` environment, so `mise run
 dev` wraps the API in `casier run` and the process starts with `DATABASE_URL`,
 `ANTENNE_ADMIN_PASSWORD`, `ANTENNE_SESSION_SECRET` and `ANTENNE_SECRET` already in its environment.
 `casier run` is network-first with a last-known-good cache, so a Casier outage falls back to
