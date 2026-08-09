@@ -1,0 +1,84 @@
+# Antenne's coding standard, enforced by filet (https://github.com/FacileStudio/filet).
+#
+#   filet check .     the rules
+#   filet roast .     the rules, with commentary
+#   filet docker .    the Dockerfile
+#
+# filet's own defaults are deliberately stricter than the established tools,
+# because filet was refactored until it met them. Antenne was not, so the limits
+# below are the *published* defaults of the tools they come from rather than
+# numbers picked to make a count go away. Each one names its source.
+
+ignore:
+  - .git
+  - node_modules
+  - vendor
+  - dist
+  - build
+  - .svelte-kit
+  - _app
+  - .output
+  - coverage
+  - testdata
+
+extensions: [.go, .ts, .svelte]
+
+limits:
+  fileLines: 300 # ESLint max-lines
+  funcsPerFile: 0 # off: the package, not the file, is Go's unit of organisation
+  funcLines: 60 # funlen default
+  funcStatements: 40 # funlen default
+  lineLength: 120 # lll default
+  params: 5
+  returns: 3
+  nesting: 5 # ESLint max-depth 4, plus one for the function's own block
+  complexity: 15 # SonarSource cognitive complexity
+  structFields: 15
+  interfaceMethods: 5
+
+architecture:
+  requiredDirs: [apps/api, apps/client]
+  # A module that owns HTTP declares it in router.go. Antenne only half follows
+  # the Go family's convention: the dashboard API, the webhook intake and the
+  # pool are all mounted from internal/server/, and the modules below are domain
+  # services with no HTTP of their own. Naming them one by one is the point — a
+  # new module that grows handlers inline is then a failing build, and moving one
+  # of these to router.go is a deletion here rather than an argument.
+  requiredFiles:
+    "apps/api/modules/*": [router.go]
+    "apps/api/modules/settings": []
+    "apps/api/modules/events": []
+    "apps/api/modules/delivery": []
+    "apps/api/modules/health": []
+    "apps/api/modules/providers": []
+    # Owned by internal/server/webhooks.go, which holds the intake, the
+    # signature check and the provider dispatch.
+    "apps/api/modules/webhooks": []
+    # The one genuine exception: bus/server.go really does serve the pool's
+    # WebSocket and SSE endpoints, so it is a router.go under another name.
+    # Worth renaming, but not in the same change as a deploy.
+    "apps/api/modules/bus": []
+
+style:
+  # Off, deliberately. Antenne's function bodies carry why-comments — the Matrix
+  # device-id trap, the search_path pooling trap, why a delivery failure alert
+  # waits for the retries to be spent. A rule that removes them destroys the only
+  # copy of that knowledge. The path back on is to hoist each one into the
+  # enclosing function's doc comment, as tronc did; until then this stays false
+  # rather than being quietly satisfied by deleting them.
+  banInlineComments: false
+  banTODO: true
+  requireDocComments: true
+  banGlobalMutable: true
+  banInit: true
+  banTrailingSpace: true
+
+disabled:
+  # gofmt owns Go line breaking and prettier owns the client's at printWidth 100,
+  # so every line still over 120 is one neither could break: a function signature,
+  # a long error string, an API description. Measured on Antenne, all 66 were of
+  # that shape. Flagging what the formatter already decided is pure noise, and
+  # noise is what teaches people to stop reading the output.
+  - gen.line.long
+
+failOn: error

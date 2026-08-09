@@ -23,9 +23,10 @@ const Redacted = "••••••••"
 // ProviderType names a source Antenne watches or receives from.
 type ProviderType string
 
-// Provider types. The first twelve are webhook receivers; the last three are
+// Provider types. The first thirteen are webhook receivers; the last three are
 // pollers Antenne drives itself.
 const (
+	ProviderFilet      ProviderType = "filet"
 	ProviderUptimeKuma ProviderType = "uptime-kuma"
 	ProviderDocuSeal   ProviderType = "docuseal"
 	ProviderDokploy    ProviderType = "dokploy"
@@ -47,7 +48,7 @@ const (
 var WebhookProviderTypes = []ProviderType{
 	ProviderUptimeKuma, ProviderDocuSeal, ProviderDokploy, ProviderGit,
 	ProviderVikunja, ProviderArdoise, ProviderSablier, ProviderPerception,
-	ProviderOpus, ProviderVision, ProviderPlume, ProviderNuage,
+	ProviderOpus, ProviderVision, ProviderPlume, ProviderNuage, ProviderFilet,
 }
 
 // ProviderTypes are every provider type, webhook receivers first.
@@ -393,6 +394,8 @@ func ProviderLabel(providerType ProviderType) string {
 		return "Plume"
 	case ProviderNuage:
 		return "Nuage"
+	case ProviderFilet:
+		return "filet"
 	case ProviderUptimeKuma:
 		return "Uptime Kuma"
 	}
@@ -450,6 +453,8 @@ func WebhookDefaultSecretHeader(providerType ProviderType) string {
 		return "x-plume-signature-256"
 	case ProviderNuage:
 		return "x-nuage-signature-256"
+	case ProviderFilet:
+		return "x-filet-signature-256"
 	case ProviderDokploy:
 		return "x-dokploy-secret"
 	}

@@ -74,6 +74,7 @@ type Store struct {
 	db *gorm.DB
 }
 
+// NewStore builds a health store over an existing connection.
 func NewStore(db *gorm.DB) *Store { return &Store{db: db} }
 
 // Load returns the health of one target. A target that has never been observed
