@@ -68,7 +68,7 @@ func TestEvaluate(t *testing.T) {
 			current:       Record{State: StateDown, DownSince: at(0), LastAlertAt: at(0), AlertCount: 1},
 			obs:           ok(),
 			now:           base.Add(time.Hour),
-			wantState:     StateDown,
+			wantState:     StateRecovering,
 			wantAlert:     AlertNone,
 			wantDownSince: true,
 		},
@@ -77,7 +77,7 @@ func TestEvaluate(t *testing.T) {
 			current:       Record{State: StateDown, ConsecutiveSuccesses: 1, DownSince: at(0), LastAlertAt: at(0), AlertCount: 1},
 			obs:           ok(),
 			now:           base.Add(time.Minute),
-			wantState:     StateDown,
+			wantState:     StateRecovering,
 			wantAlert:     AlertNone,
 			wantDownSince: true,
 		},
@@ -194,7 +194,7 @@ func TestEvaluate(t *testing.T) {
 			current:       Record{State: StateDown, DownSince: at(0), ProbeSuspendedUntil: at(time.Hour), ProbeBackoffLevel: 3},
 			obs:           ok(),
 			now:           base.Add(30 * time.Minute),
-			wantState:     StateDown,
+			wantState:     StateRecovering,
 			wantAlert:     AlertNone,
 			wantDownSince: true,
 			check: func(t *testing.T, decision Decision) {
@@ -253,9 +253,14 @@ func TestRecoveryNeedsBothSuccessesAndDwell(t *testing.T) {
 	down := Record{State: StateDown, DownSince: at(0), LastAlertAt: at(0), AlertCount: 1}
 
 	// One success, well past the dwell: the success count alone must not recover.
+	// StateRecovering rather than StateDown — the outage is still open and no
+	// recovery is announced, but the target is answering and the dashboard says so.
 	first := Evaluate(down, ok(), cfg, base.Add(time.Hour))
-	if first.Next.State != StateDown || first.Alert != AlertNone {
+	if first.Next.State != StateRecovering || first.Alert != AlertNone {
 		t.Fatalf("recovered on one success: state=%q alert=%q", first.Next.State, first.Alert)
+	}
+	if first.Next.DownSince == nil {
+		t.Fatal("the outage was closed by a single success")
 	}
 
 	// The second success, still past the dwell: now it recovers.
@@ -264,11 +269,58 @@ func TestRecoveryNeedsBothSuccessesAndDwell(t *testing.T) {
 		t.Fatalf("did not recover on two successes past the dwell: state=%q alert=%q", second.Next.State, second.Alert)
 	}
 
-	// Same two successes, inside the dwell: must stay down.
+	// Same two successes, inside the dwell: the outage must stay open.
 	early := Evaluate(down, ok(), cfg, base.Add(time.Minute))
 	later := Evaluate(early.Next, ok(), cfg, base.Add(2*time.Minute))
-	if later.Next.State != StateDown || later.Alert != AlertNone {
+	if later.Next.State != StateRecovering || later.Alert != AlertNone {
 		t.Fatalf("recovered inside the dwell: state=%q alert=%q", later.Next.State, later.Alert)
+	}
+	if later.Next.DownSince == nil {
+		t.Fatal("the dwell was skipped: the outage was closed inside it")
+	}
+}
+
+// TestRecoveringIsNotAnOutageOnTheWayBack pins the report the operator reads.
+// The screenshot that produced this test showed a red "Down for 7m" dot beside
+// the successful probe response that had just been quoted verbatim underneath
+// it, with "Last worked just now" alongside — three widgets, one of them
+// disagreeing with the other two and with the operator's own Check now.
+func TestRecoveringIsNotAnOutageOnTheWayBack(t *testing.T) {
+	cfg := DefaultThresholds()
+	down := Record{State: StateDown, DownSince: at(0), LastAlertAt: at(0), AlertCount: 1}
+
+	recovering := Evaluate(down, ok(), cfg, base.Add(7*time.Minute))
+	if recovering.Next.State != StateRecovering {
+		t.Fatalf("state = %q, want %q while the dwell runs", recovering.Next.State, StateRecovering)
+	}
+	// The circuit breaker has to be closed: the target just answered, and a
+	// probe is a weaker signal than the send this would otherwise refuse.
+	if !recovering.Next.State.Deliverable() {
+		t.Error("a target that is answering was left undeliverable")
+	}
+
+	// Failing again during the wait is the same outage, not a new one. It owes
+	// no second first-notice, and must not fall back to pending: an outage that
+	// has already been announced is not "not confirmed yet".
+	relapse := Evaluate(recovering.Next, fail(KindNone), cfg, base.Add(8*time.Minute))
+	if relapse.Next.State != StateDown {
+		t.Errorf("state = %q, want %q on a relapse inside an open outage", relapse.Next.State, StateDown)
+	}
+	if relapse.Alert != AlertNone {
+		t.Errorf("alert = %q, want none: the outage never ended", relapse.Alert)
+	}
+	if relapse.Next.DownSince == nil || !relapse.Next.DownSince.Equal(base) {
+		t.Errorf("DownSince = %v, want the original outage start", relapse.Next.DownSince)
+	}
+	if relapse.Next.AlertCount != 1 {
+		t.Errorf("AlertCount = %d, want 1: the relapse announced the same outage twice", relapse.Next.AlertCount)
+	}
+
+	// And the real recovery still closes the loop once the dwell is served.
+	back := Evaluate(relapse.Next, ok(), cfg, base.Add(20*time.Minute))
+	again := Evaluate(back.Next, ok(), cfg, base.Add(21*time.Minute))
+	if again.Next.State != StateOK || again.Alert != AlertRecovered {
+		t.Fatalf("did not recover: state=%q alert=%q", again.Next.State, again.Alert)
 	}
 }
 

@@ -17,7 +17,7 @@
 	} = $props();
 
 	/*
-	 * Seven states onto six tones, so two decisions matter more than the rest:
+	 * Eight states onto six tones, so three decisions matter more than the rest:
 	 *
 	 *  - `unknown` is grey, never green. A generic webhook has no safe read-only
 	 *    probe, so it never leaves this state on its own, and a green dot nobody
@@ -25,12 +25,16 @@
 	 *  - `probe_error` is blue, not red. It means Antenne's own check could not
 	 *    run; red would bill the target for our bug and send an operator to
 	 *    rotate a credential that was never the problem.
+	 *  - `recovering` is amber, never red. The target is answering; only the
+	 *    dwell time is still running. Red next to a success the operator can
+	 *    reproduce by pressing Check now is how a status dot loses its meaning.
 	 */
 	const TONES: Record<HealthState, 'neutral' | 'info' | 'success' | 'warning' | 'danger'> = {
 		unknown: 'neutral',
 		ok: 'success',
 		pending: 'warning',
 		down: 'danger',
+		recovering: 'warning',
 		flapping: 'warning',
 		stale: 'warning',
 		probe_error: 'info'
@@ -39,7 +43,7 @@
 	/* Only in-flight states pulse: something is still being decided. A steady
 	   outage is not in flight, and a permanently pulsing dot stops meaning
 	   anything. */
-	const PULSING: HealthState[] = ['pending', 'flapping'];
+	const PULSING: HealthState[] = ['pending', 'recovering', 'flapping'];
 
 	const SOURCES: Record<Exclude<HealthSource, ''>, { label: string; title: string }> = {
 		delivery: {
@@ -75,6 +79,10 @@
 				return current.downtimeSeconds > 0
 					? `Down for ${formatDuration(current.downtimeSeconds)}`
 					: 'Down';
+			case 'recovering':
+				return current.downtimeSeconds > 0
+					? `Recovering — answering again after ${formatDuration(current.downtimeSeconds)}`
+					: 'Recovering — answering again';
 			case 'flapping':
 				return 'Unstable — breaking and recovering';
 			case 'stale':

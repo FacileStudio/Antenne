@@ -125,8 +125,16 @@ func (s *Sender) matrixSessionFor(target settings.DeliveryTarget) *matrixSession
 	if target.RefreshToken != nil && *target.RefreshToken != "" && session.refreshToken == "" {
 		session.refreshToken = *target.RefreshToken
 	}
-	if target.DeviceID != nil && session.deviceID == "" {
-		session.deviceID = *target.DeviceID
+	// A login always names a device. Without one the homeserver mints a fresh
+	// device on every login, which means one per restart, forever, until the
+	// account hits its device limit and stops being able to log in at all. The
+	// derived id covers targets configured before deviceId existed.
+	if session.deviceID == "" {
+		if target.DeviceID != nil && *target.DeviceID != "" {
+			session.deviceID = *target.DeviceID
+		} else {
+			session.deviceID = settings.MatrixDeviceID(target.ID)
+		}
 	}
 
 	return session

@@ -42,6 +42,21 @@ const (
 	// raises an alert.
 	StateDown State = "down"
 
+	// StateRecovering means the target is answering again but the outage is not
+	// closed yet, because the recovery still owes consecutive successes, dwell
+	// time, or both.
+	//
+	// It exists because the alternative is a red "Down for 7m" dot on a target
+	// the operator has just watched answer, next to that answer quoted verbatim.
+	// The asymmetric hysteresis is right and stays; reporting the wait as an
+	// outage is what was wrong. A dot an operator can disprove by hand is a dot
+	// they learn to ignore, and then the red one means nothing when it matters.
+	//
+	// It is deliberately not StateOK: the outage bookkeeping is still open and
+	// the recovery notice has not been sent. It is deliverable, because the
+	// target demonstrably works.
+	StateRecovering State = "recovering"
+
 	// StateFlapping means the target has changed state too often to trust.
 	// Per-transition notices are suppressed while it holds, and one "unstable"
 	// notice is sent instead — Nagios' design, and the only thing that actually
