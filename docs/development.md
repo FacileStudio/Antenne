@@ -26,7 +26,7 @@ mise run client      # the dashboard on :5173, proxying /api to the API
 ```
 
 `mise run dev` wraps the API in `casier run`, so nothing has to exist on disk —
-`.casier.toml` pins this repo to the `antenne` project and its `dev` environment. `mise run
+`casier.yml` pins this repo to the `antenne` project and its `dev` environment. `mise run
 dev-offline` runs from the last-known-good cache when Casier is unreachable. See
 [configuration.md](configuration.md) for what it supplies and how to add to it.
 

@@ -40,7 +40,7 @@ misleads anything that reads the list back as a URL.
 
 ### Development configuration comes from Casier
 
-`.casier.toml` pins this repo to the `antenne` project and its `dev` environment, so `mise run
+`casier.yml` pins this repo to the `antenne` project and its `dev` environment, so `mise run
 dev` wraps the API in `casier run` and the process starts with everything above already in its
 environment. Nothing has to exist on disk; a local `.env` still works and simply wins nothing,
 because the API reads the process environment either way.

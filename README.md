@@ -53,7 +53,7 @@ mise run client     # the dashboard dev server, proxying /api to the API
 ```
 
 Configuration for the developer loop comes from [Casier](https://casier.facile.studio);
-`.casier.toml` pins this repo to the `antenne` project. `mise run dev-offline` runs from the
+`casier.yml` pins this repo to the `antenne` project. `mise run dev-offline` runs from the
 cached values. See [docs/development.md](docs/development.md).
 
 ## Configuration
