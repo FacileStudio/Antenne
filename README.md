@@ -16,7 +16,8 @@ Live at [antenne.facile.studio](https://antenne.facile.studio).
 - Monitors websites on an interval and reports up and down transitions
 - Polls IMAP inboxes and RSS feeds for new items
 - Receives webhooks from Uptime Kuma, DocuSeal, Dokploy, Git forges and Vikunja, and from the
-  suite apps Ardoise, Sablier, Perception, Opus, Vision, Plume and Nuage
+  suite apps Ardoise, Sablier, Perception, Opus, Vision, Plume and Nuage, and CI runs from
+  the filet GitHub action
 - Delivers alerts to Matrix, Discord, HTTP webhooks, SMTP, ntfy and Perception, routed per
   target by provider id or provider tag
 - Signs structured event envelopes with HMAC-SHA256 for HTTP and Perception targets

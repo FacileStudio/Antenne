@@ -16,7 +16,8 @@ const PROVIDER_ICONS: Record<string, string> = {
 	opus: 'solar:widget-2-bold-duotone',
 	vision: 'solar:panorama-bold-duotone',
 	plume: 'solar:pen-new-square-bold-duotone',
-	nuage: 'solar:cloud-bold-duotone'
+	nuage: 'solar:cloud-bold-duotone',
+	filet: 'solar:code-scan-bold-duotone'
 };
 
 const DELIVERY_ICONS: Record<string, string> = {

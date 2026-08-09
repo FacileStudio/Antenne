@@ -10,7 +10,8 @@ export type WebhookProviderType =
 	| 'opus'
 	| 'vision'
 	| 'plume'
-	| 'nuage';
+	| 'nuage'
+	| 'filet';
 
 export type ProviderType = WebhookProviderType | 'imap' | 'website' | 'rss';
 export type DeliveryTargetType = 'matrix' | 'discord' | 'webhook' | 'smtp' | 'ntfy' | 'perception';
@@ -313,6 +314,7 @@ export const providerTypes: ProviderType[] = [
 	'rss',
 	'ardoise',
 	'docuseal',
+	'filet',
 	'dokploy',
 	'git',
 	'nuage',
@@ -349,6 +351,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 	vision: 'Vision',
 	plume: 'Plume',
 	nuage: 'Nuage',
+	filet: 'filet',
 	'uptime-kuma': 'Uptime Kuma'
 };
 
@@ -381,7 +384,8 @@ const WEBHOOK_SECRET_HEADERS: Record<WebhookProviderType, string> = {
 	opus: 'x-opus-signature',
 	vision: 'x-vision-signature-256',
 	plume: 'x-plume-signature-256',
-	nuage: 'x-nuage-signature-256'
+	nuage: 'x-nuage-signature-256',
+	filet: 'x-filet-signature-256'
 };
 
 export function isWebhookProvider(provider: Provider): provider is WebhookProvider {

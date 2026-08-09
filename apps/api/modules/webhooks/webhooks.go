@@ -74,6 +74,7 @@ var Registry = map[settings.ProviderType]Definition{
 	settings.ProviderVision:     vision,
 	settings.ProviderPlume:      plume,
 	settings.ProviderNuage:      nuage,
+	settings.ProviderFilet:      filet,
 }
 
 // Authenticate applies the provider's own check, or the default header

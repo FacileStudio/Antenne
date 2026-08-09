@@ -137,11 +137,27 @@ carries no credentials, and a dashboard that never saw one cannot erase it.
 | `vision` | `/webhook/vision` | `x-vision-signature-256` |
 | `plume` | `/webhook/plume` | `x-plume-signature-256` |
 | `nuage` | `/webhook/nuage` | `x-nuage-signature-256` |
+| `filet` | `/webhook/filet` | `x-filet-signature-256` |
 
-`ardoise`, `vision`, `plume` and `nuage` verify an HMAC-SHA256 of the body prefixed with
+`ardoise`, `vision`, `plume`, `nuage` and `filet` verify an HMAC-SHA256 of the body prefixed with
 `sha256=`. `opus` verifies the bare hex digest with no prefix. The rest compare the header
 against the configured secret in constant time. An empty secret accepts unauthenticated calls
 on that path.
+
+### filet: which CI runs actually alert
+
+The `filet` provider records every CI run it receives, but only delivers a failure on the
+repository's default branch. A green run has nothing to say, and a failure on a pull request
+branch is already an annotation on the author's own diff — both are accepted, logged and
+replayable, with no message sent. Alerting on every run is how a channel gets muted, and a
+muted channel stays silent on the run that mattered.
+
+A payload whose `branch` or `defaultBranch` is missing is treated as being on the default
+branch and alerts: a run that cannot be placed is louder than it needs to be rather than
+silently dropped.
+
+Give this provider its own tag and route it to its own delivery target. CI findings in the
+same room as production down-alerts is how a down-alert gets lost.
 
 ### Rejected documents
 
