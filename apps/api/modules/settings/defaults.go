@@ -2,6 +2,7 @@ package settings
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"strings"
 )
@@ -23,9 +24,22 @@ func NewID() string {
 	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" + hexed[16:20] + "-" + hexed[20:]
 }
 
-func newMatrixDeviceID() string {
-	compact := strings.ToUpper(strings.ReplaceAll(NewID(), "-", ""))
-	return "ANTENNE" + compact[:12]
+// MatrixDeviceID is the device a Matrix target logs in as, derived from the
+// target id so that it is identical on every boot.
+//
+// Deriving it rather than storing it is the whole point. A login that does not
+// name a device_id makes the homeserver mint a new one, and a device is a slot,
+// a set of encryption keys and a row in the account's device list — so a target
+// that only remembers its device in memory grows one device per restart, and a
+// redeploy loop fills the account to its device limit until it cannot log in at
+// all. Naming an existing device makes the login replace it instead, which is
+// exactly the idempotent behaviour wanted here.
+//
+// A target that predates this has no stored deviceId; deriving covers it with
+// no migration and no dashboard save.
+func MatrixDeviceID(targetID string) string {
+	sum := sha256.Sum256([]byte(targetID))
+	return "ANTENNE" + strings.ToUpper(hex.EncodeToString(sum[:6]))
 }
 
 // DefaultProvider builds a provider of this type with the field defaults the
@@ -75,7 +89,7 @@ func DefaultTarget(targetType DeliveryTargetType) DeliveryTarget {
 	switch targetType {
 	case TargetMatrix:
 		target.Homeserver = "https://matrix.org"
-		deviceID := newMatrixDeviceID()
+		deviceID := MatrixDeviceID(target.ID)
 		target.DeviceID = &deviceID
 		target.RoomIDs = []string{}
 	case TargetSMTP:

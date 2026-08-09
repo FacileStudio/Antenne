@@ -63,9 +63,11 @@ var SettingsDocumentation = apiref.Module{
 			Path:    "/api/delivery-health",
 			Summary: "Read every target's health",
 			Description: "One row per configured target, so a dashboard renders the whole state in one call. " +
-				"State is one of unknown, ok, pending, down, flapping, stale or probe_error — unknown means never " +
-				"measured or not measurable, and is never the same as ok. probe_error means Antenne's own check " +
-				"could not run, not that the target refused. detail is the far side's own words, verbatim. " +
+				"State is one of unknown, ok, pending, down, recovering, flapping, stale or probe_error — unknown " +
+				"means never measured or not measurable, and is never the same as ok. probe_error means Antenne's " +
+				"own check could not run, not that the target refused. recovering means the target is answering " +
+				"again while the outage stays open for the dwell time, so it is deliverable and not down. " +
+				"detail is the far side's own words, verbatim. " +
 				"anyDeliverable is false when no enabled target can currently receive anything, and " +
 				"standingAlerts are the notices that outage swallowed — the only local record that " +
 				"nobody was told.",

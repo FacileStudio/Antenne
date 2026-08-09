@@ -163,18 +163,21 @@ export interface DeliveryAttempt {
 }
 
 /**
- * The seven health states, mirroring the Go contract exactly.
+ * The eight health states, mirroring the Go contract exactly.
  *
  * `unknown` is not a synonym for `ok`: a generic webhook has no safe read-only
  * probe, so it stays unknown until a real delivery says otherwise, and painting
  * it green is the failure this feature exists to prevent. `probe_error` is
- * Antenne's own check failing, not the target refusing.
+ * Antenne's own check failing, not the target refusing. `recovering` is
+ * answering again with the outage not yet closed — never `down`, because a red
+ * dot on a target the operator just watched work teaches them to ignore the dot.
  */
 export type HealthState =
 	| 'unknown'
 	| 'ok'
 	| 'pending'
 	| 'down'
+	| 'recovering'
 	| 'flapping'
 	| 'stale'
 	| 'probe_error';

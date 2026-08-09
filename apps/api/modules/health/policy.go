@@ -128,7 +128,9 @@ func resolve(current, next Record, obs Observation, cfg Thresholds, at time.Time
 			recovered := next.ConsecutiveSuccesses >= cfg.SuccessesToRecover &&
 				at.Sub(*current.DownSince) >= cfg.MinDownDwell
 			if !recovered {
-				next.State = StateDown
+				// Answering, but the outage is not closed yet. Saying "down"
+				// here is the one thing an operator can disprove by hand.
+				next.State = StateRecovering
 				return Decision{Next: next}
 			}
 			downtime := at.Sub(*current.DownSince)
@@ -152,36 +154,48 @@ func resolve(current, next Record, obs Observation, cfg Thresholds, at time.Time
 	}
 
 	/*
-	 * A terminal kind skips the entry threshold, because it is certainty rather
-	 * than a sample. The threshold exists to filter blips; `M_FORBIDDEN` on a
-	 * login, a deleted Discord webhook and SMTP 535 are not blips, and waiting
-	 * for a second opinion on them buys nothing.
+	 * DownSince, not the state, is what says an outage is open — and it is the
+	 * only thing that survives a target answering once in the middle of one.
 	 *
-	 * It is also load-bearing rather than tidy. A terminal kind suspends probing
-	 * for an hour and then longer, which is what stops us hammering a far side
-	 * that has already said no — so a target parked in StatePending would never
-	 * receive the second failure that promotes it, and would sit broken and
-	 * silent indefinitely. Production found this within a minute of the first
-	 * deploy: a Matrix account over its device limit, correctly suspended,
-	 * correctly diagnosed, and reported to nobody.
+	 * Reading the state instead had two costs. A failure arriving after a
+	 * success inside an open outage restarted the failure count, so the target
+	 * fell back to StatePending: an amber "not confirmed yet" dot on an outage
+	 * already announced to everyone. And the next failure then found a state
+	 * that was not StateDown, took the first-notice path, and sent a second
+	 * "broke" alert for an outage that never ended.
 	 */
-	if next.ConsecutiveFailures < cfg.FailuresToDown && !obs.Kind.Terminal() {
-		next.State = StatePending
-		return Decision{Next: next}
-	}
-
-	if current.State != StateDown {
-		if next.DownSince == nil {
-			next.DownSince = &at
-			next.AlertCount = 0
+	if current.DownSince == nil {
+		/*
+		 * A terminal kind skips the entry threshold, because it is certainty
+		 * rather than a sample. The threshold exists to filter blips;
+		 * `M_FORBIDDEN` on a login, a deleted Discord webhook and SMTP 535 are
+		 * not blips, and waiting for a second opinion on them buys nothing.
+		 *
+		 * It is also load-bearing rather than tidy. A terminal kind suspends
+		 * probing for an hour and then longer, which is what stops us hammering
+		 * a far side that has already said no — so a target parked in
+		 * StatePending would never receive the second failure that promotes it,
+		 * and would sit broken and silent indefinitely. Production found this
+		 * within a minute of the first deploy: a Matrix account over its device
+		 * limit, correctly suspended, correctly diagnosed, and reported to
+		 * nobody.
+		 */
+		if next.ConsecutiveFailures < cfg.FailuresToDown && !obs.Kind.Terminal() {
+			next.State = StatePending
+			return Decision{Next: next}
 		}
-		next.State = StateDown
+		next.DownSince = &at
+		next.AlertCount = 0
+	}
+	next.State = StateDown
+
+	// StateRecovering is the same outage still open, so it owes no first notice.
+	if current.State != StateDown && current.State != StateRecovering {
 		next.LastAlertAt = &at
 		next.AlertCount++
 		return Decision{Next: next, Alert: AlertBroke, Downtime: at.Sub(*next.DownSince)}
 	}
 
-	next.State = StateDown
 	if !repeatDue(current, cfg, at) {
 		return Decision{Next: next}
 	}
