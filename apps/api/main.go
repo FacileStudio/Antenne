@@ -282,20 +282,14 @@ func buildRouter(
 
 		authService.RegisterPublicRoutes(protected)
 
-		// The pool's own endpoints authenticate with the pool secret and a
-		// connection token, not with a dashboard session, so they sit outside
-		// RequireAuth.
-		protected.Post("/antenne/register", busServer.HandleRegister)
-		protected.Get("/antenne/ws", busServer.HandleWebSocket)
+		busServer.RegisterRoutes(protected)
 
 		protected.Group(func(sessioned chi.Router) {
 			sessioned.Use(auth.RequireAuth(authService))
 			authService.RegisterRoutes(sessioned)
 			api.RegisterRoutes(sessioned)
 			spaceService.RegisterRoutes(sessioned)
-			sessioned.Get("/antenne/stats", func(w http.ResponseWriter, r *http.Request) {
-				httpjson.WriteJSON(w, http.StatusOK, busServer.Stats())
-			})
+			busServer.RegisterStats(sessioned)
 		})
 	})
 
@@ -304,8 +298,7 @@ func buildRouter(
 	// every one of them. Same for /pool/ws, which pool clients pin.
 	webhookHandler := server.NewWebhookHandler(application, log)
 	router.Post("/webhook/*", webhookHandler.ServeHTTP)
-	router.Post("/antenne/register", busServer.HandleRegister)
-	router.Get("/antenne/ws", busServer.HandleWebSocket)
+	busServer.RegisterRoutes(router)
 
 	// The dashboard used to live under /dashboard; the SPA is at the root now,
 	// so old bookmarks and the post-login redirect are moved rather than 404ed.
