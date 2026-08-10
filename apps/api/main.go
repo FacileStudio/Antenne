@@ -248,7 +248,15 @@ func buildRouter(
 	busServer *bus.Server,
 ) chi.Router {
 	router := httpx.NewRouter(httpx.Config{
-		Logger: log,
+		// Behind Traefik and Cloudflare, RemoteAddr is only the
+		// visitor if both are trusted: Traefik replaces the forwarded
+		// chain rather than extending it, so the visitor survives in
+		// Cf-Connecting-Ip alone. TRUSTED_PROXIES=private,cloudflare
+		// fills all three.
+		TrustedProxies: cfg.TrustedProxies,
+		CDNProxies:     cfg.CDNProxies,
+		CDNHeader:      cfg.CDNHeader,
+		Logger:         log,
 		CORS: middleware.CORSConfig{
 			AllowedOrigins:   cfg.CORSAllowedOrigins,
 			AllowCredentials: true,
