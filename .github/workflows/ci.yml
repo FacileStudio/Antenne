@@ -49,7 +49,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: FacileStudio/filet@v0.2.0
+      - uses: FacileStudio/filet@v0.3.0
         with:
-          version: v0.2.0
+          version: v0.3.0
           fail-on: error
+          # The provider decides what is worth an alert, so the run is always
+          # reported and the policy lives in one place. The URL is withheld when
+          # the secret is not available — a fork's pull request has no secrets,
+          # and signing with an empty key would fail the job on an unrelated
+          # repository's configuration.
+          antenne-url: ${{ secrets.ANTENNE_FILET_SECRET != '' && 'https://antenne.facile.studio/webhook/filet' || '' }}
+          antenne-secret: ${{ secrets.ANTENNE_FILET_SECRET }}

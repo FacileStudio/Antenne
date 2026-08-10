@@ -56,12 +56,17 @@ type filetPayload struct {
 
 // filet receives a CI run from the filet GitHub action.
 //
-// Every run is recorded, but only a failure on the repository's default branch
-// is worth waking anyone for. A green run has nothing to say, and a failure on
-// a pull request branch is already an annotation on the author's own diff — so
-// both return an empty MessageHTML, which the intake accepts, logs and does not
-// deliver. Alerting on every run is how a channel gets muted, and a muted
+// Only a failure on the repository's default branch is worth waking anyone for.
+// A green run has nothing to say, and a failure on a pull request branch is
+// already an annotation on the author's own diff — so both return an empty
+// MessageHTML. Alerting on every run is how a channel gets muted, and a muted
 // channel does not alert on the one run that mattered either.
+//
+// Be precise about what an empty MessageHTML costs: the intake answers 200 and
+// writes an application log line, then returns *before* Dispatch. So a silent
+// run never reaches the event log and is not replayable — only delivered events
+// are. Anything that wants a record of green runs has to read Journal, not the
+// events API.
 var filet = Definition{
 	Type:         settings.ProviderFilet,
 	Label:        "filet",
