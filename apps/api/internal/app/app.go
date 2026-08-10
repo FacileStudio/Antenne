@@ -352,10 +352,21 @@ func (a *App) Dispatch(ctx context.Context, alert Alert) ([]delivery.Attempt, er
 		return nil, nil
 	}
 	if len(route.Sendable) == 0 {
+		// Say which of the two it is. A target that is switched off is a
+		// decision, and reporting it as a configuration fault sends the
+		// reader to check a URL and a secret that were never wrong.
+		if len(route.SkippedUnconfigured) == 0 {
+			a.log.Info("event not delivered: every target for it is switched off",
+				slog.String("event", label),
+				slog.String("source", sourceLabel),
+				slog.String("targets", describeTargets(route.SkippedDisabled)))
+			return nil, nil
+		}
 		a.log.Warn("event not delivered: the selected targets are not fully configured",
 			slog.String("event", label),
 			slog.String("source", sourceLabel),
-			slog.String("targets", describeTargets(route.SkippedUnconfigured)))
+			slog.String("targets", describeTargets(route.SkippedUnconfigured)),
+			slog.String("also_disabled", describeTargets(route.SkippedDisabled)))
 		return nil, nil
 	}
 
