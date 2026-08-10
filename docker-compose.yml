@@ -27,6 +27,7 @@ services:
       - "9090"
     environment:
       APP_ENV: ${APP_ENV:-production}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       # Pinned rather than interpolated. The webhook URLs registered in Dokploy,
       # DocuSeal and the git forges point at this port, and the healthcheck has
       # to agree with it — the old `${PORT:-9090}` in both places went stale the
