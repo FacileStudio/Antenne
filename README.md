@@ -122,6 +122,35 @@ goes quiet rather than reporting itself healthy. Jitter is downward-only, becaus
 jitter sends some pings late and spends the receiver's grace time on nothing. Give the receiver
 a period above `HEARTBEAT_INTERVAL` and real grace.
 
+## Reporting to Antenne from CI
+
+A GitHub action at the repository root signs a JSON body and posts it to a webhook provider, so
+a workflow does not carry its own copy of the HMAC-and-curl dance:
+
+```yaml
+- uses: FacileStudio/Antenne@v1
+  with:
+    url: https://antenne.facile.studio/webhook/filet
+    secret: ${{ secrets.ANTENNE_FILET_SECRET }}
+    payload-file: ${{ runner.temp }}/filet.json
+```
+
+`payload:` takes the body inline instead, for anything small enough to read in the workflow.
+
+The action is deliberately generic about **transport** and says nothing about **shape**: it
+validates that the body is JSON, signs it, posts it with retries and fails the step loudly on a
+rejection. What goes in the body is whatever the target provider parses, because a provider owns
+its payload and its rendering — a receiver that swallowed any JSON would produce alerts nobody
+can read.
+
+The signature header defaults to `x-<provider>-signature-256`, derived from the URL, which is
+what a new provider is created with. `header:` and `prefix:` cover the providers that differ; a
+mismatch is rejected by the intake rather than silently accepted.
+
+**The secret is required.** A provider saved without one accepts unauthenticated calls on its
+path, which means anyone can post a fake success — so the action refuses to be the tool that
+posts without a signature. Set the secret when you create the provider, not later.
+
 ## Structure
 
 ```
