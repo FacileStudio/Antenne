@@ -56,6 +56,20 @@ Configuration for the developer loop comes from [Casier](https://casier.facile.s
 `casier.yml` pins this repo to the `antenne` project. `mise run dev-offline` runs from the
 cached values. See [docs/development.md](docs/development.md).
 
+## Command line
+
+[`antenne`](https://github.com/FacileStudio/antenne-cli) drives Antenne from a terminal. It
+installs through [facile](https://github.com/FacileStudio/facile), the suite installer,
+which fetches a prebuilt binary and puts `~/.local/bin` on your PATH:
+
+```sh
+curl -fsSL https://get.facile.studio | bash
+facile install antenne
+```
+
+Antenne authenticates a whole instance with one password rather than a
+per-user account, so `facile login antenne` asks for that password.
+
 ## Configuration
 
 | Variable | What it does |
