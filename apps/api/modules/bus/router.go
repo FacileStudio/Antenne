@@ -39,6 +39,28 @@ type registrationRequest struct {
 	} `json:"events"`
 }
 
+// declaredChannels resolves what a registration payload left out.
+//
+// Declaring no listeners means "I do not consume", not "send me everything".
+// The wildcard default was the opposite reading and it is not free: retention
+// here is interest-based, so an app recorded as listening to `*` pins every
+// channel at its last acked offset — and an app that never subscribes never
+// acks, so it pinned every channel at zero. Mycelium, which only emits agent
+// sessions, was holding the whole queue that way. A client that genuinely wants
+// everything writes ["*"] and says so.
+//
+// Emit keeps its wildcard: an emitter that declared no channels still has to be
+// able to publish, and this registration is not what authorises it.
+func declaredChannels(emit, listen []string) ([]string, []string) {
+	if emit == nil {
+		emit = []string{"*"}
+	}
+	if listen == nil {
+		listen = []string{}
+	}
+	return emit, listen
+}
+
 // HandleRegister exchanges the shared secret for a connection token.
 func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	var body registrationRequest
@@ -65,14 +87,7 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		identity = body.App + ":" + body.InstanceID
 	}
 
-	emit := body.Events.Emit
-	if emit == nil {
-		emit = []string{"*"}
-	}
-	listen := body.Events.Listen
-	if listen == nil {
-		listen = []string{"*"}
-	}
+	emit, listen := declaredChannels(body.Events.Emit, body.Events.Listen)
 
 	registered, err := s.queue.Register(identity, emit, listen)
 	if err != nil {
