@@ -1,0 +1,125 @@
+name: Antenne
+description: POST a signed JSON event to an Antenne webhook provider.
+author: Facile Studio
+
+branding:
+  icon: radio
+  color: purple
+
+inputs:
+  url:
+    description: >-
+      Full webhook URL, e.g. https://antenne.facile.studio/webhook/filet. The
+      last path segment names the provider and is what the signature header is
+      derived from.
+    required: true
+  secret:
+    description: >-
+      The provider's shared secret, as configured in the Antenne dashboard. The
+      body is signed with it. Required: an empty secret would post
+      unauthenticated, and a provider configured without one accepts anything —
+      which is a hole this action refuses to help you dig.
+    required: true
+  payload:
+    description: The JSON body, inline. Mutually exclusive with payload-file.
+    default: ''
+  payload-file:
+    description: Path to a file holding the JSON body. Mutually exclusive with payload.
+    default: ''
+  header:
+    description: >-
+      Signature header name. Defaults to `x-<provider>-signature-256`, derived
+      from the URL, which is what Antenne configures for a new provider. Set it
+      explicitly if the dashboard says otherwise — a mismatch is rejected, never
+      silently accepted.
+    default: ''
+  prefix:
+    description: >-
+      Signature prefix. `sha256=` matches every suite provider; the one
+      exception verifies a bare hex digest, for which this is empty.
+    default: 'sha256='
+  retries:
+    description: >-
+      Transient-failure retries. Connection errors, 5xx and 429 are retried; a
+      4xx is not, because a rejected signature does not get better by repeating.
+    default: '3'
+
+outputs:
+  status:
+    description: The HTTP status code Antenne answered with.
+    value: ${{ steps.post.outputs.status }}
+
+runs:
+  using: composite
+  steps:
+    - name: post to antenne
+      id: post
+      shell: bash
+      env:
+        ANTENNE_URL: ${{ inputs.url }}
+        ANTENNE_SECRET: ${{ inputs.secret }}
+        ANTENNE_PAYLOAD: ${{ inputs.payload }}
+        ANTENNE_PAYLOAD_FILE: ${{ inputs.payload-file }}
+        ANTENNE_HEADER: ${{ inputs.header }}
+        ANTENNE_PREFIX: ${{ inputs.prefix }}
+        ANTENNE_RETRIES: ${{ inputs.retries }}
+      run: |
+        set -euo pipefail
+
+        fail() { echo "::error::antenne: $1"; exit 1; }
+
+        [ -n "$ANTENNE_URL" ] || fail "url is required"
+        [ -n "$ANTENNE_SECRET" ] || fail "secret is required — refusing to post unauthenticated"
+
+        # Exactly one payload source. Accepting both and picking one silently is
+        # how a caller ends up shipping the wrong body without a word.
+        if [ -n "$ANTENNE_PAYLOAD" ] && [ -n "$ANTENNE_PAYLOAD_FILE" ]; then
+          fail "set payload or payload-file, not both"
+        fi
+        payload="$ANTENNE_PAYLOAD_FILE"
+        if [ -z "$payload" ]; then
+          [ -n "$ANTENNE_PAYLOAD" ] || fail "set payload or payload-file"
+          payload="${RUNNER_TEMP}/antenne-payload.json"
+          printf '%s' "$ANTENNE_PAYLOAD" > "$payload"
+        fi
+        [ -f "$payload" ] || fail "payload-file not found: $payload"
+
+        jq empty < "$payload" 2>/dev/null || fail "payload is not valid JSON"
+
+        # Antenne reads the body under a 4 MiB cap and truncates silently, so an
+        # oversized POST would arrive short and fail as "invalid signature",
+        # pointing at the secret instead of at the size. Refuse it here, where
+        # the message can say what is actually wrong.
+        size=$(wc -c < "$payload" | tr -d '[:space:]')
+        [ "$size" -le 4194304 ] || fail "payload is ${size} bytes; Antenne caps a webhook body at 4 MiB"
+
+        header="$ANTENNE_HEADER"
+        if [ -z "$header" ]; then
+          provider="${ANTENNE_URL%%\?*}"
+          provider="${provider%/}"
+          provider="${provider##*/}"
+          [ -n "$provider" ] || fail "cannot derive the signature header from $ANTENNE_URL — set header:"
+          header="x-${provider}-signature-256"
+        fi
+
+        signature="${ANTENNE_PREFIX}$(openssl dgst -sha256 -hmac "$ANTENNE_SECRET" -hex < "$payload" | sed 's/^.*= //')"
+
+        response="${RUNNER_TEMP}/antenne-response"
+        status=$(curl --silent --show-error \
+          --retry "$ANTENNE_RETRIES" --retry-connrefused --max-time 30 \
+          --output "$response" --write-out '%{http_code}' \
+          -X POST "$ANTENNE_URL" \
+          -H 'content-type: application/json' \
+          -H "${header}: ${signature}" \
+          --data-binary "@${payload}") || status=000
+
+        echo "status=${status}" >> "$GITHUB_OUTPUT"
+
+        case "$status" in
+          000) fail "could not reach $ANTENNE_URL" ;;
+          2*)  echo "antenne accepted the event (${status})" ;;
+          401|403)
+            fail "antenne rejected the signature (${status}). The secret must match the provider's, and the header must be the one it reads — this sent ${header}" ;;
+          404) fail "no provider listens on $ANTENNE_URL (404)" ;;
+          *)   echo "::error::antenne: rejected with ${status}"; head -c 2000 "$response" >&2; echo; exit 1 ;;
+        esac
