@@ -146,11 +146,15 @@ on that path.
 
 ### filet: which CI runs actually alert
 
-The `filet` provider records every CI run it receives, but only delivers a failure on the
-repository's default branch. A green run has nothing to say, and a failure on a pull request
-branch is already an annotation on the author's own diff — both are accepted, logged and
-replayable, with no message sent. Alerting on every run is how a channel gets muted, and a
-muted channel stays silent on the run that mattered.
+The `filet` provider only delivers a failure on the repository's default branch. A green run
+has nothing to say, and a failure on a pull request branch is already an annotation on the
+author's own diff — both are accepted with a 200 and no message sent. Alerting on every run is
+how a channel gets muted, and a muted channel stays silent on the run that mattered.
+
+What a silent run costs is worth stating plainly: the intake returns before `Dispatch`, so it
+writes an application log line and **nothing to the event log**. A silent run is therefore not
+replayable and does not appear under `/api/events`. Green runs are visible in Journal, not in
+Antenne.
 
 A payload whose `branch` or `defaultBranch` is missing is treated as being on the default
 branch and alerts: a run that cannot be placed is louder than it needs to be rather than
