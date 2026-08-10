@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -149,10 +150,17 @@ type Stats struct {
 }
 
 // StatsApp is one connected app.
+//
+// Channels is what the app subscribes to and Emits is what it declared it
+// produces. Both are reported because an emit-only client — Jardin, which
+// pushes sessions and consumes nothing — legitimately subscribes to no channel,
+// and a view showing only subscriptions renders that healthy state as an empty
+// one. "No channel" is true and reads like a fault.
 type StatsApp struct {
 	AppID    string   `json:"app_id"`
 	App      string   `json:"app"`
 	Channels []string `json:"channels"`
+	Emits    []string `json:"emits"`
 }
 
 // Stats returns the live pool state.
@@ -166,7 +174,13 @@ func (s *Server) Stats() Stats {
 		for channel := range conn.channels {
 			channels = append(channels, channel)
 		}
-		stats.Apps = append(stats.Apps, StatsApp{AppID: conn.app.AppID, App: conn.app.App, Channels: channels})
+		emits := conn.app.EmitChannels
+		if emits == nil {
+			emits = []string{}
+		}
+		sort.Strings(channels)
+		sort.Strings(emits)
+		stats.Apps = append(stats.Apps, StatsApp{AppID: conn.app.AppID, App: conn.app.App, Channels: channels, Emits: emits})
 	}
 	return stats
 }

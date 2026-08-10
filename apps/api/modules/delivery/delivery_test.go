@@ -140,3 +140,41 @@ func TestTheQueueAnnouncesADeliveryItGivesUpOnExactlyOnce(t *testing.T) {
 		t.Errorf("%d entries left after the attempts ran out, want 0", queue.Size())
 	}
 }
+
+// A target somebody switched off and a target with an empty field are two
+// different problems with two different fixes. Lumping them together produced
+// "the selected targets are not fully configured" for a Perception target whose
+// URL, workspace and secret were all correct and whose only issue was a toggle.
+func TestSummarizeSeparatesDisabledFromUnconfigured(t *testing.T) {
+	complete := settings.DeliveryTarget{
+		Name: "Perception", Type: settings.TargetPerception, Enabled: false,
+		URL: "https://p.example/ingest", Workspace: "ws", SecretValue: ptr("s"),
+		ProviderIDs: []string{"prov"},
+	}
+	incomplete := settings.DeliveryTarget{
+		Name: "Half-done", Type: settings.TargetPerception, Enabled: true,
+		URL: "https://p.example/ingest", ProviderIDs: []string{"prov"},
+	}
+
+	route := Summarize(settings.DeliveryConfig{Items: []settings.DeliveryTarget{complete, incomplete}}, "prov", nil)
+
+	if len(route.SkippedDisabled) != 1 || route.SkippedDisabled[0].Name != "Perception" {
+		t.Fatalf("SkippedDisabled = %v, want the switched-off target", names(route.SkippedDisabled))
+	}
+	if len(route.SkippedUnconfigured) != 1 || route.SkippedUnconfigured[0].Name != "Half-done" {
+		t.Fatalf("SkippedUnconfigured = %v, want the one missing fields", names(route.SkippedUnconfigured))
+	}
+	if len(route.Sendable) != 0 {
+		t.Fatalf("Sendable = %v, want none", names(route.Sendable))
+	}
+}
+
+func ptr(s string) *string { return &s }
+
+func names(targets []settings.DeliveryTarget) []string {
+	out := make([]string, 0, len(targets))
+	for _, t := range targets {
+		out = append(out, t.Name)
+	}
+	return out
+}

@@ -287,7 +287,7 @@ export interface SpaceMember {
 export interface BusStats {
 	epoch: string;
 	connections: number;
-	apps: { app_id: string; app: string; channels: string[] }[];
+	apps: { app_id: string; app: string; channels: string[]; emits: string[] }[];
 }
 
 export interface SettingsPayload {

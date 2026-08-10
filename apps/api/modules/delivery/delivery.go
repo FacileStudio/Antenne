@@ -39,9 +39,16 @@ const (
 
 // Route is what the routing rules selected for one event.
 type Route struct {
-	Selected            []settings.DeliveryTarget
-	Sendable            []settings.DeliveryTarget
-	SkippedByFilter     int
+	Selected        []settings.DeliveryTarget
+	Sendable        []settings.DeliveryTarget
+	SkippedByFilter int
+
+	// SkippedDisabled and SkippedUnconfigured are kept apart because they
+	// send the reader to different places. A disabled target is a decision
+	// somebody made; an unconfigured one is a field left empty. Reporting
+	// both as "not fully configured" is how you end up re-checking a URL
+	// and a secret that were correct all along.
+	SkippedDisabled     []settings.DeliveryTarget
 	SkippedUnconfigured []settings.DeliveryTarget
 }
 
@@ -159,9 +166,12 @@ func Summarize(config settings.DeliveryConfig, providerID string, providerTags [
 			continue
 		}
 		route.Selected = append(route.Selected, target)
-		if CanSend(target) {
+		switch {
+		case CanSend(target):
 			route.Sendable = append(route.Sendable, target)
-		} else {
+		case !target.Enabled:
+			route.SkippedDisabled = append(route.SkippedDisabled, target)
+		default:
 			route.SkippedUnconfigured = append(route.SkippedUnconfigured, target)
 		}
 	}

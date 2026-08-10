@@ -131,3 +131,63 @@ func TestTheProtocolPingIsStillAnswered(t *testing.T) {
 		t.Errorf("a protocol ping was answered with %q, not a pong", reply.Type)
 	}
 }
+
+// Jardin emits sessions and subscribes to nothing, which is a healthy
+// configuration and used to render as "No channel" — a working app reported as
+// a broken one. Stats has to carry what an app produces, not only what it
+// consumes.
+func TestStatsReportsEmitOnlyApps(t *testing.T) {
+	server := &Server{
+		queue:       &Queue{},
+		connections: map[string]*connection{},
+	}
+	server.connections["jardin-1"] = &connection{
+		app: RegisteredApp{
+			AppID:        "jardin-1",
+			App:          "Jardin",
+			EmitChannels: []string{"usage_alert.created", "agent_session.created"},
+		},
+		channels: map[string]bool{},
+	}
+	server.connections["sablier-1"] = &connection{
+		app: RegisteredApp{
+			AppID:          "sablier-1",
+			App:            "Sablier",
+			EmitChannels:   []string{"time_entry.created"},
+			ListenChannels: []string{"agent_session.created"},
+		},
+		channels: map[string]bool{"agent_session.created": true},
+	}
+
+	byApp := map[string]StatsApp{}
+	for _, app := range server.Stats().Apps {
+		byApp[app.App] = app
+	}
+
+	jardin := byApp["Jardin"]
+	if len(jardin.Channels) != 0 {
+		t.Fatalf("Jardin subscribes to %v, want nothing", jardin.Channels)
+	}
+	if len(jardin.Emits) != 2 || jardin.Emits[0] != "agent_session.created" {
+		t.Fatalf("Jardin emits = %v, want both channels sorted", jardin.Emits)
+	}
+
+	sablier := byApp["Sablier"]
+	if len(sablier.Channels) != 1 || len(sablier.Emits) != 1 {
+		t.Fatalf("Sablier = %+v, want one of each", sablier)
+	}
+}
+
+// A nil EmitChannels must serialise as [] and not null, or the client's
+// `app.emits.length` throws on the one app that declares nothing.
+func TestStatsNeverReportsNilChannels(t *testing.T) {
+	server := &Server{
+		queue:       &Queue{},
+		connections: map[string]*connection{"x": {app: RegisteredApp{AppID: "x", App: "X"}, channels: map[string]bool{}}},
+	}
+
+	app := server.Stats().Apps[0]
+	if app.Emits == nil || app.Channels == nil {
+		t.Fatalf("Stats returned nil slices: %+v", app)
+	}
+}

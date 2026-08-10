@@ -143,7 +143,7 @@
 
 	<SettingsSection
 		title="Connected apps"
-		description="Suite apps holding a socket, with the channels each of them subscribes to."
+		description="Suite apps holding a socket, with the channels each subscribes to. An app that only produces events shows as emits only."
 		bare={!stats || stats.apps.length === 0}
 	>
 		{#if !stats || stats.apps.length === 0}
@@ -167,12 +167,19 @@
 								<span class="truncate font-fc-mono text-fc-xs text-fc-fg-muted">{app.app_id}</span>
 							</div>
 						</div>
+						<!-- Subscriptions first, then what the app produces. An
+						     emit-only client subscribes to nothing on purpose, and
+						     showing only subscriptions made that healthy state look
+						     like a fault. -->
 						<div class="flex flex-wrap items-center gap-1.5">
 							{#each app.channels as channel (channel)}
 								<Badge class="font-fc-mono">{channel}</Badge>
-							{:else}
-								<span class="text-fc-xs text-fc-fg-muted">No channel</span>
 							{/each}
+							{#if app.channels.length === 0 && app.emits.length > 0}
+								<span class="text-fc-xs text-fc-fg-muted">emits only</span>
+							{:else if app.channels.length === 0}
+								<span class="text-fc-xs text-fc-fg-muted">No channel</span>
+							{/if}
 						</div>
 					</div>
 				</SettingsRow>
