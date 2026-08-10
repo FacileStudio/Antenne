@@ -3,8 +3,6 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.ico" />
-		<title>Antenne</title>
 		<script>
 			// Applied before the first paint so a themed reload does not flash the other
 			// mode. Both classes are written and `system` writes neither: muse's tokens
@@ -18,6 +16,39 @@
 				}
 			} catch {}
 		</script>
+		<title>Antenne — Alerts and the event bus</title>
+		<meta
+			name="description"
+			content="Alert aggregation and the event bus of the Facile Suite. Watches your providers, routes what they emit, and keeps the apps in sync."
+		/>
+
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+		<link rel="alternate icon" href="%sveltekit.assets%/favicon.ico" sizes="any" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
+		<link rel="manifest" href="%sveltekit.assets%/site.webmanifest" />
+
+		<meta name="color-scheme" content="light dark" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
+
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="Antenne" />
+		<meta property="og:url" content="https://antenne.facile.studio/" />
+		<meta property="og:title" content="Antenne — Alerts and the event bus" />
+		<meta
+			property="og:description"
+			content="Alert aggregation and the event bus of the Facile Suite. Watches your providers, routes what they emit, and keeps the apps in sync."
+		/>
+		<meta property="og:image" content="https://antenne.facile.studio/og-image.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Antenne — Alerts and the event bus" />
+		<meta
+			name="twitter:description"
+			content="Alert aggregation and the event bus of the Facile Suite. Watches your providers, routes what they emit, and keeps the apps in sync."
+		/>
+		<meta name="twitter:image" content="https://antenne.facile.studio/og-image.png" />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

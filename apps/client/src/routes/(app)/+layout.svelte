@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import {
 		Button,
@@ -13,8 +14,21 @@
 	} from '@facile/muse';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { spaces } from '$lib/spaces.svelte';
+	import { ANTENNE_ICON, ANTENNE_MARK } from '$lib/components/AntenneLogo.svelte';
 
 	let { children }: { children: Snippet } = $props();
+
+	/*
+	 * muse's SideBar takes its brand glyph as an Iconify *name*, not as a component, so the
+	 * real mark is registered into Iconify's local registry instead of being approximated by
+	 * a public set. Browser-only and deferred for the same reason the root layout defers the
+	 * element import: `iconify-icon` touches customElements at module scope.
+	 */
+	if (browser) {
+		void import('iconify-icon').then((iconify) => {
+			iconify.addIcon(ANTENNE_ICON, ANTENNE_MARK);
+		});
+	}
 
 	let collapsed = $state(false);
 	let scroller: HTMLElement | null = $state(null);
@@ -69,7 +83,7 @@
 <div class="flex h-dvh w-full overflow-hidden bg-fc-page">
 	<div class="hidden h-full shrink-0 p-3 md:block">
 		<SideBar
-			icon="solar:translation-2-bold-duotone"
+			icon={ANTENNE_ICON}
 			title="Antenne"
 			bind:collapsed
 			pages={navPages}
