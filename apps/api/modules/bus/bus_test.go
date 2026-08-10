@@ -191,3 +191,38 @@ func TestStatsNeverReportsNilChannels(t *testing.T) {
 		t.Fatalf("Stats returned nil slices: %+v", app)
 	}
 }
+
+// Retention here is interest-based, so what an app is recorded as listening to
+// decides how long every channel is held. Reading "declared nothing" as "wants
+// everything" made an emit-only client pin the whole queue at offset zero,
+// because an app that never subscribes never acks either.
+func TestAnUndeclaredListenListMeansNothing(t *testing.T) {
+	// Jardin's registration: it emits and declares no listeners.
+	emit, listen := declaredChannels([]string{"agent_session.created"}, nil)
+
+	if len(listen) != 0 {
+		t.Fatalf("listen = %v, want none for a payload that omits it", listen)
+	}
+	if listen == nil {
+		t.Fatal("listen is nil; it must serialise as [] and not null")
+	}
+	if len(emit) != 1 || emit[0] != "agent_session.created" {
+		t.Fatalf("emit = %v, want what was declared", emit)
+	}
+
+	// An emitter that declares nothing still has to be able to publish: the
+	// wildcard stays on that side, and only listen changed.
+	emit, listen = declaredChannels(nil, nil)
+	if len(emit) != 1 || emit[0] != "*" {
+		t.Fatalf("emit = %v, want the wildcard", emit)
+	}
+	if len(listen) != 0 {
+		t.Fatalf("listen = %v, want none", listen)
+	}
+
+	// An explicit wildcard is still honoured — that is how a client asks for
+	// everything now.
+	if _, listen = declaredChannels(nil, []string{"*"}); len(listen) != 1 || listen[0] != "*" {
+		t.Fatalf("listen = %v, want the explicit wildcard preserved", listen)
+	}
+}
