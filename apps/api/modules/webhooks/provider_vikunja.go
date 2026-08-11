@@ -1,7 +1,6 @@
 package webhooks
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -160,109 +159,4 @@ func vikunjaStatus(event string, task *vikunjaTask) string {
 		return "overdue"
 	}
 	return ""
-}
-
-func vikunjaMessage(payload vikunjaPayload) string {
-	event := payload.EventName
-	actor := escape(payload.Data.Doer.display())
-
-	taskRef := ""
-	taskTitle := "untitled"
-	if task := payload.Data.Task; task != nil {
-		if task.Identifier != "" {
-			taskRef = "<code>" + escape(task.Identifier) + "</code>"
-		} else if task.ID != 0 {
-			taskRef = fmt.Sprintf("<code>#%d</code>", task.ID)
-		}
-		taskTitle = firstNonEmpty(task.Title, taskTitle)
-	}
-	taskLine := func(verb string) string {
-		return fmt.Sprintf("📋 <b>[Vikunja]</b> %s %s task %s <b>%s</b>", actor, verb, taskRef, escape(taskTitle))
-	}
-	onTask := func(icon, verb string) string {
-		spacer := ""
-		if taskRef != "" {
-			spacer = " " + taskRef
-		}
-		return fmt.Sprintf("%s <b>[Vikunja]</b> %s %s%s <b>%s</b>", icon, actor, verb, spacer, escape(taskTitle))
-	}
-
-	switch event {
-	case "task.created":
-		return taskLine("created")
-	case "task.updated":
-		if task := payload.Data.Task; task != nil && task.Done != nil {
-			if *task.Done {
-				return taskLine("completed")
-			}
-			return taskLine("reopened")
-		}
-		return taskLine("updated")
-	case "task.deleted":
-		return taskLine("deleted")
-	case "task.reminder.fired":
-		return taskLine("reminder fired for")
-	case "task.overdue", "tasks.overdue":
-		return taskLine("is overdue:")
-
-	case "task.assignee.created":
-		return onTask("👤", "assigned "+escape(payload.Data.Assignee.display())+" to")
-	case "task.assignee.deleted":
-		return onTask("👤", "unassigned "+escape(payload.Data.Assignee.display())+" from")
-	case "task.comment.created":
-		return onTask("💬", "commented on")
-	case "task.comment.edited":
-		return onTask("💬", "edited a comment on")
-	case "task.comment.deleted":
-		return onTask("💬", "deleted a comment on")
-	case "task.relation.created":
-		return onTask("🔗", "added a relation to")
-	case "task.relation.deleted":
-		return onTask("🔗", "removed a relation from")
-	case "task.attachment.created":
-		return onTask("📎", "attached a file to")
-	case "task.attachment.deleted":
-		return onTask("📎", "removed an attachment from")
-
-	case "project.created", "project.updated", "project.deleted":
-		title := "untitled"
-		if payload.Data.Project != nil {
-			title = firstNonEmpty(payload.Data.Project.Title, title)
-		}
-		verb := strings.TrimPrefix(event, "project.")
-		return fmt.Sprintf("📁 <b>[Vikunja]</b> %s %s project <b>%s</b>", actor, verb, escape(title))
-
-	case "project.shared.user", "project.shared.team":
-		title := "untitled"
-		if payload.Data.Project != nil {
-			title = firstNonEmpty(payload.Data.Project.Title, title)
-		}
-		target := "a user"
-		if event == "project.shared.team" {
-			target = "a team"
-		}
-		return fmt.Sprintf("🔗 <b>[Vikunja]</b> %s shared project <b>%s</b> with %s", actor, escape(title), target)
-
-	case "team.created", "team.deleted":
-		name := "unnamed"
-		if payload.Data.Team != nil {
-			name = firstNonEmpty(payload.Data.Team.Name, name)
-		}
-		verb := strings.TrimPrefix(event, "team.")
-		return fmt.Sprintf("👥 <b>[Vikunja]</b> %s %s team <b>%s</b>", actor, verb, escape(name))
-
-	case "team.member.added", "team.member.removed":
-		name := "unnamed"
-		if payload.Data.Team != nil {
-			name = firstNonEmpty(payload.Data.Team.Name, name)
-		}
-		verb := "added"
-		if event == "team.member.removed" {
-			verb = "removed"
-		}
-		return fmt.Sprintf("👥 <b>[Vikunja]</b> %s %s %s in team <b>%s</b>",
-			actor, verb, escape(payload.Data.Member.display()), escape(name))
-	}
-
-	return fmt.Sprintf("📋 <b>[Vikunja]</b> %s triggered <code>%s</code>", actor, escape(event))
 }

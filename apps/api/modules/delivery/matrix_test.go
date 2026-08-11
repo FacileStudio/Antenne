@@ -24,10 +24,12 @@ import (
 // The two Senders here are two boots of the same container.
 func TestMatrixLoginAlwaysNamesTheSameDevice(t *testing.T) {
 	target := settings.DeliveryTarget{
-		ID:         "9f1c0c1e-2f2a-4f6b-9b7e-0a1d2c3b4a59",
-		Type:       settings.TargetMatrix,
-		Homeserver: "https://matrix.org",
-		UserID:     "@nook-facile:matrix.org",
+		ID:   "9f1c0c1e-2f2a-4f6b-9b7e-0a1d2c3b4a59",
+		Type: settings.TargetMatrix,
+		MatrixSettings: settings.MatrixSettings{
+			Homeserver: "https://matrix.org",
+			UserID:     "@nook-facile:matrix.org",
+		},
 	}
 
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -50,9 +52,9 @@ func TestMatrixLoginAlwaysNamesTheSameDevice(t *testing.T) {
 func TestAConfiguredDeviceIDWins(t *testing.T) {
 	configured := "ANTENNEDEADBEEF01"
 	target := settings.DeliveryTarget{
-		ID:       "9f1c0c1e-2f2a-4f6b-9b7e-0a1d2c3b4a59",
-		Type:     settings.TargetMatrix,
-		DeviceID: &configured,
+		ID:             "9f1c0c1e-2f2a-4f6b-9b7e-0a1d2c3b4a59",
+		Type:           settings.TargetMatrix,
+		MatrixSettings: settings.MatrixSettings{DeviceID: &configured},
 	}
 
 	session := NewSender(slog.New(slog.NewTextHandler(io.Discard, nil))).matrixSessionFor(target)
@@ -101,13 +103,15 @@ func TestProbeRelogsInWhenTheTokenWasRevoked(t *testing.T) {
 
 	password := "hunter2"
 	target := settings.DeliveryTarget{
-		ID:         "9f1c0c1e-2f2a-4f6b-9b7e-0a1d2c3b4a59",
-		Type:       settings.TargetMatrix,
-		Enabled:    true,
-		Homeserver: server.URL,
-		UserID:     "@antenne:example.org",
-		Password:   &password,
-		RoomIDs:    []string{"!room:example.org"},
+		ID:       "9f1c0c1e-2f2a-4f6b-9b7e-0a1d2c3b4a59",
+		Type:     settings.TargetMatrix,
+		Enabled:  true,
+		Password: &password,
+		MatrixSettings: settings.MatrixSettings{
+			Homeserver: server.URL,
+			UserID:     "@antenne:example.org",
+			RoomIDs:    []string{"!room:example.org"},
+		},
 	}
 
 	sender := NewSender(slog.New(slog.NewTextHandler(io.Discard, nil)))

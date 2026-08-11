@@ -21,8 +21,10 @@ func probeSender() *Sender {
 func matrixTarget(homeserver string, rooms ...string) settings.DeliveryTarget {
 	return settings.DeliveryTarget{
 		ID: "m", Type: settings.TargetMatrix, Name: "matrix", Enabled: true,
-		Homeserver: homeserver, AccessToken: "token", UserID: "@antenne:example.org",
-		RoomIDs: rooms,
+		AccessToken: "token",
+		MatrixSettings: settings.MatrixSettings{
+			Homeserver: homeserver, UserID: "@antenne:example.org", RoomIDs: rooms,
+		},
 	}
 }
 
@@ -165,7 +167,7 @@ func TestDiscordUnknownWebhookIsTerminallyDead(t *testing.T) {
 
 	target := settings.DeliveryTarget{
 		ID: "d", Type: settings.TargetDiscord, Name: "discord", Enabled: true,
-		WebhookURL: server.URL + "/api/webhooks/123/abc?wait=true",
+		DiscordSettings: settings.DiscordSettings{WebhookURL: server.URL + "/api/webhooks/123/abc?wait=true"},
 	}
 
 	observation := probeSender().Probe(context.Background(), target)
@@ -187,7 +189,7 @@ func TestDiscordRateLimitCarriesRetryAfter(t *testing.T) {
 
 	target := settings.DeliveryTarget{
 		ID: "d", Type: settings.TargetDiscord, Name: "discord", Enabled: true,
-		WebhookURL: server.URL + "/api/webhooks/123/abc",
+		DiscordSettings: settings.DiscordSettings{WebhookURL: server.URL + "/api/webhooks/123/abc"},
 	}
 
 	observation := probeSender().Probe(context.Background(), target)
@@ -220,7 +222,8 @@ func TestNtfyAnonymousAnswerIsNotHealthy(t *testing.T) {
 
 	target := settings.DeliveryTarget{
 		ID: "n", Type: settings.TargetNtfy, Name: "ntfy", Enabled: true,
-		ServerURL: server.URL, Topic: "alerts", AccessToken: "tk_secret",
+		AccessToken:  "tk_secret",
+		NtfySettings: settings.NtfySettings{ServerURL: server.URL, Topic: "alerts"},
 	}
 
 	observation := probeSender().Probe(context.Background(), target)
@@ -248,7 +251,8 @@ func TestNtfyAuthenticatedAnswerIsHealthy(t *testing.T) {
 
 	target := settings.DeliveryTarget{
 		ID: "n", Type: settings.TargetNtfy, Name: "ntfy", Enabled: true,
-		ServerURL: server.URL, Topic: "alerts", AccessToken: "tk_secret",
+		AccessToken:  "tk_secret",
+		NtfySettings: settings.NtfySettings{ServerURL: server.URL, Topic: "alerts"},
 	}
 
 	if observation := probeSender().Probe(context.Background(), target); !observation.OK {
@@ -269,7 +273,9 @@ func TestPerceptionProbeUsesTheSiblingHealthEndpoint(t *testing.T) {
 	secret := "s3cret"
 	target := settings.DeliveryTarget{
 		ID: "p", Type: settings.TargetPerception, Name: "perception", Enabled: true,
-		URL: server.URL + "/api/ingest", Workspace: "studio", SecretValue: &secret,
+		HTTPSettings: settings.HTTPSettings{
+			URL: server.URL + "/api/ingest", Workspace: "studio", SecretValue: &secret,
+		},
 	}
 
 	observation := probeSender().Probe(context.Background(), target)
@@ -287,7 +293,7 @@ func TestPerceptionProbeUsesTheSiblingHealthEndpoint(t *testing.T) {
 func TestGenericWebhookHasNoProbe(t *testing.T) {
 	target := settings.DeliveryTarget{
 		ID: "w", Type: settings.TargetWebhook, Name: "webhook", Enabled: true,
-		URL: "https://example.invalid/hook",
+		HTTPSettings: settings.HTTPSettings{URL: "https://example.invalid/hook"},
 	}
 
 	observation := probeSender().Probe(context.Background(), target)

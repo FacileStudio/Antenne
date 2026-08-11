@@ -12,14 +12,16 @@ func baseline() AppSettings {
 	current.Providers.Items = []Provider{
 		{
 			ID: "p1", Type: ProviderDokploy, Name: "Dokploy", Enabled: true,
-			Tags: []string{"infra"}, Path: "/webhook/dokploy", SecretValue: &secret,
+			Tags:            []string{"infra"},
+			WebhookSettings: WebhookSettings{Path: "/webhook/dokploy", SecretValue: &secret},
 		},
 	}
 	current.Delivery.Items = []DeliveryTarget{
 		{
 			ID: "t1", Type: TargetMatrix, Name: "Matrix", Enabled: true,
 			ProviderIDs: []string{"p1"}, ProviderTags: []string{},
-			Homeserver: "https://matrix.org", AccessToken: "syt_live", RoomIDs: []string{"!room:matrix.org"},
+			AccessToken:    "syt_live",
+			MatrixSettings: MatrixSettings{Homeserver: "https://matrix.org", RoomIDs: []string{"!room:matrix.org"}},
 		},
 	}
 	return current
@@ -104,7 +106,10 @@ func TestNormalizeRejectsAWebhookPathThatIsNotRooted(t *testing.T) {
 // Only the fields belonging to a type may reach the wire; the dashboard branches
 // on their presence.
 func TestMarshalEmitsOnlyTheFieldsOfTheType(t *testing.T) {
-	encoded, err := json.Marshal(Provider{ID: "p", Type: ProviderWebsite, Name: "Site", URL: "https://x", Interval: 60})
+	encoded, err := json.Marshal(Provider{
+		ID: "p", Type: ProviderWebsite, Name: "Site",
+		WebsiteSettings: WebsiteSettings{URL: "https://x", Interval: 60},
+	})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}

@@ -1,29 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {
-		Alert,
-		Badge,
 		Button,
-		Card,
 		ConfirmModal,
-		Drawer,
 		EmptyState,
 		Field,
 		Select,
-		Switch,
-		Table,
-		cn,
 		icons,
 		toast
 	} from '@facile/muse';
-	import DeliveryEditorFields from './DeliveryEditorFields.svelte';
-	import TargetHealthRow from './TargetHealthRow.svelte';
+	import DeliveryEditorDrawer from './DeliveryEditorDrawer.svelte';
+	import DeliveryOutageAlert from './DeliveryOutageAlert.svelte';
+	import DeliveryTargetCards from './DeliveryTargetCards.svelte';
+	import DeliveryTargetTable from './DeliveryTargetTable.svelte';
 	import ViewToggle from './ViewToggle.svelte';
 	import { ApiError, api, isRateLimited } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
-	import { deliveryIcon } from '$lib/icons';
 	import { tagToneMap } from '$lib/tags';
-	import { formatRelative } from '$lib/utils';
 	import {
 		createTarget,
 		deliveryTargetTypes,
@@ -44,7 +37,6 @@
 	let editing = $state<DeliveryTarget | null>(null);
 	let editingIndex = $state(-1);
 	let drawerOpen = $state(false);
-	let testing = $state(false);
 
 	let pendingRemoval = $state<DeliveryTarget | null>(null);
 	let confirmOpen = $state(false);
@@ -151,17 +143,6 @@
 		return target;
 	}
 
-	/** A target with no provider and no tag selected can never receive anything. */
-	function isSilent(target: DeliveryTarget): boolean {
-		return target.providerIds.length === 0 && target.providerTags.length === 0;
-	}
-
-	function routingSummary(target: DeliveryTarget): string {
-		const providerCount = `${target.providerIds.length} ${target.providerIds.length === 1 ? 'provider' : 'providers'}`;
-		if (target.providerTags.length === 0) return providerCount;
-		return `${providerCount} · ${target.providerTags.length} ${target.providerTags.length === 1 ? 'tag' : 'tags'}`;
-	}
-
 	function open(index: number) {
 		editingIndex = index;
 		editing = hydrate(structuredClone($state.snapshot(targets[index])) as DeliveryTarget);
@@ -204,41 +185,11 @@
 		await dashboard.save();
 		pendingRemoval = null;
 	}
-
-	async function sendTest() {
-		if (!editing) return;
-		testing = true;
-		try {
-			await api.testTarget(editing.id);
-			toast.success(`Test delivered to ${editing.name}.`);
-		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'The test delivery failed');
-		} finally {
-			testing = false;
-		}
-	}
 </script>
 
 <div class="flex flex-col gap-4">
 	{#if nothingDeliverable}
-		<Alert tone="danger" title="Nothing can be delivered right now">
-			<p>
-				Every enabled target is down, so Antenne cannot raise an alert through any channel it has —
-				including the one that would tell you about this. Until one target recovers, this page is
-				the only place a failure will appear.
-			</p>
-			{#if standingAlerts.length > 0}
-				<p class="mt-2">
-					{standingAlerts.length}
-					{standingAlerts.length === 1 ? 'notice' : 'notices'} could not be carried anywhere:
-				</p>
-				<ul class="mt-1 list-disc pl-5">
-					{#each standingAlerts as alert (alert.targetId)}
-						<li>{alert.title} — since {formatRelative(alert.since)}</li>
-					{/each}
-				</ul>
-			{/if}
-		</Alert>
+		<DeliveryOutageAlert {standingAlerts} />
 	{/if}
 
 	<div class="flex flex-wrap items-end gap-4">
@@ -268,176 +219,39 @@
 			<Button icon={icons.plus} onclick={add}>Add target</Button>
 		</EmptyState>
 	{:else if view === 'card'}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-			{#each targets as target, index (target.id)}
-				<Card class={cn('flex flex-col gap-4', !target.enabled && 'opacity-55')}>
-					<div class="flex items-start justify-between gap-3">
-						<span
-							class="flex size-10 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted"
-						>
-							<iconify-icon icon={deliveryIcon(target.type)} width="20" height="20" class="block"
-							></iconify-icon>
-						</span>
-						<Switch
-							label="Enabled"
-							bind:checked={() => target.enabled, (enabled) => toggleEnabled(index, enabled)}
-						/>
-					</div>
-
-					<div class="flex min-w-0 flex-col gap-1">
-						<span class="truncate text-fc-sm font-semibold text-fc-fg">{target.name}</span>
-						<span class="text-fc-xs text-fc-fg-muted">{targetLabel(target.type)}</span>
-					</div>
-
-					{#if isSilent(target)}
-						<Badge tone="warning" title="Attach a provider or a tag, or this target receives nothing."
-							>No source attached</Badge
-						>
-					{:else}
-						<span class="text-fc-xs text-fc-fg-muted">{routingSummary(target)}</span>
-					{/if}
-
-					<TargetHealthRow
-						health={health[target.id]}
-						checking={checkingId === target.id}
-						{cooldown}
-						onCheck={() => checkNow(target)}
-					/>
-
-					<div class="mt-auto flex items-center gap-2">
-						<Button variant="outline" size="sm" icon={icons.edit} onclick={() => open(index)}>
-							Edit
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							icon={icons.dashboard}
-							href={`/targets/${target.id}`}
-							title="Activity"
-							aria-label={`Activity for ${target.name}`}
-						/>
-						<Button
-							variant="ghost-danger"
-							size="sm"
-							icon={icons.remove}
-							onclick={() => askRemove(target)}
-							title="Delete"
-							aria-label={`Delete ${target.name}`}
-							class="ml-auto"
-						/>
-					</div>
-				</Card>
-			{/each}
-		</div>
+		<DeliveryTargetCards
+			{targets}
+			{health}
+			{checkingId}
+			{cooldown}
+			onToggle={toggleEnabled}
+			onOpen={open}
+			onCheck={checkNow}
+			onRemove={askRemove}
+		/>
 	{:else}
-		<Table>
-			<thead>
-				<tr>
-					<th scope="col">Target</th>
-					<th scope="col">Type</th>
-					<th scope="col">Routing</th>
-					<th scope="col">Health</th>
-					<th scope="col"><span class="sr-only">Actions</span></th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each targets as target, index (target.id)}
-					<tr class={cn(!target.enabled && 'opacity-55')}>
-						<td>
-							<div class="flex min-w-0 items-center gap-3">
-								<iconify-icon
-									icon={deliveryIcon(target.type)}
-									width="18"
-									height="18"
-									class="block shrink-0"
-								></iconify-icon>
-								<!-- The switch is labelled with the target's own name, so the control and the
-								     row's identity are one thing rather than a column of "Enabled". -->
-								<Switch
-									label={target.name}
-									bind:checked={() => target.enabled, (enabled) => toggleEnabled(index, enabled)}
-									class="min-w-0 font-semibold"
-								/>
-							</div>
-						</td>
-						<td class="text-fc-fg-muted">{targetLabel(target.type)}</td>
-						<td>
-							{#if isSilent(target)}
-								<Badge
-									tone="warning"
-									title="Attach a provider or a tag, or this target receives nothing."
-									>No source attached</Badge
-								>
-							{:else}
-								<span class="text-fc-fg-muted">{routingSummary(target)}</span>
-							{/if}
-						</td>
-						<td class="min-w-64">
-							<TargetHealthRow
-								health={health[target.id]}
-								checking={checkingId === target.id}
-								{cooldown}
-								onCheck={() => checkNow(target)}
-							/>
-						</td>
-						<td>
-							<div class="flex items-center justify-end gap-1">
-								<Button variant="ghost" size="sm" icon={icons.edit} onclick={() => open(index)}>
-									Edit
-								</Button>
-								<Button
-									variant="ghost"
-									size="sm"
-									icon={icons.dashboard}
-									href={`/targets/${target.id}`}
-									title="Activity"
-									aria-label={`Activity for ${target.name}`}
-								/>
-								<Button
-									variant="ghost-danger"
-									size="sm"
-									icon={icons.remove}
-									onclick={() => askRemove(target)}
-									title="Delete"
-									aria-label={`Delete ${target.name}`}
-								/>
-							</div>
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</Table>
+		<DeliveryTargetTable
+			{targets}
+			{health}
+			{checkingId}
+			{cooldown}
+			onToggle={toggleEnabled}
+			onOpen={open}
+			onCheck={checkNow}
+			onRemove={askRemove}
+		/>
 	{/if}
 </div>
 
-<!-- The editor works on a detached clone: nothing the drawer touches reaches the settings
-     document until commit() writes it back and saves. -->
-<Drawer
+<DeliveryEditorDrawer
 	bind:open={drawerOpen}
-	showClose
-	title={editing ? `Edit ${editing.name}` : 'Edit target'}
-	description={editing ? targetLabel(editing.type) : undefined}
->
-	{#if editing}
-		<DeliveryEditorFields
-			bind:target={editing}
-			{providers}
-			availableTags={dashboard.availableTags}
-			{tones}
-		/>
-	{/if}
-
-	{#snippet footer()}
-		<div class="flex flex-wrap justify-end gap-2">
-			<Button variant="outline" icon="solar:plain-linear" onclick={sendTest} disabled={testing}>
-				{testing ? 'Sending…' : 'Send a test'}
-			</Button>
-			<Button icon={icons.check} onclick={commit} disabled={dashboard.saving}>
-				{dashboard.saving ? 'Saving…' : 'Save'}
-			</Button>
-		</div>
-	{/snippet}
-</Drawer>
+	bind:target={editing}
+	{providers}
+	availableTags={dashboard.availableTags}
+	{tones}
+	saving={dashboard.saving}
+	onSave={commit}
+/>
 
 <ConfirmModal
 	bind:open={confirmOpen}
