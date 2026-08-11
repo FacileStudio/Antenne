@@ -135,15 +135,29 @@ An app never receives its own emissions back.
 
 ## Authentication
 
-Antenne owns its users and sessions and has no OIDC. The implementation sits behind
-`auth.Authenticator`; handlers read an `authcontext.Identity` and never see a cookie, a token
-or a user row. Replacing the implementation with the suite's shared auth package changes no
-handler.
+Antenne runs on `porte`, the suite's auth kit, and keeps only what porte has no opinion about:
+what an Antenne user is, and how the instance seeds its first account. `auth.Store` implements
+`porte.UserStore` over Antenne's own `users` table — porte/pg's `porte_users` is deliberately
+unused, because `users` is referenced across this codebase and carries the role.
+`auth.RequireAuth` wraps porte's middleware and hydrates an `authcontext.Identity` from that
+table; handlers read the Identity and never see a cookie, a token or a user row.
 
-Session tokens are opaque random values, stored only as a SHA-256 hash, so a database leak
-does not hand over live sessions. `ANTENNE_ADMIN_PASSWORD` remains the source of truth for the
-bootstrap account: changing it and restarting re-seeds the hash and revokes that user's
-sessions, which is the recovery path.
+Session tokens are opaque random values stored only as a SHA-256 hash, so a database leak does
+not hand over live sessions. `ANTENNE_ADMIN_PASSWORD` remains the source of truth for the
+bootstrap account: changing it and restarting re-hashes the credential into `porte_identities`
+as argon2id and revokes that account's sessions, which is the recovery path.
+
+**Every account is an administrator.** Antenne has one tier — the dashboard holds the provider
+credentials, the delivery secrets and the pool secret, and there is no view of it that is safe
+for someone who should not have all three. Who may sign in through SSO is therefore Authentik's
+decision, expressed as a group binding on the `antenne` application; an application with no
+binding is open to every Authentik user.
+
+**There is no open mode.** Booting with neither `ANTENNE_ADMIN_PASSWORD` nor `OIDC_ISSUER` is a
+refusal in every environment. Antenne used to return a synthetic admin to every caller when no
+password was set, which meant a local instance served its whole API to anyone who could reach
+the port — and any auth assertion written against such an instance passed for reasons that had
+nothing to do with the credential.
 
 ## URL layout
 
