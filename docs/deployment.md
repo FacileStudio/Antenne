@@ -25,7 +25,7 @@ docker compose up -d
 ```
 
 Two services: `postgres` and `app`. `POSTGRES_PASSWORD`, `ANTENNE_ADMIN_PASSWORD` and
-`ANTENNE_SESSION_SECRET` use the `${VAR:?message}` form, so an unset one fails the compose file
+`PUBLIC_URL` use the `${VAR:?message}` form, so an unset one fails the compose file
 loudly instead of booting an open dashboard with a Postgres nobody can authenticate to.
 
 `app` waits on `service_healthy`, so it does not race the database on a cold start.

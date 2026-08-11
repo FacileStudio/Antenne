@@ -15,14 +15,22 @@ Read once at startup. Every error `env.Load` returns is a reason not to boot.
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | `info` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins. `ALLOWED_ORIGINS`, `DOMAINS`, `DOMAIN`, `CORS_ORIGINS`, `TRUSTED_ORIGINS` and `CLIENT_ORIGIN` remain accepted fallbacks | unset denies every cross-origin caller |
 | `ANTENNE_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
-| `ANTENNE_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open to anyone who can reach the server | — |
-| `ANTENNE_SESSION_SECRET` | Required in production so sessions survive a restart | — |
+| `ANTENNE_ADMIN_PASSWORD` | The bootstrap password login. Required unless `OIDC_ISSUER` is set — with neither, Antenne refuses to boot | — |
+| `PUBLIC_URL` | The https origin Antenne is reached on. porte derives the cookie's `Secure` flag and `__Host-` prefix from it | **required in production** |
+| `OIDC_ISSUER` | Enables single sign-on against Authentik. Trailing slash included | unset disables SSO |
+| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | The Authentik provider's credentials | — |
+| `OIDC_REDIRECT_URL` | Callback registered on the provider | `PUBLIC_URL` + `/api/auth/oidc/callback` |
+| `OIDC_SUCCESS_URL` | Where the browser lands after a successful login | `PUBLIC_URL` + `/` |
+| `SSO_ONLY` | Suppresses the password route entirely — it is not registered rather than rejected | `false` |
 | `ANTENNE_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set for anything to ship | — |
 
-`APP_ENV=production` refuses to start without `ANTENNE_ADMIN_PASSWORD` and `ANTENNE_SESSION_SECRET`.
-That is the one place `APP_ENV` changes behaviour, and it fails closed.
+Antenne refuses to boot with neither `ANTENNE_ADMIN_PASSWORD` nor `OIDC_ISSUER`, in every
+environment. There is no open mode: it used to serve a synthetic admin to every caller when no
+password was set, which made any auth assertion written against such an instance worthless.
+`APP_ENV=production` additionally requires `PUBLIC_URL` to be an https origin, because that is
+where the session cookie's `Secure` attribute comes from. Both fail closed.
 
 ### PORT is not tronc's default
 

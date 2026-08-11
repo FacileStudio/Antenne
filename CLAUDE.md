@@ -31,7 +31,7 @@ Run from the repository root. Development configuration comes from
 
 `casier.yml` pins this repo to the `antenne` project and its `dev` environment, so `mise run
 dev` wraps the API in `casier run` and the process starts with `DATABASE_URL`,
-`ANTENNE_ADMIN_PASSWORD`, `ANTENNE_SESSION_SECRET` and `ANTENNE_SECRET` already in its environment.
+`ANTENNE_ADMIN_PASSWORD`, `PUBLIC_URL` and `ANTENNE_SECRET` already in its environment.
 `casier run` is network-first with a last-known-good cache, so a Casier outage falls back to
 the previously fetched values and says so on stderr. Add a value with
 `casier secrets set -p antenne -e dev KEY value`.
@@ -127,20 +127,35 @@ The URL layout is not uniform, and that is deliberate — see the conventions be
 
 ## Authentication
 
-Antenne owns a `users` table, an opaque session token hashed at rest, and a password login. No
-OIDC and no shared identity engine yet — that is deliberate, and the whole implementation
-sits behind one interface so it can be replaced without touching a handler:
+Antenne runs on [`porte`](https://github.com/FacileStudio/porte), the suite's auth kit. porte
+owns the credential — `porte_identities`, `porte_sessions`, one hashed opaque token, an
+`HttpOnly` `__Host-` cookie for the dashboard and a bearer token for the CLI. Antenne keeps
+what porte has no opinion about: what a user is, and who bootstraps the instance.
 
-- `auth.Authenticator` is the seam. `auth.Service` is Antenne's implementation of it.
-- `auth.RequireAuth(authenticator)` is the only thing routers use.
-- Handlers read `authcontext.Identity` and never see a cookie, a token or a user row.
-
-When the suite's unified auth package lands, it supplies a new `Authenticator` and its own
-login routes. `Identity` keeps its shape — `UserID` / `Email` / `Name` / `Role` / `ClientIP`,
-with the suite's `USER` / `ADMIN` hierarchy — so nothing downstream changes.
-
-`ANTENNE_ADMIN_PASSWORD` stays the source of truth for the bootstrap account: changing it and
-restarting re-seeds the password and revokes that user's sessions, which is the recovery path.
+- `auth.Store` implements `porte.UserStore` and `porte.PasswordUserStore` over Antenne's own
+  `users` table. porte/pg's `porte_users` is deliberately **not** used — `users` is referenced
+  across this codebase and carries the role.
+- `auth.RequireAuth(sessions, resolver)` wraps porte's middleware and hydrates
+  `authcontext.Identity` from `users`. porte hands on a user id and nothing else.
+- Handlers still read `authcontext.Identity` and never see a cookie, a token or a user row.
+- **There is no open mode.** Booting with neither `ANTENNE_ADMIN_PASSWORD` nor `OIDC_ISSUER` is
+  a refusal, in every environment. Antenne used to serve a synthetic admin to every caller when
+  no password was set, which made any auth assertion written against such an instance worthless.
+- **The password is re-seeded, never migrated.** `ANTENNE_ADMIN_PASSWORD` stays the source of
+  truth: changing it and restarting re-hashes the credential into `porte_identities` and revokes
+  that account's sessions. Do **not** copy Journal's `adoptExistingPasswords` — Antenne's old
+  digests were bcrypt over a prehash and no argon2 verifier accepts them.
+- **Every account is an administrator**, because Antenne has one tier: the dashboard holds the
+  provider credentials, the delivery secrets and the pool secret. Who may sign in through SSO is
+  therefore Authentik's decision, expressed as a group binding on the `antenne` application —
+  an application with no binding is open to every Authentik user.
+- **The client must send `X-Facile-CSRF` on every mutating request.** porte reads the cookie
+  before the `Authorization` header and refuses a cookie-authenticated write without it. Forget
+  it and every read succeeds while every write 403s, which reads as "the app works, saving is
+  broken". `backend.ts` sets it for any method outside GET/HEAD/OPTIONS. Verify with a browser,
+  never with a bearer token — bearer is exempt from the rule by construction.
+- `/api/events/stream` is an `EventSource`, which can set no headers, so it is cookie-only
+  forever. It is a GET, so the CSRF rule does not reach it.
 
 ## Environment Variables
 
@@ -152,8 +167,11 @@ restarting re-seeds the password and revokes that user's sessions, which is the 
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | `info` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins, read through `tronc/env`. `ALLOWED_ORIGINS` and `DOMAINS` remain accepted fallbacks | unset denies every cross-origin caller |
 | `ANTENNE_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
-| `ANTENNE_ADMIN_PASSWORD` | Enables login. Unset leaves the dashboard and its API open | — (required in production) |
-| `ANTENNE_SESSION_SECRET` | Required in production so sessions survive a restart | — |
+| `ANTENNE_ADMIN_PASSWORD` | The bootstrap password login. Required unless `OIDC_ISSUER` is set | — |
+| `PUBLIC_URL` | The https origin Antenne is reached on; porte reads the cookie's `Secure` flag and `__Host-` prefix off it | **required in production** |
+| `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | Single sign-on against Authentik. Unset disables SSO | — |
+| `OIDC_REDIRECT_URL` / `OIDC_SUCCESS_URL` | Default to `PUBLIC_URL` + `/api/auth/oidc/callback` and `PUBLIC_URL` + `/` | derived |
+| `SSO_ONLY` | Suppresses the password route entirely | `false` |
 | `ANTENNE_SECRET` | Shared secret pool clients register with. The dashboard value wins | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set | — |
@@ -176,6 +194,6 @@ docker compose up -d
 ```
 
 Compose brings up Postgres and the app. `POSTGRES_PASSWORD`, `ANTENNE_ADMIN_PASSWORD` and
-`ANTENNE_SESSION_SECRET` are required and fail the compose file loudly when unset. The container
+`PUBLIC_URL` are required and fail the compose file loudly when unset. The container
 probes itself with `/antenne healthcheck`, which answers before any config is read, so a missing
 `DATABASE_URL` cannot break the probe.

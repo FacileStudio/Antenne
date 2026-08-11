@@ -40,7 +40,7 @@ docker compose up -d
 ```
 
 Compose starts Postgres and the app. `POSTGRES_PASSWORD`, `ANTENNE_ADMIN_PASSWORD` and
-`ANTENNE_SESSION_SECRET` are required. The service listens on `9090` and serves the API, the
+`PUBLIC_URL` are required. The service listens on `9090` and serves the API, the
 dashboard, the health check, the webhook receivers and the pool from that one port. Compose
 uses `expose` rather than `ports`, so publish the port or put Traefik in front of it.
 
@@ -77,7 +77,8 @@ per-user account, so `facile login antenne` asks for that password.
 | `DATABASE_URL` | Postgres connection string. Required |
 | `PORT` | HTTP port for the API, dashboard, health check, webhooks and pool. Default `9090` |
 | `ANTENNE_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Required in production |
-| `ANTENNE_SESSION_SECRET` | Keeps sessions alive across a restart. Required in production |
+| `PUBLIC_URL` | The https origin Antenne is reached on. Required in production |
+| `OIDC_ISSUER` | Enables single sign-on against Authentik. Unset runs on the password alone |
 | `ANTENNE_SECRET` | Shared secret apps present when registering with the pool |
 | `HEARTBEAT_URL` | Dead man's switch. Empty disables it. See below |
 | `HEARTBEAT_INTERVAL` | How often to ping it. Default `5m`, rejected under `1m` |

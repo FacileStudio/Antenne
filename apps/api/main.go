@@ -16,6 +16,10 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Journal/sdk/journal"
+	"github.com/FacileStudio/porte/local"
+	"github.com/FacileStudio/porte/oidc"
+	portepg "github.com/FacileStudio/porte/pg"
+	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/apiref"
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/health"
@@ -130,13 +134,66 @@ func run() int {
 		return 1
 	}
 
-	authService, err := auth.NewService(db, appLogger, auth.Config{
-		AdminUsername: cfg.AdminUsername,
-		AdminPassword: cfg.AdminPassword,
+	// One manager over one session table. Both kits issue through it, so a
+	// password login and a federated one are the same row, the same cookie and
+	// the same logout.
+	identityStore := portepg.New(sqlDB)
+	userStore := auth.NewStore(db)
+
+	sessions, err := session.New(cfg.Porte, session.Deps{
+		Sessions: identityStore.Sessions(),
+		Logger:   appLogger,
 	})
 	if err != nil {
+		appLogger.Error("sessions", slog.Any("error", err))
+		return 1
+	}
+
+	authService := auth.NewService(db, appLogger, auth.Config{
+		AdminUsername: cfg.AdminUsername,
+		AdminPassword: cfg.AdminPassword,
+	}, userStore, identityStore.Identities(), sessions)
+
+	// oidc.New is the boot path: it performs discovery, so an unreachable or
+	// half-configured issuer fails here rather than on somebody's first login
+	// attempt. A kit with no OIDC_ISSUER is not an error — it still serves
+	// /auth/config and authenticates every session this app issues.
+	oidcKit, err := oidc.New(ctx, cfg.Porte, oidc.Deps{
+		Users:       userStore,
+		Identities:  identityStore.Identities(),
+		Sessions:    sessions,
+		Codes:       identityStore.LoginCodes(),
+		Logger:      appLogger,
+		ConfigExtra: authService.ConfigExtra(),
+	})
+	if err != nil {
+		appLogger.Error("oidc", slog.Any("error", err))
+		return 1
+	}
+
+	// Registration stays closed. The only local account is the bootstrap one
+	// and it is seeded from the environment, so an open sign-up form on the
+	// suite's event bus would be a way in that nobody asked for.
+	passwords, err := local.New(local.Config{AllowRegistration: false}, local.Deps{
+		Users:      userStore,
+		Identities: identityStore.Identities(),
+		Sessions:   sessions,
+		Logger:     appLogger,
+		Count:      userStore.CountUsers,
+	})
+	if err != nil {
+		appLogger.Error("password login", slog.Any("error", err))
+		return 1
+	}
+
+	if err := authService.EnsureAdmin(ctx); err != nil {
 		appLogger.Error("auth", slog.Any("error", err))
 		return 1
+	}
+	if oidcKit.Enabled() {
+		appLogger.Info("single sign-on enabled",
+			slog.String("issuer", cfg.Porte.Issuer),
+			slog.Bool("sso_only", cfg.Porte.SSOOnly))
 	}
 
 	store, err := settings.NewStore(db, appLogger, settings.Defaults(cfg.Port, cfg.Timeout))
@@ -191,7 +248,7 @@ func run() int {
 		busServer.SetSecret(busSecret(cfg, next))
 	})
 
-	router := buildRouter(cfg, appLogger, sqlDB, application, authService, spaceService, busServer)
+	router := buildRouter(cfg, appLogger, sqlDB, application, authService, sessions, oidcKit, passwords, spaceService, busServer)
 	// /dashboard is a legacy redirect, not API surface.
 	if missing := apiref.Undocumented(router, refConfig(), "/dashboard"); len(missing) > 0 {
 		appLogger.Warn("routes are missing from the API reference", slog.Any("routes", missing))
@@ -244,6 +301,9 @@ func buildRouter(
 	sqlDB *sql.DB,
 	application *app.App,
 	authService *auth.Service,
+	sessions *session.Manager,
+	oidcKit *oidc.Kit,
+	passwords *local.Kit,
 	spaceService *spaces.Service,
 	busServer *bus.Server,
 ) chi.Router {
@@ -288,12 +348,22 @@ func buildRouter(
 			})
 		})
 
-		authService.RegisterPublicRoutes(protected)
+		// porte owns the credentials: the logout, the whole OIDC flow and
+		// /auth/config come from the kits, mounted before the guard because
+		// they are how a caller acquires the credential the guard demands.
+		sessions.Mount(protected)
+		oidcKit.Mount(protected)
+
+		// Under SSO_ONLY the password route is not registered rather than
+		// rejected, so there is no endpoint left to probe for an account.
+		if authService.PasswordRequired() && !cfg.Porte.SSOOnly {
+			passwords.Mount(protected.With(auth.ThrottleLogins()))
+		}
 
 		busServer.RegisterRoutes(protected)
 
 		protected.Group(func(sessioned chi.Router) {
-			sessioned.Use(auth.RequireAuth(authService))
+			sessioned.Use(auth.RequireAuth(sessions, authService))
 			authService.RegisterRoutes(sessioned)
 			api.RegisterRoutes(sessioned)
 			spaceService.RegisterRoutes(sessioned)
@@ -335,7 +405,7 @@ func maintenance(ctx context.Context, log *slog.Logger, authService *auth.Servic
 		case <-ctx.Done():
 			return
 		case <-hourly.C:
-			authService.PurgeExpiredSessions()
+			authService.PurgeExpiredSessions(ctx)
 			eventLog.Prune()
 		case <-daily.C:
 			log.Debug("running pool retention")

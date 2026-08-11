@@ -4,99 +4,95 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Antenne/apps/api/internal/ratelimit"
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
-	"github.com/go-chi/chi/v5"
 )
-
-type loginRequest struct {
-	Password string `json:"password"`
-}
 
 type sessionResponse struct {
 	Authenticated    bool   `json:"authenticated"`
 	PasswordRequired bool   `json:"passwordRequired"`
 	Username         string `json:"username"`
+	Email            string `json:"email"`
 }
 
-// RegisterPublicRoutes mounts the routes that must answer before authentication.
-func (s *Service) RegisterPublicRoutes(router chi.Router) {
-	router.Post("/login", s.handleLogin)
-	router.Post("/logout", s.handleLogout)
-	router.Get("/session/public", s.handlePublicSession)
-}
-
-// RegisterRoutes mounts the routes that require a caller.
+// RegisterRoutes mounts the routes porte does not own.
+//
+// The login, the logout and the whole OIDC flow come from the kits. What is
+// left is the session read the dashboard polls, which answers from Antenne's
+// own users table.
 func (s *Service) RegisterRoutes(router chi.Router) {
 	router.Get("/session", s.handleSession)
 }
 
-func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if !s.PasswordRequired() {
-		httpjson.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
-		return
+// ConfigExtra adds Antenne's own keys to porte's GET /auth/config.
+//
+// porte serves sso_only and oidc_enabled there and owns the route, so an app
+// with a third key either loses it or registers the path twice and chi panics
+// at boot. The login page draws its password form on password_required, which
+// is false on an instance that only federates.
+func (s *Service) ConfigExtra() func() map[string]any {
+	return func() map[string]any {
+		return map[string]any{
+			"password_required": s.PasswordRequired(),
+			"username":          s.cfg.AdminUsername,
+			"email":             s.AdminEmail(),
+		}
 	}
-
-	var body loginRequest
-	if err := httpjson.DecodeJSON(w, r, &body); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid("Invalid JSON body."))
-		return
-	}
-
-	token, expires, err := s.Login(authcontext.ClientIP(r), body.Password)
-	if err != nil {
-		httpjson.WriteError(w, err)
-		return
-	}
-
-	http.SetCookie(w, s.buildCookie(r, token, expires))
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-func (s *Service) handleLogout(w http.ResponseWriter, r *http.Request) {
-	s.Logout(r)
-	http.SetCookie(w, s.buildCookie(r, "", time.Unix(0, 0)))
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-// handlePublicSession lets the login page ask whether a password is needed at
-// all without holding one. It never reports an authenticated caller.
-func (s *Service) handlePublicSession(w http.ResponseWriter, r *http.Request) {
-	identity, err := s.Authenticate(r)
-	httpjson.WriteJSON(w, http.StatusOK, sessionResponse{
-		Authenticated:    err == nil && identity.IsAuthenticated(),
-		PasswordRequired: s.PasswordRequired(),
-		Username:         s.cfg.AdminUsername,
-	})
 }
 
 func (s *Service) handleSession(w http.ResponseWriter, r *http.Request) {
+	identity := authcontext.From(r)
 	httpjson.WriteJSON(w, http.StatusOK, sessionResponse{
-		Authenticated:    true,
+		Authenticated:    identity.IsAuthenticated(),
 		PasswordRequired: s.PasswordRequired(),
 		Username:         s.cfg.AdminUsername,
+		Email:            identity.Email,
 	})
 }
 
-// buildCookie marks the cookie Secure whenever the request reached us over TLS,
-// including through Traefik, which terminates it and forwards plain HTTP.
-func (s *Service) buildCookie(r *http.Request, value string, expires time.Time) *http.Cookie {
-	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+// ThrottleLogins keeps the per-address login throttle porte does not carry.
+//
+// porte equalises the timing of a wrong password and an unknown address, which
+// closes the enumeration oracle but does nothing about volume: without this a
+// single-account appliance with one guessable address is an offline dictionary
+// attack served over HTTP. Five failures per address per ten minutes is what
+// Antenne enforced before porte and it is unchanged.
+//
+// The bucket is keyed on the client address, and the outcome is read off the
+// status code because the kit owns the handler: anything but a 2xx from a login
+// attempt counts against it, and a success clears it.
+func ThrottleLogins() func(http.Handler) http.Handler {
+	limiter := ratelimit.New(5, 10*time.Minute, 10*time.Minute)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			clientIP := authcontext.ClientIP(r)
+			if limiter.Blocked(clientIP) {
+				httpjson.WriteError(w, apierrors.RateLimited("too many attempts"))
+				return
+			}
+			recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+			next.ServeHTTP(recorder, r)
+			if recorder.status >= http.StatusBadRequest {
+				limiter.Fail(clientIP)
+				return
+			}
+			limiter.Reset(clientIP)
+		})
+	}
+}
 
-	cookie := &http.Cookie{
-		Name:     SessionCookie,
-		Value:    value,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  expires,
-	}
-	if value == "" {
-		cookie.MaxAge = -1
-	} else {
-		cookie.MaxAge = int(time.Until(expires).Seconds())
-	}
-	return cookie
+// statusRecorder remembers the status a handler wrote, so the throttle can tell
+// a refused login from an accepted one without duplicating the kit's logic.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
 }

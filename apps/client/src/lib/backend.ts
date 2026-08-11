@@ -7,6 +7,7 @@ import type {
 	BusStats,
 	TargetCheckResult,
 	SessionPayload,
+	AuthConfigPayload,
 	SettingsPayload,
 	Space,
 	SpaceMember,
@@ -75,10 +76,38 @@ function retryAfterSeconds(response: Response): number {
 	return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 0;
 }
 
+/**
+ * Methods a browser can be tricked into issuing cross-site without script.
+ * Everything else has to carry the CSRF header.
+ */
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/**
+ * porte reads the session cookie before the Authorization header, and refuses a
+ * mutating request authenticated by cookie unless this header is present. Any
+ * value counts — the header's presence is the whole signal, because a browser
+ * will not attach it to a simple cross-site request. There is no token to
+ * distribute and none to rotate.
+ *
+ * Sending it on every write rather than only where it is required is what keeps
+ * the failure mode from being invisible: without it every read succeeds and
+ * every write 403s, which reads as "the app works, saving is broken" and cost
+ * two other suite apps several hours in production.
+ */
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+	const method = (init?.method ?? 'GET').toUpperCase();
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+		...((init?.headers as Record<string, string>) ?? {})
+	};
+	if (!SAFE_METHODS.has(method)) {
+		headers['X-Facile-CSRF'] = '1';
+	}
+
 	const response = await fetch(`/api${path}`, {
 		...init,
-		headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) }
+		credentials: 'include',
+		headers
 	});
 
 	const body = await response.text();
@@ -114,11 +143,20 @@ export async function redirectToLogin() {
 
 export const api = {
 	session: () => request<SessionPayload>('/session'),
-	publicSession: () => request<SessionPayload>('/session/public'),
 
-	login: (password: string) =>
-		request<{ ok: boolean }>('/login', { method: 'POST', body: JSON.stringify({ password }) }),
-	logout: () => request<{ ok: boolean }>('/logout', { method: 'POST', body: '{}' }),
+	/**
+	 * What this instance accepts, before holding any credential. porte owns the
+	 * route and serves sso_only and oidc_enabled; password_required, username
+	 * and email are Antenne's own additions to it.
+	 */
+	authConfig: () => request<AuthConfigPayload>('/auth/config'),
+
+	login: (email: string, password: string) =>
+		request<{ token?: string }>('/auth/login', {
+			method: 'POST',
+			body: JSON.stringify({ email, password })
+		}),
+	logout: () => request<{ logged_out: boolean }>('/auth/logout', { method: 'POST', body: '{}' }),
 
 	settings: () => request<SettingsPayload>('/settings'),
 	saveSettings: (settings: AppSettings) =>

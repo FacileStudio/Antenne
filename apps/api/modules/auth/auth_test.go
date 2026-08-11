@@ -1,55 +1,80 @@
 package auth
 
 import (
-	"bytes"
-	"strings"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
 )
 
-// A long passphrase has to work. bcrypt refuses anything past 72 bytes, and the
-// deployed ANTENNE_ADMIN_PASSWORD is a hyphenated word list well past that — which
-// crash-looped the service on the first boot after the move off HMAC.
-func TestALongPassphraseCanBeHashedAndVerified(t *testing.T) {
-	password := strings.Repeat("correct-horse-battery-staple-", 8)
-	if len(password) <= 72 {
-		t.Fatalf("the fixture is only %d bytes, which does not exercise the limit", len(password))
-	}
-
-	hash, err := bcrypt.GenerateFromPassword(prehash(password), bcrypt.DefaultCost)
-	if err != nil {
-		t.Fatalf("hashing a %d-byte password failed: %v", len(password), err)
-	}
-	if err := bcrypt.CompareHashAndPassword(hash, prehash(password)); err != nil {
-		t.Errorf("the password did not verify against its own hash: %v", err)
+// TestABareUsernameBecomesAnAddress covers the one translation porte forced.
+// Antenne is configured with a login label and porte/local resolves an account
+// by address, so the two have to agree on the derivation — the seed writes the
+// identity under this address and the login form looks it up under it.
+func TestABareUsernameBecomesAnAddress(t *testing.T) {
+	for _, testCase := range []struct {
+		username string
+		want     string
+	}{
+		{"admin", "admin@antenne.local"},
+		{"Admin", "admin@antenne.local"},
+		{"ops@facile.studio", "ops@facile.studio"},
+		{"  ops@facile.studio  ", "ops@facile.studio"},
+	} {
+		if got := bootstrapEmail(testCase.username); got != testCase.want {
+			t.Errorf("bootstrapEmail(%q) = %q, want %q", testCase.username, got, testCase.want)
+		}
 	}
 }
 
-// Two passwords sharing their first 72 bytes must not be interchangeable. This
-// is what the prehash buys over passing the password straight to bcrypt.
-func TestPasswordsAreNotTruncated(t *testing.T) {
-	shared := strings.Repeat("a", 72)
-	hash, err := bcrypt.GenerateFromPassword(prehash(shared+"-one"), bcrypt.DefaultCost)
-	if err != nil {
-		t.Fatalf("hash: %v", err)
+// TestTheLoginThrottleCountsRefusalsAndForgivesSuccess pins the behaviour that
+// moved when porte took the login handler.
+//
+// The throttle reads the outcome off the status code now, because the handler
+// belongs to the kit. A test matters here precisely because that indirection is
+// easy to get backwards: a bucket that counted successes would lock out the
+// only account after five ordinary logins.
+func TestTheLoginThrottleCountsRefusalsAndForgivesSuccess(t *testing.T) {
+	var status int
+	throttled := ThrottleLogins()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(status)
+	}))
+
+	attempt := func() int {
+		request := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+		request.Header.Set("X-Forwarded-For", "203.0.113.7")
+		recorder := httptest.NewRecorder()
+		throttled.ServeHTTP(recorder, request)
+		return recorder.Code
 	}
 
-	if bcrypt.CompareHashAndPassword(hash, prehash(shared+"-two")) == nil {
-		t.Error("a password differing only past byte 72 was accepted")
+	status = http.StatusUnauthorized
+	for i := range 5 {
+		if got := attempt(); got != http.StatusUnauthorized {
+			t.Fatalf("attempt %d: got %d, want 401", i+1, got)
+		}
+	}
+	if got := attempt(); got != http.StatusTooManyRequests {
+		t.Fatalf("the sixth refusal got %d, want 429", got)
+	}
+
+	status = http.StatusOK
+	request := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+	request.Header.Set("X-Forwarded-For", "198.51.100.4")
+	recorder := httptest.NewRecorder()
+	throttled.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("a different address got %d, want 200 — the bucket is not per-address", recorder.Code)
 	}
 }
 
-// The digest is base64-encoded rather than raw because bcrypt stops at the
-// first NUL byte, and a raw SHA-256 digest contains one often enough to matter.
-func TestThePrehashCarriesNoNulByte(t *testing.T) {
-	for _, password := range []string{"", "hunter2", strings.Repeat("x", 500), "é🔑"} {
-		digest := prehash(password)
-		if bytes.IndexByte(digest, 0) >= 0 {
-			t.Errorf("prehash(%q) contains a NUL byte", password)
-		}
-		if len(digest) > 72 {
-			t.Errorf("prehash(%q) is %d bytes, past bcrypt's limit", password, len(digest))
-		}
+// TestAnAnonymousContextIsNotAuthenticated guards the zero value, which is what
+// a handler sees when the middleware chain is misassembled. It must never read
+// as a caller.
+func TestAnAnonymousContextIsNotAuthenticated(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/api/session", nil)
+	if identity := authcontext.From(request); identity.IsAuthenticated() || identity.IsAdmin() {
+		t.Fatalf("the zero identity reads as authenticated=%v admin=%v", identity.IsAuthenticated(), identity.IsAdmin())
 	}
 }

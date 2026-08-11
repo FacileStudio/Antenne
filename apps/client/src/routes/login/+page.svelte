@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import AntenneLogo from '$lib/components/AntenneLogo.svelte';
+	import { page } from '$app/state';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 
@@ -17,18 +18,31 @@
 	const primaryButtonClass =
 		'inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50';
 
+	let email = $state('');
 	let password = $state('');
 	let error = $state('');
 	let submitting = $state(false);
+	let passwordRequired = $state(false);
+	let ssoEnabled = $state(false);
 
-	// An instance with no admin password configured has nothing to log into.
+	/*
+	 * A failed single sign-on lands back here as a redirect carrying the reason
+	 * in ?error, because the callback is a browser navigation and writing a JSON
+	 * error envelope into somebody's address bar is the app asking a human to
+	 * read a wire format. This block sits outside every conditional below on
+	 * purpose: the one deployment that can only ever produce this error is an
+	 * SSO-only one, and gating the message on the password form would be the
+	 * deployment that shows nothing.
+	 */
+	let ssoError = $derived(page.url.searchParams.get('error') ?? '');
+
 	$effect(() => {
 		void api
-			.publicSession()
-			.then((session) => {
-				if (!session.passwordRequired || session.authenticated) {
-					void goto('/providers', { replaceState: true });
-				}
+			.authConfig()
+			.then((config) => {
+				passwordRequired = config.password_required && !config.sso_only;
+				ssoEnabled = config.oidc_enabled;
+				email = config.email;
 			})
 			.catch(() => {});
 	});
@@ -39,7 +53,7 @@
 		error = '';
 
 		try {
-			await api.login(password);
+			await api.login(email, password);
 			dashboard.loaded = false;
 			await goto('/providers', { replaceState: true });
 		} catch (cause) {
@@ -82,28 +96,60 @@
 				Sign in as <strong class="font-medium text-foreground">{dashboard.username}</strong>
 			</p>
 
-			<form class="mt-8 grid gap-4" onsubmit={submit}>
-				<div class="grid gap-1.5">
-					<label class={labelClass} for="password">Password</label>
-					<input
-						id="password"
-						class={inputClass}
-						type="password"
-						bind:value={password}
-						placeholder="••••••••"
-						autocomplete="current-password"
-						required
-					/>
-				</div>
+			{#if ssoError}
+				<p class="mt-6 text-sm text-destructive" role="alert">{ssoError}</p>
+			{/if}
 
-				{#if error}
-					<p class="text-sm text-destructive" role="alert">{error}</p>
+			{#if ssoEnabled}
+				<a href="/api/auth/oidc" class="{primaryButtonClass} mt-8" data-sveltekit-reload>
+					Continue with Facile
+				</a>
+			{/if}
+
+			{#if passwordRequired}
+				{#if ssoEnabled}
+					<div class="my-6 flex items-center gap-3">
+						<span class="h-px flex-1 bg-border"></span>
+						<span class="text-xs text-muted-foreground">or</span>
+						<span class="h-px flex-1 bg-border"></span>
+					</div>
 				{/if}
 
-				<button type="submit" class={primaryButtonClass} disabled={submitting}>
-					{submitting ? 'Signing in…' : 'Sign in'}
-				</button>
-			</form>
+				<form class="grid gap-4 {ssoEnabled ? '' : 'mt-8'}" onsubmit={submit}>
+					<div class="grid gap-1.5">
+						<label class={labelClass} for="email">Email</label>
+						<input
+							id="email"
+							class={inputClass}
+							type="email"
+							bind:value={email}
+							autocomplete="username"
+							required
+						/>
+					</div>
+
+					<div class="grid gap-1.5">
+						<label class={labelClass} for="password">Password</label>
+						<input
+							id="password"
+							class={inputClass}
+							type="password"
+							bind:value={password}
+							placeholder="••••••••"
+							autocomplete="current-password"
+							required
+						/>
+					</div>
+
+					{#if error}
+						<p class="text-sm text-destructive" role="alert">{error}</p>
+					{/if}
+
+					<button type="submit" class={primaryButtonClass} disabled={submitting}>
+						{submitting ? 'Signing in…' : 'Sign in'}
+					</button>
+				</form>
+			{/if}
 		</div>
 	</main>
 </div>

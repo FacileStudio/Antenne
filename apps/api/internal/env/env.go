@@ -5,8 +5,10 @@ package env
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/FacileStudio/porte"
 	troncenv "github.com/FacileStudio/tronc/env"
 )
 
@@ -14,6 +16,12 @@ import (
 // published webhook URLs and the pool clients already point at, so it does not
 // follow troncenv.Core's 8080 default.
 const DefaultPort = 9090
+
+// AuthPrefix is where porte's routes are mounted. They sit under /api with the
+// rest of the dashboard API rather than at the root: unlike the webhook intake
+// and the pool endpoints, nothing third-party has them registered, and the
+// /api subtree is the one that answers an unknown path with JSON.
+const AuthPrefix = "/api"
 
 // Config is the Antenne server configuration.
 //
@@ -26,10 +34,24 @@ type Config struct {
 
 	AdminUsername string
 	AdminPassword string
-	SessionSecret string
 	PoolSecret    string
 	ClientDir     string
 	Timeout       int
+
+	// PublicURL is the origin Antenne is reached on. It exists because porte
+	// derives the Secure attribute and the __Host- cookie prefix from its own
+	// configuration rather than from a proxy header, and it reads that from
+	// the OIDC redirect and success URLs alone. An instance running on the
+	// password login only would therefore have no https anywhere in its
+	// configuration and would issue an unprefixed, non-Secure session cookie
+	// over TLS. This is the value that keeps that from depending on whether
+	// SSO happens to be switched on.
+	PublicURL string
+
+	// Porte is the suite's auth contract: OIDC_ISSUER enables single sign-on,
+	// SSO_ONLY makes it the only way in. Both may be unset, in which case the
+	// bootstrap password below is the only credential.
+	Porte porte.Config
 
 	// HeartbeatURL is an external dead man's switch — healthchecks.io, Dead Man's
 	// Snitch, Grafana OnCall. Empty turns the feature off: it is the only failure
@@ -99,16 +121,47 @@ func Load() (Config, error) {
 		},
 		AdminUsername: troncenv.String("ANTENNE_ADMIN_USERNAME", "admin"),
 		AdminPassword: troncenv.String("ANTENNE_ADMIN_PASSWORD", ""),
-		SessionSecret: troncenv.String("ANTENNE_SESSION_SECRET", ""),
 		PoolSecret:    troncenv.String("ANTENNE_SECRET", ""),
 		ClientDir:     troncenv.String("CLIENT_DIR", "./client"),
 		Timeout:       timeout,
+		PublicURL:     strings.TrimSuffix(troncenv.String("PUBLIC_URL", ""), "/"),
 
 		HeartbeatURL:      troncenv.String("HEARTBEAT_URL", ""),
 		HeartbeatInterval: heartbeatInterval,
 	}
 
+	ssoOnly, err := troncenv.Bool("SSO_ONLY", false)
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg.Porte = porte.Config{
+		Issuer:       troncenv.String("OIDC_ISSUER", ""),
+		ClientID:     troncenv.String("OIDC_CLIENT_ID", ""),
+		ClientSecret: troncenv.String("OIDC_CLIENT_SECRET", ""),
+		RedirectURL:  troncenv.String("OIDC_REDIRECT_URL", cfg.defaultRedirectURL()),
+		SuccessURL:   troncenv.String("OIDC_SUCCESS_URL", cfg.PublicURL+"/"),
+		FailureURL:   troncenv.String("OIDC_FAILURE_URL", ""),
+		ClaimsScope:  troncenv.String("OIDC_CLAIMS_SCOPE", ""),
+		SSOOnly:      ssoOnly,
+	}
+	if err := cfg.Porte.Validate(); err != nil {
+		return Config{}, err
+	}
+
 	return cfg, cfg.validate()
+}
+
+// defaultRedirectURL is the callback Authentik is configured with. Deriving it
+// from PublicURL keeps the two from drifting: the value registered on the
+// provider is the one path porte cannot discover for itself, and an app that
+// spells it a second time in the deployment panel is an app where changing the
+// domain breaks login on the next restart rather than at the next login.
+func (c Config) defaultRedirectURL() string {
+	if c.PublicURL == "" {
+		return ""
+	}
+	return c.PublicURL + AuthPrefix + porte.RouteCallback
 }
 
 // corsOrigins drops schemeless entries. troncenv.CORSOrigins also reads DOMAIN,
@@ -129,12 +182,28 @@ func corsOrigins() []string {
 	return kept
 }
 
+// validate rejects a configuration that leaves no way in, or a way in that
+// cannot be secured.
+//
+// There is no open mode any more. Antenne used to serve a synthetic admin to
+// every caller when no password was set, which made a local run's dashboard and
+// its whole API reachable by anyone who could open the port — and made any auth
+// assertion written against such an instance worthless, because it passed for
+// reasons that had nothing to do with the credential. A missing credential is a
+// refusal to boot in every environment now, not a warning in production.
 func (c Config) validate() error {
-	if c.IsProduction() && c.AdminPassword == "" {
-		return fmt.Errorf("env: APP_ENV=production requires ANTENNE_ADMIN_PASSWORD, otherwise the dashboard and its API are open to anyone who can reach this server")
+	if c.AdminPassword == "" && !c.Porte.Enabled() {
+		return fmt.Errorf("env: set ANTENNE_ADMIN_PASSWORD or OIDC_ISSUER — with neither there is no way to sign in, and Antenne no longer serves an open dashboard")
 	}
-	if c.IsProduction() && c.SessionSecret == "" {
-		return fmt.Errorf("env: APP_ENV=production requires ANTENNE_SESSION_SECRET, otherwise every session dies on restart")
+	if c.Porte.SSOOnly && !c.Porte.Enabled() {
+		return fmt.Errorf("env: SSO_ONLY=true with no OIDC_ISSUER leaves no way to sign in")
+	}
+	if c.IsProduction() && !strings.HasPrefix(strings.ToLower(c.PublicURL), "https://") {
+		// porte reads the Secure attribute and the __Host- cookie prefix off
+		// this value, not off X-Forwarded-Proto, so that a proxy which stops
+		// sending the header downgrades nothing. Left unset in production the
+		// session cookie ships without either.
+		return fmt.Errorf("env: APP_ENV=production requires PUBLIC_URL to be the https origin Antenne is reached on, otherwise the session cookie is issued without Secure")
 	}
 	return nil
 }
