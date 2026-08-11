@@ -28,22 +28,35 @@ Mounted at both prefixes so an external monitor cannot mistake the SPA shell for
 
 ## Authentication
 
+Antenne runs on [`porte`](https://github.com/FacileStudio/porte), which owns every route below
+except the last.
+
 | Route | Body | Notes |
 |---|---|---|
-| `POST /api/login` | `{"password":"…"}` | sets the `antenne_session` cookie |
-| `POST /api/logout` | — | revokes the session and expires the cookie |
-| `GET /api/session/public` | — | public: whether a password is required at all |
+| `GET /api/auth/config` | — | public: whether SSO is available, mandatory, and whether a password form applies |
+| `POST /api/auth/login` | `{"email":"…","password":"…"}` | sets the cookie **and** returns the bearer token |
+| `POST /api/auth/logout` | — | revokes the session and expires the cookie. Idempotent |
+| `GET /api/auth/oidc` | — | starts the Authentik flow. Only when `OIDC_ISSUER` is set |
+| `GET /api/auth/oidc/callback` | — | a browser navigation: both outcomes are a 302, read `Location` |
+| `POST /api/auth/oidc/exchange` | `{"code":"…"}` | a CLI trading its one-time login code for a bearer token |
 | `GET /api/session` | — | authenticated: the current caller |
 
-The session cookie is `HttpOnly`, `SameSite=Lax`, and `Secure` whenever the request arrived
-over TLS — including through Traefik, which terminates it and forwards plain HTTP.
+**Two transports, one session model.** The dashboard rides an `HttpOnly` cookie, named
+`__Host-session` over https; a CLI or a script sends `Authorization: Bearer`. Same table, same
+hash, same revocation.
 
-Failed logins are rate-limited per client IP: five within ten minutes blocks that IP for ten
-minutes. The bucket keys on `X-Forwarded-For`, which is only safe because the reverse proxy
-overwrites it.
+**A cookie-authenticated write must carry `X-Facile-CSRF`.** Any non-empty value counts — the
+header's presence is the whole signal, because a browser will not attach it to a simple
+cross-site request. Omit it and every read still succeeds while every write answers 403, which
+reads as "the app works, saving is broken". Bearer callers are exempt by construction, so a
+test that authenticates with a token does not exercise this rule at all.
 
-With no `ANTENNE_ADMIN_PASSWORD` configured, every caller is served as the admin and `/api/login`
-answers `{"ok":true}` without doing anything.
+`GET /api/events/stream` is consumed by an `EventSource`, which can set no headers. It is
+therefore cookie-only, permanently — and being a GET, the CSRF rule does not reach it.
+
+Refused logins are throttled per client address: five within ten minutes blocks that address
+for ten minutes. Under `SSO_ONLY` the password route is not registered at all, rather than
+rejected, so there is no endpoint left to probe.
 
 ## Settings
 
