@@ -34,7 +34,7 @@ except the last.
 | Route | Body | Notes |
 |---|---|---|
 | `GET /api/auth/config` | — | public: whether SSO is available, mandatory, and whether a password form applies |
-| `POST /api/auth/login` | `{"email":"…","password":"…"}` | sets the cookie **and** returns the bearer token |
+| `POST /api/auth/login` | `{"email":"…","password":"…"}` | sets the cookie **and** returns `{"user_id","token"}` — a client wanting the bearer token reads the body, not the `Set-Cookie` |
 | `POST /api/auth/logout` | — | revokes the session and expires the cookie. Idempotent |
 | `GET /api/auth/oidc` | — | starts the Authentik flow. Only when `OIDC_ISSUER` is set |
 | `GET /api/auth/oidc/callback` | — | a browser navigation: both outcomes are a 302, read `Location` |
