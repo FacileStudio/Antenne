@@ -3,8 +3,9 @@
 //
 // It is deliberately the only thing the rest of the API knows about
 // authentication. Handlers read an Identity; they never see a cookie, a token
-// or a user row. When the suite's shared auth package lands, it supplies a new
-// Authenticator and Identity keeps its shape, so no handler changes.
+// or a user row. porte authenticates the credential and hands on a user id;
+// modules/auth turns that into the Identity below, so nothing downstream of
+// here had to change when the credentials moved.
 package authcontext
 
 import (
@@ -28,8 +29,12 @@ const (
 )
 
 // Identity is the authenticated caller. The zero value is an anonymous caller.
+//
+// UserID is an int64 to match porte's own, and porte_sessions.user_id, and the
+// bigint foreign keys already in this schema. The conversion that used to sit
+// between them is gone rather than moved.
 type Identity struct {
-	UserID   uint
+	UserID   int64
 	Email    string
 	Name     string
 	Role     Role

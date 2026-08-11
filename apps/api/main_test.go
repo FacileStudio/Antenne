@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/env"
+	"github.com/FacileStudio/Antenne/apps/api/modules/auth"
+	"github.com/FacileStudio/porte/local"
+	"github.com/FacileStudio/porte/oidc"
+	portepg "github.com/FacileStudio/porte/pg"
+	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/apiref"
 	troncenv "github.com/FacileStudio/tronc/env"
 )
@@ -14,11 +20,36 @@ import (
 // apps integrate against, and a silently undocumented route is how it goes
 // stale.
 //
-// buildRouter's collaborators are nil: registering routes only takes method
-// values off them, so nothing is dereferenced and no database is needed.
+// Antenne's own collaborators are nil: registering their routes only takes
+// method values off them, so nothing is dereferenced and no database is needed.
+// porte's kits are real, because their Mount does real work — but they are
+// built over a nil *sql.DB, which is untouched until a request arrives.
 func TestEveryRouteIsDocumented(t *testing.T) {
-	cfg := env.Config{Core: troncenv.Core{Port: 9090}, ClientDir: t.TempDir()}
-	router := buildRouter(cfg, slog.New(slog.DiscardHandler), nil, nil, nil, nil, nil)
+	cfg := env.Config{Core: troncenv.Core{Port: 9090}, ClientDir: t.TempDir(), AdminPassword: "documented"}
+	log := slog.New(slog.DiscardHandler)
+	stores := portepg.New(nil)
+
+	sessions, err := session.New(cfg.Porte, session.Deps{Sessions: stores.Sessions(), Logger: log})
+	if err != nil {
+		t.Fatalf("sessions: %v", err)
+	}
+	kit, err := oidc.New(context.Background(), cfg.Porte, oidc.Deps{Sessions: sessions, Logger: log})
+	if err != nil {
+		t.Fatalf("oidc: %v", err)
+	}
+	authService := auth.NewService(nil, log, auth.Config{AdminUsername: "admin", AdminPassword: "documented"}, nil, stores.Identities(), sessions)
+	passwords, err := local.New(local.Config{}, local.Deps{
+		Users:      auth.NewStore(nil),
+		Identities: stores.Identities(),
+		Sessions:   sessions,
+		Logger:     log,
+		Count:      func(context.Context) (int64, error) { return 1, nil },
+	})
+	if err != nil {
+		t.Fatalf("local: %v", err)
+	}
+
+	router := buildRouter(cfg, log, nil, nil, authService, sessions, kit, passwords, nil, nil)
 
 	// /dashboard is a legacy redirect kept for links made before the client moved
 	// to the root; it is not part of the API surface.

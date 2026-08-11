@@ -38,8 +38,21 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       ANTENNE_ADMIN_USERNAME: ${ANTENNE_ADMIN_USERNAME:-admin}
       ANTENNE_ADMIN_PASSWORD: ${ANTENNE_ADMIN_PASSWORD:?ANTENNE_ADMIN_PASSWORD is required}
-      ANTENNE_SESSION_SECRET: ${ANTENNE_SESSION_SECRET:?ANTENNE_SESSION_SECRET is required}
       ANTENNE_SECRET: ${ANTENNE_SECRET:-}
+      # porte reads the Secure attribute and the __Host- cookie prefix off this
+      # value rather than off X-Forwarded-Proto, so that a proxy which stops
+      # sending the header downgrades nothing. Production refuses to boot unless
+      # it is an https origin.
+      PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL is required — the https origin Antenne is reached on}
+      # Single sign-on against the suite's Authentik. Unset OIDC_ISSUER and the
+      # bootstrap password above is the only way in; set SSO_ONLY and it is the
+      # only way in. OIDC_REDIRECT_URL defaults to PUBLIC_URL + the callback path.
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-}
+      OIDC_SUCCESS_URL: ${OIDC_SUCCESS_URL:-}
+      SSO_ONLY: ${SSO_ONLY:-false}
       TIMEOUT: ${TIMEOUT:-10}
       # ANTENNE_SETTINGS_PATH is deliberately unset. The one-time import from the
       # pre-Postgres antenne.json has run and the volume is gone; point it at a

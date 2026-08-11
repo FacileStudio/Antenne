@@ -1,77 +1,220 @@
-// Package auth authenticates dashboard callers.
+// Package auth resolves a dashboard caller to an Antenne identity.
 //
-// The implementation is deliberately thin and sits behind one interface. Antenne
-// owns a users table, an opaque session token hashed at rest, and a password
-// login — no OIDC, no shared identity engine. When the suite's unified auth
-// package arrives, it replaces Service as the Authenticator and supplies its own
-// login routes; RequireAuth, authcontext.Identity and every handler that reads
-// one stay exactly as they are.
+// The credentials belong to porte now: one hashed session row, one cookie, one
+// logout, and the same session whether a human arrived through single sign-on
+// or through the bootstrap password. What is left here is the part porte has no
+// opinion about — what an Antenne user is, and how the instance seeds its first
+// account from the environment.
+//
+// Handlers still read authcontext.Identity and still never see a cookie, a
+// token or a user row.
 package auth
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
-	"errors"
+	"context"
+	stderrors "errors"
 	"log/slog"
 	"net/http"
+	"net/mail"
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
-	"github.com/FacileStudio/Antenne/apps/api/internal/ratelimit"
+	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/local"
+	"github.com/FacileStudio/porte/session"
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
 )
 
-// SessionCookie is the cookie the dashboard session travels in.
-const SessionCookie = "antenne_session"
+// registrationLockKey is the advisory lock the account rules are taken under.
+// porte cannot take it — it does not own this database — which is why the
+// account rules live in this package's stores.
+const registrationLockKey = 0x616E74656E6E65
 
-const sessionLifetime = 30 * 24 * time.Hour
-
-// ErrUnauthenticated is returned when a request carries no usable credential.
-var ErrUnauthenticated = errors.New("auth: unauthenticated")
-
-// Authenticator resolves a request to an identity. It is the seam the shared
-// auth package will slot into.
-type Authenticator interface {
-	Authenticate(r *http.Request) (authcontext.Identity, error)
-	// Optional reports whether an unauthenticated caller is still allowed
-	// through. Antenne leaves the dashboard open when no admin password is set,
-	// which is how a fresh local install is usable at all.
-	Optional() bool
-}
+// bootstrapDomain is the domain the bootstrap account's address is built on
+// when ANTENNE_ADMIN_USERNAME is a bare label rather than an address. It is not
+// a routable domain and is not meant to be: the account is a local credential
+// for an appliance, and nothing ever sends mail to it.
+const bootstrapDomain = "antenne.local"
 
 // User is a dashboard account.
+//
+// password_hash is gone from this struct and stays in the table: porte holds
+// the credential now, and the column carries pre-porte bcrypt digests that
+// nothing can verify any more. It is dropped in a later migration rather than
+// in the one that stopped reading it, so a rollback still has somewhere to land.
 type User struct {
-	ID           uint   `gorm:"primaryKey"`
-	Email        string `gorm:"uniqueIndex"`
-	Name         string
-	PasswordHash string
-	Role         string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID        int64  `gorm:"primaryKey"`
+	Email     string `gorm:"uniqueIndex"`
+	Name      string
+	Role      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // TableName pins the table so a future GORM naming change cannot rename it.
 func (User) TableName() string { return "users" }
 
-// Session is a live login. Only the hash of the token is stored, so a database
-// leak does not hand over live sessions.
-type Session struct {
-	TokenHash string `gorm:"primaryKey"`
-	UserID    uint
-	CreatedAt time.Time
-	ExpiresAt time.Time
-	LastSeen  time.Time
+// Store resolves porte's callbacks to rows in Antenne's own users table.
+//
+// It is porte's escape hatch, taken deliberately: porte/pg ships a porte_users
+// table and Antenne could have moved onto it, but users is referenced by name
+// across this codebase and carries the role, which porte transports and never
+// assigns meaning to.
+type Store struct {
+	orm *gorm.DB
 }
 
-// TableName pins the sessions table name.
-func (Session) TableName() string { return "sessions" }
+// NewStore returns a store over the app's users table.
+func NewStore(orm *gorm.DB) *Store {
+	return &Store{orm: orm}
+}
+
+var (
+	_ porte.UserStore         = (*Store)(nil)
+	_ porte.PasswordUserStore = (*Store)(nil)
+)
+
+// UpsertFromOIDC matches on (provider, subject) first and creates the account
+// when nothing is found.
+//
+// Every account Antenne creates this way is an administrator, because Antenne
+// has one tier: the dashboard holds the provider credentials, the delivery
+// secrets and the pool secret, and there is no view of it that is safe for
+// someone who should not have all three. Who may reach it at all is therefore
+// Authentik's decision, expressed as a policy binding on the application —
+// not something this callback can soften.
+func (s *Store) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64, error) {
+	email := strings.ToLower(strings.TrimSpace(claims.Email))
+	if _, err := mail.ParseAddress(email); err != nil {
+		return 0, apierrors.Invalid("the identity provider returned no usable email")
+	}
+	name := claims.DisplayName()
+
+	var userID int64
+	txErr := s.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", int64(registrationLockKey)).Error; err != nil {
+			return apierrors.Internal("failed to acquire the registration lock", err)
+		}
+
+		var linked int64
+		err := tx.Raw(
+			`SELECT user_id FROM porte_identities WHERE provider = ? AND subject = ?`,
+			claims.Provider, claims.Subject,
+		).Scan(&linked).Error
+		if err != nil {
+			return apierrors.Internal("failed to resolve the identity", err)
+		}
+		if linked != 0 {
+			userID = linked
+			return refreshProfile(tx, linked, email, name)
+		}
+
+		var existing User
+		err = tx.Where("email = ?", email).First(&existing).Error
+		switch {
+		case err == nil:
+			// Matching an existing account on the address alone is an
+			// account takeover primitive wherever a provider lets a
+			// user claim an address without proving it. Authentik's
+			// built-in email mapping returns email_verified false and
+			// hardcodes it, so on this IdP the branch never opens —
+			// which is correct, and is why the bootstrap account is
+			// seeded from the environment rather than adopted here.
+			if !claims.EmailVerified {
+				return apierrors.Conflict("an account with this email already exists and the identity provider did not verify the address")
+			}
+			userID = existing.ID
+			return refreshProfile(tx, existing.ID, email, name)
+		case !stderrors.Is(err, gorm.ErrRecordNotFound):
+			return apierrors.Internal("failed to look up the account", err)
+		}
+
+		user := User{Email: email, Name: name, Role: string(authcontext.RoleAdmin)}
+		if err := tx.Create(&user).Error; err != nil {
+			return apierrors.Internal("failed to create the account", err)
+		}
+		userID = user.ID
+		return nil
+	})
+	if txErr != nil {
+		return 0, txErr
+	}
+	return userID, nil
+}
+
+// refreshProfile keeps the name and the address the provider asserts, which is
+// what makes the identity provider the source of truth for both. An empty value
+// never overwrites one the user already has: a provider that stops sending a
+// claim should not blank the dashboard.
+func refreshProfile(tx *gorm.DB, userID int64, email, name string) error {
+	updates := map[string]any{"email": email}
+	if name != "" {
+		updates["name"] = name
+	}
+	if err := tx.Model(&User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
+		return apierrors.Internal("failed to update the account", err)
+	}
+	return nil
+}
+
+// CreateFromPassword creates a user row for a local registration.
+//
+// Antenne never opens registration — the bootstrap account is seeded from the
+// environment and local.Config carries AllowRegistration false — so this is
+// reached only through that seed. It implements the interface honestly all the
+// same, under the same lock, because a store that is correct only for its
+// current caller is a trap for the next one.
+func (s *Store) CreateFromPassword(ctx context.Context, email, name string) (int64, error) {
+	var userID int64
+	txErr := s.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", int64(registrationLockKey)).Error; err != nil {
+			return apierrors.Internal("failed to acquire the registration lock", err)
+		}
+		var existing int64
+		if err := tx.Model(&User{}).Where("email = ?", email).Count(&existing).Error; err != nil {
+			return apierrors.Internal("failed to check the address", err)
+		}
+		if existing > 0 {
+			return apierrors.Conflict("an account with this email already exists")
+		}
+		user := User{Email: email, Name: name, Role: string(authcontext.RoleAdmin)}
+		if err := tx.Create(&user).Error; err != nil {
+			return apierrors.Internal("failed to create the account", err)
+		}
+		userID = user.ID
+		return nil
+	})
+	if txErr != nil {
+		return 0, txErr
+	}
+	return userID, nil
+}
+
+// FindByEmail returns the user id for an address, or porte.ErrNotFound.
+func (s *Store) FindByEmail(ctx context.Context, email string) (int64, error) {
+	var user User
+	err := s.orm.WithContext(ctx).Select("id").Where("email = ?", email).First(&user).Error
+	if stderrors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, porte.ErrNotFound
+	}
+	if err != nil {
+		return 0, apierrors.Internal("failed to look up the account", err)
+	}
+	return user.ID, nil
+}
+
+// CountUsers backs porte/local's registration gate.
+func (s *Store) CountUsers(ctx context.Context) (int64, error) {
+	var count int64
+	if err := s.orm.WithContext(ctx).Model(&User{}).Count(&count).Error; err != nil {
+		return 0, apierrors.Internal("failed to count accounts", err)
+	}
+	return count, nil
+}
 
 // Config is what Service needs from the environment.
 type Config struct {
@@ -79,230 +222,175 @@ type Config struct {
 	AdminPassword string
 }
 
-// Service is Antenne's own Authenticator.
+// Service seeds the bootstrap account and turns the user id porte
+// authenticated into the identity the rest of Antenne reads.
 type Service struct {
-	db     *gorm.DB
-	log    *slog.Logger
-	cfg    Config
-	logins *ratelimit.Limiter
+	orm        *gorm.DB
+	log        *slog.Logger
+	cfg        Config
+	store      *Store
+	identities porte.IdentityStore
+	sessions   *session.Manager
 }
 
-// NewService builds the service and ensures the bootstrap admin exists.
-func NewService(db *gorm.DB, log *slog.Logger, cfg Config) (*Service, error) {
-	service := &Service{
-		db:     db,
-		log:    log,
-		cfg:    cfg,
-		logins: ratelimit.New(5, 10*time.Minute, 10*time.Minute),
-	}
-	if err := service.ensureAdmin(); err != nil {
-		return nil, err
-	}
-	return service, nil
+// NewService wires the bootstrap seed and the identity lookup.
+func NewService(orm *gorm.DB, log *slog.Logger, cfg Config, store *Store, identities porte.IdentityStore, sessions *session.Manager) *Service {
+	return &Service{orm: orm, log: log, cfg: cfg, store: store, identities: identities, sessions: sessions}
 }
 
-// PasswordRequired reports whether login is enforced at all.
+// PasswordRequired reports whether the bootstrap password login is configured.
 func (s *Service) PasswordRequired() bool { return s.cfg.AdminPassword != "" }
-
-// Optional implements Authenticator: with no admin password configured, every
-// caller is served as the admin.
-func (s *Service) Optional() bool { return !s.PasswordRequired() }
 
 // Username is the login label the dashboard shows.
 func (s *Service) Username() string { return s.cfg.AdminUsername }
 
-// ensureAdmin seeds or re-syncs the bootstrap account from the environment.
-//
-// ANTENNE_ADMIN_PASSWORD stays the source of truth so an operator can recover
-// access by changing one variable and restarting, exactly as before the users
-// table existed.
-func (s *Service) ensureAdmin() error {
-	if !s.PasswordRequired() {
-		return nil
-	}
+// AdminEmail is the address the bootstrap account signs in with.
+func (s *Service) AdminEmail() string { return bootstrapEmail(s.cfg.AdminUsername) }
 
-	email := s.cfg.AdminUsername
-	if !strings.Contains(email, "@") {
-		email = email + "@antenne.local"
+// bootstrapEmail turns a bare login label into an address, because porte's
+// local login resolves an account by address and Antenne's has always been
+// configured as a username.
+func bootstrapEmail(username string) string {
+	if strings.Contains(username, "@") {
+		return strings.ToLower(strings.TrimSpace(username))
 	}
-
-	hash, err := bcrypt.GenerateFromPassword(prehash(s.cfg.AdminPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-
-	var existing User
-	err = s.db.Where("email = ?", email).First(&existing).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return s.db.Create(&User{
-			Email:        email,
-			Name:         s.cfg.AdminUsername,
-			PasswordHash: string(hash),
-			Role:         string(authcontext.RoleAdmin),
-		}).Error
-	}
-	if err != nil {
-		return err
-	}
-
-	if bcrypt.CompareHashAndPassword([]byte(existing.PasswordHash), prehash(s.cfg.AdminPassword)) == nil {
-		return nil
-	}
-
-	s.log.Info("admin password changed in the environment, re-seeding the account and revoking its sessions")
-	if err := s.db.Model(&existing).Updates(map[string]any{"password_hash": string(hash)}).Error; err != nil {
-		return err
-	}
-	return s.db.Where("user_id = ?", existing.ID).Delete(&Session{}).Error
+	return strings.ToLower(strings.TrimSpace(username)) + "@" + bootstrapDomain
 }
 
-// Authenticate implements Authenticator.
-func (s *Service) Authenticate(r *http.Request) (authcontext.Identity, error) {
-	clientIP := authcontext.ClientIP(r)
-
+// EnsureAdmin seeds or re-seeds the bootstrap account from the environment.
+//
+// ANTENNE_ADMIN_PASSWORD stays the source of truth, exactly as before porte:
+// changing it and restarting re-hashes the credential and revokes that
+// account's sessions, which is the recovery path and the only one an operator
+// has without database access.
+//
+// What changed is where the hash lands. It used to be bcrypt over a
+// base64(sha256(password)) prehash in users.password_hash; it is argon2id in
+// porte_identities now, keyed on the account id rather than on the address. The
+// old digests are not migrated because they cannot be — no argon2 verifier
+// accepts them — and nothing is lost, because this function has always been
+// able to rebuild the credential from the environment.
+func (s *Service) EnsureAdmin(ctx context.Context) error {
 	if !s.PasswordRequired() {
-		return authcontext.Identity{
-			UserID:   1,
-			Email:    s.cfg.AdminUsername,
-			Name:     s.cfg.AdminUsername,
-			Role:     authcontext.RoleAdmin,
-			ClientIP: clientIP,
-		}, nil
+		return nil
 	}
 
-	cookie, err := r.Cookie(SessionCookie)
-	if err != nil || cookie.Value == "" {
-		return authcontext.Identity{}, ErrUnauthenticated
+	email := s.AdminEmail()
+	userID, err := s.store.FindByEmail(ctx, email)
+	switch {
+	case stderrors.Is(err, porte.ErrNotFound):
+		if userID, err = s.store.CreateFromPassword(ctx, email, s.cfg.AdminUsername); err != nil {
+			return err
+		}
+	case err != nil:
+		return err
 	}
 
-	var session Session
-	if err := s.db.Where("token_hash = ?", hashToken(cookie.Value)).First(&session).Error; err != nil {
-		return authcontext.Identity{}, ErrUnauthenticated
-	}
-	if session.ExpiresAt.Before(time.Now()) {
-		s.db.Delete(&session)
-		return authcontext.Identity{}, ErrUnauthenticated
+	subject := porte.LocalSubject(userID)
+	existing, findErr := s.identities.Find(ctx, porte.ProviderLocal, subject)
+	switch {
+	case findErr == nil:
+		if local.VerifyPassword(s.cfg.AdminPassword, existing.PasswordHash) {
+			return nil
+		}
+	case !stderrors.Is(findErr, porte.ErrNotFound):
+		return findErr
 	}
 
+	hash, err := local.HashPassword(s.cfg.AdminPassword)
+	if err != nil {
+		return err
+	}
+	if err := s.identities.Save(ctx, porte.StoredIdentity{
+		UserID:       userID,
+		Provider:     porte.ProviderLocal,
+		Subject:      subject,
+		PasswordHash: hash,
+	}); err != nil {
+		return err
+	}
+
+	// Only a *replaced* credential revokes sessions. Seeding the first one
+	// must not, or every restart of a fresh instance would end the session of
+	// whoever just signed in — findErr is read rather than err because the
+	// hash and the save have both reassigned err by now, and reusing it here
+	// is how this check silently inverts.
+	if stderrors.Is(findErr, porte.ErrNotFound) {
+		return nil
+	}
+	s.log.Info("admin password changed in the environment, re-seeding the credential and revoking that account's sessions")
+	_, err = s.sessions.RevokeUser(ctx, userID)
+	return err
+}
+
+// IdentityForUser turns the user id porte authenticated into Antenne's own
+// identity.
+//
+// porte hands the middleware a session and a user id and stops there: it holds
+// no address and no role, because a library that decided what an admin may do
+// would be routed around by the second app that adopted it. The profile is read
+// here, from the table this app owns.
+func (s *Service) IdentityForUser(ctx context.Context, userID int64) (authcontext.Identity, error) {
 	var user User
-	if err := s.db.First(&user, session.UserID).Error; err != nil {
-		return authcontext.Identity{}, ErrUnauthenticated
+	if err := s.orm.WithContext(ctx).First(&user, userID).Error; err != nil {
+		if stderrors.Is(err, gorm.ErrRecordNotFound) {
+			// The session points at a user that no longer exists. The
+			// foreign key cascades a delete, so this is a race rather
+			// than a leak, and it is still not an authenticated request.
+			return authcontext.Identity{}, apierrors.Unauthorized("unauthorized")
+		}
+		return authcontext.Identity{}, apierrors.Internal("failed to load the account", err)
 	}
-
-	// One write per minute at most: touching last_seen on every request would
-	// turn a read-only dashboard poll into a write.
-	if time.Since(session.LastSeen) > time.Minute {
-		s.db.Model(&session).Update("last_seen", time.Now())
-	}
-
 	return authcontext.Identity{
-		UserID:   user.ID,
-		Email:    user.Email,
-		Name:     user.Name,
-		Role:     authcontext.Role(user.Role),
-		ClientIP: clientIP,
+		UserID: user.ID,
+		Email:  user.Email,
+		Name:   user.Name,
+		Role:   authcontext.Role(user.Role),
 	}, nil
 }
 
-// Login verifies a password and issues a session token.
-func (s *Service) Login(clientIP, password string) (string, time.Time, error) {
-	if !s.PasswordRequired() {
-		return "", time.Time{}, apierrors.Failed("no admin password is configured")
-	}
-	if s.logins.Blocked(clientIP) {
-		return "", time.Time{}, apierrors.RateLimited("too many attempts")
-	}
-
-	email := s.cfg.AdminUsername
-	if !strings.Contains(email, "@") {
-		email = email + "@antenne.local"
-	}
-
-	var user User
-	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
-		s.logins.Fail(clientIP)
-		return "", time.Time{}, apierrors.Unauthorized("invalid password")
-	}
-	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), prehash(password)) != nil {
-		s.logins.Fail(clientIP)
-		s.log.Warn("login failed", slog.String("client_ip", clientIP))
-		return "", time.Time{}, apierrors.Unauthorized("invalid password")
-	}
-
-	s.logins.Reset(clientIP)
-
-	token, err := newToken()
-	if err != nil {
-		return "", time.Time{}, err
-	}
-	expires := time.Now().Add(sessionLifetime)
-
-	if err := s.db.Create(&Session{
-		TokenHash: hashToken(token),
-		UserID:    user.ID,
-		ExpiresAt: expires,
-		LastSeen:  time.Now(),
-	}).Error; err != nil {
-		return "", time.Time{}, err
-	}
-
-	s.log.Info("login succeeded", slog.String("client_ip", clientIP), slog.String("email", user.Email))
-	return token, expires, nil
-}
-
-// Logout revokes the session the request carries.
-func (s *Service) Logout(r *http.Request) {
-	cookie, err := r.Cookie(SessionCookie)
-	if err != nil || cookie.Value == "" {
-		return
-	}
-	s.db.Where("token_hash = ?", hashToken(cookie.Value)).Delete(&Session{})
-}
-
-// PurgeExpiredSessions deletes sessions past their expiry.
-func (s *Service) PurgeExpiredSessions() {
-	if err := s.db.Where("expires_at < ?", time.Now()).Delete(&Session{}).Error; err != nil {
+// PurgeExpiredSessions deletes the sessions that have expired.
+func (s *Service) PurgeExpiredSessions(ctx context.Context) {
+	if _, err := s.sessions.Sweep(ctx); err != nil {
 		s.log.Error("failed to purge expired sessions", slog.Any("error", err))
 	}
 }
 
-// RequireAuth rejects unauthenticated callers and puts the identity on the
-// context for everything downstream.
-func RequireAuth(authenticator Authenticator) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
+// IdentityResolver turns an authenticated user id into an Antenne identity.
+type IdentityResolver interface {
+	IdentityForUser(ctx context.Context, userID int64) (authcontext.Identity, error)
+}
+
+// authenticator is the one method this package needs from porte's session
+// manager, named as an interface so the middleware stays testable.
+type authenticator interface {
+	RequireAuth(http.Handler) http.Handler
+}
+
+// RequireAuth runs behind porte's own middleware and hydrates what porte
+// deliberately does not carry.
+//
+// porte authenticates the credential — cookie or bearer, one hashed session
+// row, one expiry, one idle window — and hands on a user id. Everything
+// downstream still reads authcontext.Identity and is unchanged.
+func RequireAuth(sessions authenticator, resolver IdentityResolver) func(http.Handler) http.Handler {
+	hydrate := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			identity, err := authenticator.Authenticate(r)
-			if err != nil {
+			authenticated, ok := porte.From(r.Context())
+			if !ok {
 				httpjson.WriteError(w, apierrors.Unauthorized("unauthorized"))
 				return
 			}
+			identity, err := resolver.IdentityForUser(r.Context(), authenticated.UserID)
+			if err != nil {
+				httpjson.WriteError(w, err)
+				return
+			}
+			identity.ClientIP = authcontext.ClientIP(r)
 			next.ServeHTTP(w, r.WithContext(authcontext.With(r.Context(), identity)))
 		})
 	}
-}
-
-func newToken() (string, error) {
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
+	return func(next http.Handler) http.Handler {
+		return sessions.RequireAuth(hydrate(next))
 	}
-	return hex.EncodeToString(raw), nil
-}
-
-func hashToken(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(sum[:])
-}
-
-// prehash folds a password to a fixed 44-character string before bcrypt sees it.
-//
-// bcrypt silently ignores everything past 72 bytes, and golang.org/x/crypto
-// refuses outright — which is how a deployment running a long passphrase
-// crash-looped on the first boot after the move off HMAC. The digest is
-// base64-encoded rather than passed raw because bcrypt truncates at the first
-// NUL byte, and a raw SHA-256 digest contains one about 40% of the time.
-func prehash(password string) []byte {
-	sum := sha256.Sum256([]byte(password))
-	encoded := base64.StdEncoding.EncodeToString(sum[:])
-	return []byte(encoded)
 }
