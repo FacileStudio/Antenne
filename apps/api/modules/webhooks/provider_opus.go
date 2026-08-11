@@ -124,73 +124,97 @@ var opus = Definition{
 	},
 }
 
-func opusMessage(payload opusPayload) string {
-	actor := "someone"
+// opusRender is the shared prefix of every Opus line: who did it, which task,
+// and in which project. Each event below then adds only its own clause.
+type opusRender struct {
+	actor   string
+	ref     string
+	title   string
+	project string
+	data    opusData
+}
+
+func newOpusRender(payload opusPayload) opusRender {
+	render := opusRender{actor: "someone", title: "untitled"}
 	if payload.Actor != nil {
-		actor = firstNonEmpty(payload.Actor.Name, actor)
+		render.actor = firstNonEmpty(payload.Actor.Name, render.actor)
 	}
-	actor = escape(actor)
+	render.actor = escape(render.actor)
 
-	title := "untitled"
-	ref := ""
 	if task := payload.Task; task != nil {
-		title = firstNonEmpty(task.Title, title)
+		render.title = firstNonEmpty(task.Title, render.title)
 		if task.Number != nil {
-			ref = fmt.Sprintf("<code>#%d</code> ", *task.Number)
+			render.ref = fmt.Sprintf("<code>#%d</code> ", *task.Number)
 		}
 	}
-	title = escape(title)
+	render.title = escape(render.title)
 
-	project := ""
 	if payload.Project != nil && payload.Project.Name != "" {
-		project = " in <b>" + escape(payload.Project.Name) + "</b>"
+		render.project = " in <b>" + escape(payload.Project.Name) + "</b>"
 	}
+	if payload.Data != nil {
+		render.data = *payload.Data
+	}
+	return render
+}
 
-	change := func(from, to string) string {
-		if from == "" || to == "" {
-			return ""
-		}
-		return fmt.Sprintf(" from <code>%s</code> to <code>%s</code>", escape(from), escape(to))
+// change renders the "from x to y" clause only when both ends are known, so a
+// partial payload degrades to the plain line instead of "from  to doing".
+func (r opusRender) change(from, to string) string {
+	if from == "" || to == "" {
+		return ""
 	}
+	return fmt.Sprintf(" from <code>%s</code> to <code>%s</code>", escape(from), escape(to))
+}
 
-	data := payload.Data
-	if data == nil {
-		data = &opusData{}
+func (r opusRender) renamed() string {
+	if r.data.OldTitle != "" && r.data.NewTitle != "" {
+		return fmt.Sprintf("✏️ <b>[Opus]</b> %s renamed task %s<b>%s</b> → <b>%s</b>%s",
+			r.actor, r.ref, escape(r.data.OldTitle), escape(r.data.NewTitle), r.project)
 	}
+	return fmt.Sprintf("✏️ <b>[Opus]</b> %s renamed task %s<b>%s</b>%s", r.actor, r.ref, r.title, r.project)
+}
+
+func (r opusRender) assigned() string {
+	detail := ""
+	if r.data.NewAssignee != "" {
+		detail = " to <b>" + escape(r.data.NewAssignee) + "</b>"
+	}
+	return fmt.Sprintf("👤 <b>[Opus]</b> %s assigned %s<b>%s</b>%s%s", r.actor, r.ref, r.title, detail, r.project)
+}
+
+func (r opusRender) unassigned() string {
+	detail := ""
+	if r.data.OldAssignee != "" {
+		detail = " from <b>" + escape(r.data.OldAssignee) + "</b>"
+	}
+	return fmt.Sprintf("👤 <b>[Opus]</b> %s unassigned %s<b>%s</b>%s%s", r.actor, r.ref, r.title, detail, r.project)
+}
+
+func opusMessage(payload opusPayload) string {
+	r := newOpusRender(payload)
 
 	switch payload.Event {
 	case "task.created":
-		return fmt.Sprintf("📋 <b>[Opus]</b> %s created task %s<b>%s</b>%s", actor, ref, title, project)
+		return fmt.Sprintf("📋 <b>[Opus]</b> %s created task %s<b>%s</b>%s", r.actor, r.ref, r.title, r.project)
 	case "task.status_changed":
 		return fmt.Sprintf("🔄 <b>[Opus]</b> %s changed status of %s<b>%s</b>%s%s",
-			actor, ref, title, change(data.OldStatus, data.NewStatus), project)
+			r.actor, r.ref, r.title, r.change(r.data.OldStatus, r.data.NewStatus), r.project)
 	case "task.priority_changed":
 		return fmt.Sprintf("🏷️ <b>[Opus]</b> %s changed priority of %s<b>%s</b>%s%s",
-			actor, ref, title, change(data.OldPriority, data.NewPriority), project)
+			r.actor, r.ref, r.title, r.change(r.data.OldPriority, r.data.NewPriority), r.project)
 	case "task.title_changed":
-		if data.OldTitle != "" && data.NewTitle != "" {
-			return fmt.Sprintf("✏️ <b>[Opus]</b> %s renamed task %s<b>%s</b> → <b>%s</b>%s",
-				actor, ref, escape(data.OldTitle), escape(data.NewTitle), project)
-		}
-		return fmt.Sprintf("✏️ <b>[Opus]</b> %s renamed task %s<b>%s</b>%s", actor, ref, title, project)
+		return r.renamed()
 	case "task.assignee_changed":
-		detail := ""
-		if data.NewAssignee != "" {
-			detail = " to <b>" + escape(data.NewAssignee) + "</b>"
-		}
-		return fmt.Sprintf("👤 <b>[Opus]</b> %s assigned %s<b>%s</b>%s%s", actor, ref, title, detail, project)
+		return r.assigned()
 	case "task.unassigned":
-		detail := ""
-		if data.OldAssignee != "" {
-			detail = " from <b>" + escape(data.OldAssignee) + "</b>"
-		}
-		return fmt.Sprintf("👤 <b>[Opus]</b> %s unassigned %s<b>%s</b>%s%s", actor, ref, title, detail, project)
+		return r.unassigned()
 	case "task.description_changed":
-		return fmt.Sprintf("📝 <b>[Opus]</b> %s updated description of %s<b>%s</b>%s", actor, ref, title, project)
+		return fmt.Sprintf("📝 <b>[Opus]</b> %s updated description of %s<b>%s</b>%s", r.actor, r.ref, r.title, r.project)
 	case "task.comment_created":
-		return fmt.Sprintf("💬 <b>[Opus]</b> %s commented on %s<b>%s</b>%s", actor, ref, title, project)
+		return fmt.Sprintf("💬 <b>[Opus]</b> %s commented on %s<b>%s</b>%s", r.actor, r.ref, r.title, r.project)
 	}
 
 	return fmt.Sprintf("📋 <b>[Opus]</b> %s triggered <code>%s</code> on %s<b>%s</b>%s",
-		actor, escape(payload.Event), ref, title, project)
+		r.actor, escape(payload.Event), r.ref, r.title, r.project)
 }

@@ -22,7 +22,7 @@ var headerExceptions = map[ProviderType]string{
 }
 
 func TestTheActionCanDeriveEveryWebhookHeader(t *testing.T) {
-	for _, providerType := range WebhookProviderTypes {
+	for _, providerType := range WebhookProviderTypes() {
 		derived := "x-" + string(providerType) + "-signature-256"
 		actual := WebhookDefaultSecretHeader(providerType)
 
@@ -40,7 +40,7 @@ func TestTheActionCanDeriveEveryWebhookHeader(t *testing.T) {
 }
 
 func TestEveryWebhookProviderHasADefaultHeader(t *testing.T) {
-	for _, providerType := range WebhookProviderTypes {
+	for _, providerType := range WebhookProviderTypes() {
 		if WebhookDefaultSecretHeader(providerType) == "" {
 			t.Errorf("%s receives webhooks but has no default secret header, so a new one "+
 				"is created unauthenticated", providerType)

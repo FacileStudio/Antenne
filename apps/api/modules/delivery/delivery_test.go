@@ -14,7 +14,7 @@ func target(id string, providerIDs, providerTags []string) settings.DeliveryTarg
 	return settings.DeliveryTarget{
 		ID: id, Type: settings.TargetDiscord, Name: id, Enabled: true,
 		ProviderIDs: providerIDs, ProviderTags: providerTags,
-		WebhookURL: "https://discord.example/hook",
+		DiscordSettings: settings.DiscordSettings{WebhookURL: "https://discord.example/hook"},
 	}
 }
 
@@ -88,17 +88,23 @@ func TestCanSendChecksTheFieldsEachTypeNeeds(t *testing.T) {
 		target settings.DeliveryTarget
 		want   bool
 	}{
-		{"disabled", settings.DeliveryTarget{Type: settings.TargetDiscord, WebhookURL: "https://x"}, false},
+		{"disabled", settings.DeliveryTarget{
+			Type:            settings.TargetDiscord,
+			DiscordSettings: settings.DiscordSettings{WebhookURL: "https://x"},
+		}, false},
 		{"discord without a url", settings.DeliveryTarget{Type: settings.TargetDiscord, Enabled: true}, false},
 		{"matrix without a room", settings.DeliveryTarget{
-			Type: settings.TargetMatrix, Enabled: true, Homeserver: "https://m", AccessToken: "t",
+			Type: settings.TargetMatrix, Enabled: true, AccessToken: "t",
+			MatrixSettings: settings.MatrixSettings{Homeserver: "https://m"},
 		}, false},
 		{"matrix ready", settings.DeliveryTarget{
-			Type: settings.TargetMatrix, Enabled: true, Homeserver: "https://m",
-			AccessToken: "t", RoomIDs: []string{"!r:m"},
+			Type: settings.TargetMatrix, Enabled: true, AccessToken: "t",
+			MatrixSettings: settings.MatrixSettings{Homeserver: "https://m", RoomIDs: []string{"!r:m"}},
 		}, true},
 		{"perception without a secret", settings.DeliveryTarget{
-			Type: settings.TargetPerception, Enabled: true, URL: "https://p", Workspace: "w",
+			Type:         settings.TargetPerception,
+			Enabled:      true,
+			HTTPSettings: settings.HTTPSettings{URL: "https://p", Workspace: "w"},
 		}, false},
 	}
 
@@ -148,12 +154,13 @@ func TestTheQueueAnnouncesADeliveryItGivesUpOnExactlyOnce(t *testing.T) {
 func TestSummarizeSeparatesDisabledFromUnconfigured(t *testing.T) {
 	complete := settings.DeliveryTarget{
 		Name: "Perception", Type: settings.TargetPerception, Enabled: false,
-		URL: "https://p.example/ingest", Workspace: "ws", SecretValue: ptr("s"),
-		ProviderIDs: []string{"prov"},
+		HTTPSettings: settings.HTTPSettings{URL: "https://p.example/ingest", Workspace: "ws", SecretValue: ptr("s")},
+		ProviderIDs:  []string{"prov"},
 	}
 	incomplete := settings.DeliveryTarget{
 		Name: "Half-done", Type: settings.TargetPerception, Enabled: true,
-		URL: "https://p.example/ingest", ProviderIDs: []string{"prov"},
+		HTTPSettings: settings.HTTPSettings{URL: "https://p.example/ingest"},
+		ProviderIDs:  []string{"prov"},
 	}
 
 	route := Summarize(settings.DeliveryConfig{Items: []settings.DeliveryTarget{complete, incomplete}}, "prov", nil)

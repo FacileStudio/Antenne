@@ -282,7 +282,7 @@ func TestPruneDropsHealthForRemovedTargets(t *testing.T) {
 // without a decision would silently inherit zero and never be probed, which is a
 // choice nobody made.
 func TestEveryTargetTypeHasAnIntervalDecision(t *testing.T) {
-	for _, kind := range settings.DeliveryTargetTypes {
+	for _, kind := range settings.DeliveryTargetTypes() {
 		if _, ok := probeIntervals[kind]; !ok {
 			t.Fatalf("no probe interval decision for target type %q", kind)
 		}

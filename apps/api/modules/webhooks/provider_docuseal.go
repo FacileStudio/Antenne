@@ -140,74 +140,95 @@ func docuSealStatus(eventType, explicit string) string {
 	return ""
 }
 
-func docuSealMessage(payload docuSealPayload, templateName, submitter, submissionID, submissionURL string) string {
-	data := payload.Data
-	openLink := ""
+// docuSealLines are the three optional lines every submission event shares.
+type docuSealLines struct {
+	openLink   string
+	submission string
+	signer     string
+}
+
+func docuSealCommonLines(submitter, submissionID, submissionURL string) docuSealLines {
+	lines := docuSealLines{}
 	if submissionURL != "" {
-		openLink = fmt.Sprintf(`<a href="%s">Open submission</a>`, escape(submissionURL))
+		lines.openLink = fmt.Sprintf(`<a href="%s">Open submission</a>`, escape(submissionURL))
 	}
-	submissionLine := ""
 	if submissionID != "" {
-		submissionLine = "Submission: <code>" + escape(submissionID) + "</code>"
+		lines.submission = "Submission: <code>" + escape(submissionID) + "</code>"
 	}
-	signerLine := ""
 	if submitter != "" {
-		signerLine = "Signer: <b>" + escape(submitter) + "</b>"
+		lines.signer = "Signer: <b>" + escape(submitter) + "</b>"
 	}
+	return lines
+}
+
+func docuSealMessage(payload docuSealPayload, templateName, submitter, submissionID, submissionURL string) string {
+	lines := docuSealCommonLines(submitter, submissionID, submissionURL)
 
 	switch {
 	case payload.EventType == "form.completed":
-		externalLine := ""
-		if data.ExternalID != "" {
-			externalLine = "External ID: <code>" + escape(data.ExternalID) + "</code>"
-		}
-		return join([]string{
-			fmt.Sprintf("<b>[DocuSeal] %s</b> completed", escape(templateName)),
-			signerLine, submissionLine, externalLine, openLink,
-			docuSealDocuments(data.Documents),
-		})
-
+		return docuSealCompleted(payload, templateName, lines)
 	case payload.EventType == "form.declined":
-		reasonLine := ""
-		if data.DeclineReason != "" {
-			reasonLine = "Reason: <i>" + escape(data.DeclineReason) + "</i>"
-		}
-		return join([]string{
-			fmt.Sprintf("<b>[DocuSeal] %s</b> declined", escape(templateName)),
-			signerLine, reasonLine, submissionLine, openLink,
-		})
-
+		return docuSealDeclined(payload, templateName, lines)
 	case payload.EventType == "form.started", payload.EventType == "form.viewed":
-		verb := "viewed"
-		if payload.EventType == "form.started" {
-			verb = "started"
-		}
-		return join([]string{
-			fmt.Sprintf("<b>[DocuSeal] %s</b> %s", escape(templateName), verb),
-			signerLine, submissionLine, openLink,
-		})
-
+		return docuSealOpened(payload, templateName, lines)
 	case strings.HasPrefix(payload.EventType, "template."):
-		slugLine := ""
-		if data.Slug != "" {
-			slugLine = "Slug: <code>" + escape(data.Slug) + "</code>"
-		}
-		return join([]string{
-			fmt.Sprintf("🧾 <b>[DocuSeal] Template %s</b>", escape(strings.TrimPrefix(payload.EventType, "template."))),
-			"Name: <b>" + escape(templateName) + "</b>",
-			"Template ID: <code>" + escape(strconv.Itoa(data.ID)) + "</code>",
-			slugLine,
-		})
-
+		return docuSealTemplate(payload, templateName)
 	case strings.HasPrefix(payload.EventType, "submission."):
 		return join([]string{
 			fmt.Sprintf("📨 <b>[DocuSeal] Submission %s</b>", escape(strings.TrimPrefix(payload.EventType, "submission."))),
 			"Template: <b>" + escape(templateName) + "</b>",
-			submissionLine,
+			lines.submission,
 		})
 	}
 
 	return "ℹ️ <b>[DocuSeal]</b> " + escape(payload.EventType)
+}
+
+func docuSealCompleted(payload docuSealPayload, templateName string, lines docuSealLines) string {
+	externalLine := ""
+	if payload.Data.ExternalID != "" {
+		externalLine = "External ID: <code>" + escape(payload.Data.ExternalID) + "</code>"
+	}
+	return join([]string{
+		fmt.Sprintf("<b>[DocuSeal] %s</b> completed", escape(templateName)),
+		lines.signer, lines.submission, externalLine, lines.openLink,
+		docuSealDocuments(payload.Data.Documents),
+	})
+}
+
+func docuSealDeclined(payload docuSealPayload, templateName string, lines docuSealLines) string {
+	reasonLine := ""
+	if payload.Data.DeclineReason != "" {
+		reasonLine = "Reason: <i>" + escape(payload.Data.DeclineReason) + "</i>"
+	}
+	return join([]string{
+		fmt.Sprintf("<b>[DocuSeal] %s</b> declined", escape(templateName)),
+		lines.signer, reasonLine, lines.submission, lines.openLink,
+	})
+}
+
+func docuSealOpened(payload docuSealPayload, templateName string, lines docuSealLines) string {
+	verb := "viewed"
+	if payload.EventType == "form.started" {
+		verb = "started"
+	}
+	return join([]string{
+		fmt.Sprintf("<b>[DocuSeal] %s</b> %s", escape(templateName), verb),
+		lines.signer, lines.submission, lines.openLink,
+	})
+}
+
+func docuSealTemplate(payload docuSealPayload, templateName string) string {
+	slugLine := ""
+	if payload.Data.Slug != "" {
+		slugLine = "Slug: <code>" + escape(payload.Data.Slug) + "</code>"
+	}
+	return join([]string{
+		fmt.Sprintf("🧾 <b>[DocuSeal] Template %s</b>", escape(strings.TrimPrefix(payload.EventType, "template."))),
+		"Name: <b>" + escape(templateName) + "</b>",
+		"Template ID: <code>" + escape(strconv.Itoa(payload.Data.ID)) + "</code>",
+		slugLine,
+	})
 }
 
 func docuSealDocuments(documents []docuSealDocument) string {

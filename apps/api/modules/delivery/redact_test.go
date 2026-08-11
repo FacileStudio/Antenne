@@ -67,7 +67,9 @@ func TestProbeDiscordNeverLeaksTheTokenOnAnUnreachableHost(t *testing.T) {
 		Name:    "Alerts",
 		Enabled: true,
 		// Reserved by RFC 6761 and guaranteed not to resolve.
-		WebhookURL: "https://nonexistent.invalid/api/webhooks/999/" + secretToken,
+		DiscordSettings: settings.DiscordSettings{
+			WebhookURL: "https://nonexistent.invalid/api/webhooks/999/" + secretToken,
+		},
 	}
 
 	observation := sender.Probe(context.Background(), target)

@@ -119,48 +119,58 @@ func ardoiseMessage(payload ardoisePayload, recordName string) string {
 
 	switch {
 	case strings.HasPrefix(payload.Event, "admin."):
-		entity := firstNonEmpty(eventSegment(payload.Event, 1), "record")
-		action := firstNonEmpty(eventSegment(payload.Event, 2), "updated")
-
-		entityID, email := "", ""
-		if payload.Data != nil {
-			entityID = payload.Data.EntityID
-			if record := payload.Data.Record; record != nil {
-				email = record.Email
-				if entityID == "" {
-					entityID = record.ID
-				}
-			}
-		}
-
-		lines := []string{fmt.Sprintf("<b>[Ardoise]</b> %s %s %s", escape(actor), escape(action), escape(entity))}
-		if entityID != "" {
-			lines = append(lines, "ID: <code>"+escape(entityID)+"</code>")
-		}
-		if recordName != "" {
-			lines = append(lines, "Name: <b>"+escape(recordName)+"</b>")
-		}
-		if email != "" {
-			lines = append(lines, "Email: <code>"+escape(email)+"</code>")
-		}
-		return join(lines)
-
+		return ardoiseAdminMessage(payload, recordName, actor)
 	case payload.Event == "settings.logo.updated":
 		return "🖼️ <b>[Ardoise]</b> logo updated"
-
 	case strings.HasPrefix(payload.Event, "settings."):
-		lines := []string{"⚙️ <b>[Ardoise]</b> settings updated"}
-		if payload.Data != nil && len(payload.Data.ChangedFields) > 0 {
-			fields := make([]string, 0, len(payload.Data.ChangedFields))
-			for _, field := range payload.Data.ChangedFields {
-				fields = append(fields, "<code>"+escape(field)+"</code>")
-			}
-			lines = append(lines, "Fields: "+strings.Join(fields, ", "))
-		}
-		return join(lines)
+		return ardoiseSettingsMessage(payload)
 	}
 
 	return "📡 <b>[Ardoise]</b> " + escape(titleCase(payload.Event))
+}
+
+// ardoiseAdminMessage renders the CRUD line for the admin.* family, where the
+// entity, its id and the record's identity are each optional and the line has
+// to stay readable with any of them missing.
+func ardoiseAdminMessage(payload ardoisePayload, recordName, actor string) string {
+	entity := firstNonEmpty(eventSegment(payload.Event, 1), "record")
+	action := firstNonEmpty(eventSegment(payload.Event, 2), "updated")
+
+	entityID, email := "", ""
+	if payload.Data != nil {
+		entityID = payload.Data.EntityID
+		if record := payload.Data.Record; record != nil {
+			email = record.Email
+			if entityID == "" {
+				entityID = record.ID
+			}
+		}
+	}
+
+	lines := []string{fmt.Sprintf("<b>[Ardoise]</b> %s %s %s", escape(actor), escape(action), escape(entity))}
+	if entityID != "" {
+		lines = append(lines, "ID: <code>"+escape(entityID)+"</code>")
+	}
+	if recordName != "" {
+		lines = append(lines, "Name: <b>"+escape(recordName)+"</b>")
+	}
+	if email != "" {
+		lines = append(lines, "Email: <code>"+escape(email)+"</code>")
+	}
+	return join(lines)
+}
+
+func ardoiseSettingsMessage(payload ardoisePayload) string {
+	lines := []string{"⚙️ <b>[Ardoise]</b> settings updated"}
+	if payload.Data == nil || len(payload.Data.ChangedFields) == 0 {
+		return join(lines)
+	}
+
+	fields := make([]string, 0, len(payload.Data.ChangedFields))
+	for _, field := range payload.Data.ChangedFields {
+		fields = append(fields, "<code>"+escape(field)+"</code>")
+	}
+	return join(append(lines, "Fields: "+strings.Join(fields, ", ")))
 }
 
 func ardoiseStatus(event string) string {

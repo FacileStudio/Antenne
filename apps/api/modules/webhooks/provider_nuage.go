@@ -111,64 +111,76 @@ var nuage = Definition{
 func nuageMessage(payload nuagePayload) string {
 	icon := nuageEmoji(payload.EventType)
 	actor := escape(payload.Actor.Name)
-	file := payload.Data.File
-	folder := payload.Data.Folder
-	share := payload.Data.Share
-
-	sharedWith := func(preposition string) string {
-		if share == nil || share.SharedWithEmail == "" {
-			return ""
-		}
-		return " " + preposition + " " + escape(share.SharedWithEmail)
-	}
 
 	switch payload.EventType {
-	case "file.uploaded":
-		if file == nil {
-			return ""
-		}
-		return fmt.Sprintf("%s <b>%s</b> uploaded <b>%s</b> (%s)", icon, actor, escape(file.Name), formatBytes(file.Size))
-	case "file.updated":
-		if file == nil {
-			return ""
-		}
-		return fmt.Sprintf("%s <b>%s</b> updated <b>%s</b>", icon, actor, escape(file.Name))
-	case "file.deleted":
-		if file == nil {
-			return ""
-		}
-		return fmt.Sprintf("%s <b>%s</b> deleted <b>%s</b>", icon, actor, escape(file.Name))
-	case "file.shared":
-		if file == nil {
-			return ""
-		}
-		return fmt.Sprintf("%s <b>%s</b> shared <b>%s</b>%s", icon, actor, escape(file.Name), sharedWith("with"))
-	case "folder.created":
-		if folder == nil {
-			return ""
-		}
-		return fmt.Sprintf("%s <b>%s</b> created folder <b>%s</b>", icon, actor, escape(folder.Name))
-	case "folder.updated":
-		if folder == nil {
-			return ""
-		}
-		return fmt.Sprintf("%s <b>%s</b> updated folder <b>%s</b>", icon, actor, escape(folder.Name))
-	case "folder.deleted":
-		if folder == nil {
-			return ""
-		}
-		return fmt.Sprintf("%s <b>%s</b> deleted folder <b>%s</b>", icon, actor, escape(folder.Name))
-	case "share.created":
-		name := "a resource"
-		if file != nil {
-			name = escape(file.Name)
-		}
-		return fmt.Sprintf("%s <b>%s</b> shared <b>%s</b>%s", icon, actor, name, sharedWith("with"))
-	case "share.revoked":
-		return fmt.Sprintf("%s <b>%s</b> revoked share access%s", icon, actor, sharedWith("for"))
+	case "file.uploaded", "file.updated", "file.deleted", "file.shared":
+		return nuageFileMessage(payload, icon, actor)
+	case "folder.created", "folder.updated", "folder.deleted":
+		return nuageFolderMessage(payload, icon, actor)
+	case "share.created", "share.revoked":
+		return nuageShareMessage(payload, icon, actor)
 	}
 
 	return fmt.Sprintf("ℹ️ <b>%s</b> triggered <b>%s</b>", actor, escape(payload.EventType))
+}
+
+// nuageSharedWith is the trailing " with someone@example.com" clause. It is
+// empty when the payload carries no share, which is what keeps a bare event
+// from rendering a dangling preposition.
+func nuageSharedWith(payload nuagePayload, preposition string) string {
+	share := payload.Data.Share
+	if share == nil || share.SharedWithEmail == "" {
+		return ""
+	}
+	return " " + preposition + " " + escape(share.SharedWithEmail)
+}
+
+// nuageFileMessage returns "" when the event names a file the payload does not
+// carry: an alert naming nothing is worse than no alert.
+func nuageFileMessage(payload nuagePayload, icon, actor string) string {
+	file := payload.Data.File
+	if file == nil {
+		return ""
+	}
+	name := escape(file.Name)
+
+	switch payload.EventType {
+	case "file.uploaded":
+		return fmt.Sprintf("%s <b>%s</b> uploaded <b>%s</b> (%s)", icon, actor, name, formatBytes(file.Size))
+	case "file.updated":
+		return fmt.Sprintf("%s <b>%s</b> updated <b>%s</b>", icon, actor, name)
+	case "file.deleted":
+		return fmt.Sprintf("%s <b>%s</b> deleted <b>%s</b>", icon, actor, name)
+	}
+	return fmt.Sprintf("%s <b>%s</b> shared <b>%s</b>%s", icon, actor, name, nuageSharedWith(payload, "with"))
+}
+
+func nuageFolderMessage(payload nuagePayload, icon, actor string) string {
+	folder := payload.Data.Folder
+	if folder == nil {
+		return ""
+	}
+	name := escape(folder.Name)
+
+	switch payload.EventType {
+	case "folder.created":
+		return fmt.Sprintf("%s <b>%s</b> created folder <b>%s</b>", icon, actor, name)
+	case "folder.updated":
+		return fmt.Sprintf("%s <b>%s</b> updated folder <b>%s</b>", icon, actor, name)
+	}
+	return fmt.Sprintf("%s <b>%s</b> deleted folder <b>%s</b>", icon, actor, name)
+}
+
+func nuageShareMessage(payload nuagePayload, icon, actor string) string {
+	if payload.EventType == "share.revoked" {
+		return fmt.Sprintf("%s <b>%s</b> revoked share access%s", icon, actor, nuageSharedWith(payload, "for"))
+	}
+
+	name := "a resource"
+	if file := payload.Data.File; file != nil {
+		name = escape(file.Name)
+	}
+	return fmt.Sprintf("%s <b>%s</b> shared <b>%s</b>%s", icon, actor, name, nuageSharedWith(payload, "with"))
 }
 
 func nuageEmoji(eventType string) string {

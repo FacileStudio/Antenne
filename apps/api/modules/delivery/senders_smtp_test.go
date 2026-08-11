@@ -131,16 +131,18 @@ func TestSendSMTPGreetsBeforeAskingAboutExtensions(t *testing.T) {
 
 func smtpTarget(host string, port int) settings.DeliveryTarget {
 	return settings.DeliveryTarget{
-		ID:            "smtp-1",
-		Type:          settings.TargetSMTP,
-		Name:          "Relay",
-		Enabled:       true,
-		Host:          host,
-		Port:          port,
-		FromAddress:   "antenne@example.test",
-		ToAddresses:   []string{"ops@example.test"},
-		Secure:        false,
-		SubjectPrefix: "",
+		ID:      "smtp-1",
+		Type:    settings.TargetSMTP,
+		Name:    "Relay",
+		Enabled: true,
+		SMTPSettings: settings.SMTPSettings{
+			Host:          host,
+			Port:          port,
+			FromAddress:   "antenne@example.test",
+			ToAddresses:   []string{"ops@example.test"},
+			Secure:        false,
+			SubjectPrefix: "",
+		},
 	}
 }
 
