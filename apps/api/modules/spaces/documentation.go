@@ -2,11 +2,18 @@ package spaces
 
 import "github.com/FacileStudio/tronc/apiref"
 
-// Documentation is this module's entry in the reference at /docs.
-var Documentation = apiref.Module{
-	Name:        "Spaces",
-	Description: "Teams and their members. Providers and delivery targets are instance-wide; spaces group people.",
-	Routes: []apiref.Route{
+// Documentation returns this module's entry in the reference at /docs.
+func Documentation() apiref.Module {
+	return apiref.Module{
+		Name:        "Spaces",
+		Description: "Teams and their members. Providers and delivery targets are instance-wide; spaces group people.",
+		Routes:      append(spaceRoutes(), memberRoutes()...),
+	}
+}
+
+// spaceRoutes cover the spaces themselves.
+func spaceRoutes() []apiref.Route {
+	return []apiref.Route{
 		{
 			Method:       "GET",
 			Path:         "/api/spaces",
@@ -57,6 +64,12 @@ var Documentation = apiref.Module{
 			ResponseBody: "OkResponse",
 			Errors:       []apiref.Error{{Status: 404, Code: "not_found", Description: "no such space"}},
 		},
+	}
+}
+
+// memberRoutes cover who is in a space and what they may do there.
+func memberRoutes() []apiref.Route {
+	return []apiref.Route{
 		{
 			Method:       "GET",
 			Path:         "/api/spaces/{id}/members",
@@ -109,5 +122,5 @@ var Documentation = apiref.Module{
 			ResponseBody: "OkResponse",
 			Errors:       []apiref.Error{{Status: 404, Code: "not_found", Description: "no such membership"}},
 		},
-	},
+	}
 }

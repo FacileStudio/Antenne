@@ -63,12 +63,12 @@ func refConfig() apiref.Config {
 		Description: "Alert aggregation and the Facile Suite's event bus. Configuration, the activity log, the third-party webhook intake and the Antenne Pool.",
 		Servers:     []string{"/"},
 		Registry: apiref.Registry{Modules: []apiref.Module{
-			auth.Documentation,
-			server.SettingsDocumentation,
-			server.EventsDocumentation,
-			server.WebhooksDocumentation,
-			bus.Documentation,
-			spaces.Documentation,
+			auth.Documentation(),
+			server.SettingsDocumentation(),
+			server.EventsDocumentation(),
+			server.WebhooksDocumentation(),
+			bus.Documentation(),
+			spaces.Documentation(),
 		}},
 	}
 }

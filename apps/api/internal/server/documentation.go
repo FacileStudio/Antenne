@@ -1,14 +1,25 @@
 package server
 
-import "github.com/FacileStudio/tronc/apiref"
+import (
+	"slices"
 
-// SettingsDocumentation covers the configuration and action endpoints.
-var SettingsDocumentation = apiref.Module{
-	Name: "Settings",
-	Description: "The whole configuration as one document: providers, delivery targets, system " +
-		"events and the pool settings. Stored secrets read as ••••••••; sending that marker back keeps " +
-		"the stored value, anything else replaces it, and an empty string clears it.",
-	Routes: []apiref.Route{
+	"github.com/FacileStudio/tronc/apiref"
+)
+
+// SettingsDocumentation returns the reference entry covering the configuration and action endpoints.
+func SettingsDocumentation() apiref.Module {
+	return apiref.Module{
+		Name: "Settings",
+		Description: "The whole configuration as one document: providers, delivery targets, system " +
+			"events and the pool settings. Stored secrets read as ••••••••; sending that marker back keeps " +
+			"the stored value, anything else replaces it, and an empty string clears it.",
+		Routes: slices.Concat(configurationRoutes(), diagnosticRoutes(), healthRoutes()),
+	}
+}
+
+// configurationRoutes read and write the settings document itself.
+func configurationRoutes() []apiref.Route {
+	return []apiref.Route{
 		{
 			Method:       "GET",
 			Path:         "/api/settings",
@@ -29,6 +40,13 @@ var SettingsDocumentation = apiref.Module{
 				{Status: 400, Code: "invalid_argument", Description: "a non-positive timeout, an unrooted webhook path, two enabled webhook providers on one path, an unknown delivery target type, or an invalid listener port"},
 			},
 		},
+	}
+}
+
+// diagnosticRoutes exercise the configuration rather than change it: the test
+// alert, the per-target and per-provider checks, and the health they report.
+func diagnosticRoutes() []apiref.Route {
+	return []apiref.Route{
 		{
 			Method:       "POST",
 			Path:         "/api/test-alert",
@@ -58,6 +76,13 @@ var SettingsDocumentation = apiref.Module{
 			ResponseBody: "OkResponse",
 			Errors:       []apiref.Error{{Status: 400, Code: "invalid_argument", Description: "providerId is required, unknown, not an IMAP provider, or the connection failed"}},
 		},
+	}
+}
+
+// healthRoutes report what the probes made of each delivery target, and let an
+// operator ask for one on demand.
+func healthRoutes() []apiref.Route {
+	return []apiref.Route{
 		{
 			Method:  "GET",
 			Path:    "/api/delivery-health",
@@ -94,89 +119,93 @@ var SettingsDocumentation = apiref.Module{
 				{Status: 500, Code: "internal", Description: "the check could not run at all"},
 			},
 		},
-	},
+	}
 }
 
-// EventsDocumentation covers the activity log.
-var EventsDocumentation = apiref.Module{
-	Name: "Events",
-	Description: "The activity log: every event Antenne handled, what it was delivered to, and whether " +
-		"that worked. The log keeps the most recent 5000 entries.",
-	Routes: []apiref.Route{
-		{
-			Method:       "GET",
-			Path:         "/api/events",
-			Summary:      "List events",
-			Description:  "Newest first. Query parameters: limit (default 50), offset, q for full-text search, and source to filter by webhook, website, imap, rss, system or test. The returned stats describe the whole filtered set, not the page.",
-			Auth:         "session",
-			ResponseBody: "EventPage",
-		},
-		{
-			Method:       "GET",
-			Path:         "/api/events/provider/{providerId}",
-			Summary:      "List one provider's events",
-			Auth:         "session",
-			PathParams:   []apiref.Field{{Name: "providerId", Type: "string", Description: "the provider id"}},
-			ResponseBody: "EventPage",
-		},
-		{
-			Method:       "GET",
-			Path:         "/api/events/target/{targetId}",
-			Summary:      "List one delivery target's events",
-			Description:  "Every event with a delivery attempt against this target, successful or not.",
-			Auth:         "session",
-			PathParams:   []apiref.Field{{Name: "targetId", Type: "string", Description: "the delivery target id"}},
-			ResponseBody: "EventPage",
-		},
-		{
-			Method:      "GET",
-			Path:        "/api/events/stream",
-			Summary:     "Stream new events",
-			Description: "Server-sent events, one data: frame per new entry. Unfiltered: a client applies its own filters.",
-			Auth:        "session",
-		},
-		{
-			Method:       "POST",
-			Path:         "/api/events/{eventId}/replay",
-			Summary:      "Replay an event",
-			Description:  "Re-sends a logged envelope to one target, bypassing the routing rules. Only events that carry an envelope can be replayed.",
-			Auth:         "session",
-			PathParams:   []apiref.Field{{Name: "eventId", Type: "string", Description: "the logged event id"}},
-			RequestBody:  "TargetTestRequest",
-			ResponseBody: "OkResponse",
-			Errors: []apiref.Error{
-				{Status: 400, Code: "invalid_argument", Description: "targetId is required, the event has no envelope, or the send failed"},
+// EventsDocumentation returns the reference entry covering the activity log.
+func EventsDocumentation() apiref.Module {
+	return apiref.Module{
+		Name: "Events",
+		Description: "The activity log: every event Antenne handled, what it was delivered to, and whether " +
+			"that worked. The log keeps the most recent 5000 entries.",
+		Routes: []apiref.Route{
+			{
+				Method:       "GET",
+				Path:         "/api/events",
+				Summary:      "List events",
+				Description:  "Newest first. Query parameters: limit (default 50), offset, q for full-text search, and source to filter by webhook, website, imap, rss, system or test. The returned stats describe the whole filtered set, not the page.",
+				Auth:         "session",
+				ResponseBody: "EventPage",
+			},
+			{
+				Method:       "GET",
+				Path:         "/api/events/provider/{providerId}",
+				Summary:      "List one provider's events",
+				Auth:         "session",
+				PathParams:   []apiref.Field{{Name: "providerId", Type: "string", Description: "the provider id"}},
+				ResponseBody: "EventPage",
+			},
+			{
+				Method:       "GET",
+				Path:         "/api/events/target/{targetId}",
+				Summary:      "List one delivery target's events",
+				Description:  "Every event with a delivery attempt against this target, successful or not.",
+				Auth:         "session",
+				PathParams:   []apiref.Field{{Name: "targetId", Type: "string", Description: "the delivery target id"}},
+				ResponseBody: "EventPage",
+			},
+			{
+				Method:      "GET",
+				Path:        "/api/events/stream",
+				Summary:     "Stream new events",
+				Description: "Server-sent events, one data: frame per new entry. Unfiltered: a client applies its own filters.",
+				Auth:        "session",
+			},
+			{
+				Method:       "POST",
+				Path:         "/api/events/{eventId}/replay",
+				Summary:      "Replay an event",
+				Description:  "Re-sends a logged envelope to one target, bypassing the routing rules. Only events that carry an envelope can be replayed.",
+				Auth:         "session",
+				PathParams:   []apiref.Field{{Name: "eventId", Type: "string", Description: "the logged event id"}},
+				RequestBody:  "TargetTestRequest",
+				ResponseBody: "OkResponse",
+				Errors: []apiref.Error{
+					{Status: 400, Code: "invalid_argument", Description: "targetId is required, the event has no envelope, or the send failed"},
+				},
 			},
 		},
-	},
+	}
 }
 
-// WebhooksDocumentation covers the third-party intake.
-var WebhooksDocumentation = apiref.Module{
-	Name: "Webhooks",
-	Description: "Third-party receivers. The path and the secret header are per-provider settings, " +
-		"so this one route stands for every configured provider. These paths stay at the root: they " +
-		"are registered in Dokploy, DocuSeal, the git forges and Vikunja.",
-	Routes: []apiref.Route{
-		{
-			Method:  "POST",
-			Path:    "/webhook/{provider}",
-			Summary: "Receive a webhook",
-			Description: "The body is read once under a 4 MB cap and kept raw, because signature " +
-				"verification hashes exactly what the sender signed; authentication runs before the " +
-				"JSON is parsed. A recognised event that is not worth an alert — a bare heartbeat — is " +
-				"accepted, logged and not delivered. Ardoise, Vision, Plume and Nuage verify an " +
-				"HMAC-SHA256 of the body prefixed with sha256=; Opus verifies the bare hex digest; the " +
-				"rest compare the configured header in constant time. An empty secret accepts " +
-				"unauthenticated calls on that path.",
-			Auth:         "provider secret or signature",
-			PathParams:   []apiref.Field{{Name: "provider", Type: "string", Description: "the configured path segment, e.g. dokploy"}},
-			ResponseBody: "OkResponse",
-			Errors: []apiref.Error{
-				{Status: 400, Code: "invalid_argument", Description: "the body is not JSON"},
-				{Status: 401, Code: "unauthenticated", Description: "the secret or signature did not verify"},
-				{Status: 404, Code: "not_found", Description: "no enabled provider is configured on that path"},
+// WebhooksDocumentation returns the reference entry covering the third-party intake.
+func WebhooksDocumentation() apiref.Module {
+	return apiref.Module{
+		Name: "Webhooks",
+		Description: "Third-party receivers. The path and the secret header are per-provider settings, " +
+			"so this one route stands for every configured provider. These paths stay at the root: they " +
+			"are registered in Dokploy, DocuSeal, the git forges and Vikunja.",
+		Routes: []apiref.Route{
+			{
+				Method:  "POST",
+				Path:    "/webhook/{provider}",
+				Summary: "Receive a webhook",
+				Description: "The body is read once under a 4 MB cap and kept raw, because signature " +
+					"verification hashes exactly what the sender signed; authentication runs before the " +
+					"JSON is parsed. A recognised event that is not worth an alert — a bare heartbeat — is " +
+					"accepted, logged and not delivered. Ardoise, Vision, Plume and Nuage verify an " +
+					"HMAC-SHA256 of the body prefixed with sha256=; Opus verifies the bare hex digest; the " +
+					"rest compare the configured header in constant time. An empty secret accepts " +
+					"unauthenticated calls on that path.",
+				Auth:         "provider secret or signature",
+				PathParams:   []apiref.Field{{Name: "provider", Type: "string", Description: "the configured path segment, e.g. dokploy"}},
+				ResponseBody: "OkResponse",
+				Errors: []apiref.Error{
+					{Status: 400, Code: "invalid_argument", Description: "the body is not JSON"},
+					{Status: 401, Code: "unauthenticated", Description: "the secret or signature did not verify"},
+					{Status: 404, Code: "not_found", Description: "no enabled provider is configured on that path"},
+				},
 			},
 		},
-	},
+	}
 }
