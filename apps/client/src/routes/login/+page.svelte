@@ -102,7 +102,9 @@
 
 			{#if ssoEnabled}
 				<a href="/api/auth/oidc" class="{primaryButtonClass} mt-8" data-sveltekit-reload>
-					Continue with Facile
+					<iconify-icon icon="solar:key-minimalistic-square-bold-duotone" width="18" class="mr-2"
+					></iconify-icon>
+					Sign in with Facile
 				</a>
 			{/if}
 
