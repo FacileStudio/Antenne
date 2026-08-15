@@ -102,8 +102,10 @@
 
 			{#if ssoEnabled}
 				<a href="/api/auth/oidc" class="{primaryButtonClass} mt-8" data-sveltekit-reload>
-					<iconify-icon icon="solar:key-minimalistic-square-bold-duotone" width="18" class="mr-2"
-					></iconify-icon>
+					<!-- The literal rather than muse's icons.key: this view imports no
+					component library on purpose, and the string is muse's own mapping,
+					so the mark stays in the linear set every other icon is drawn from. -->
+					<iconify-icon icon="solar:key-linear" width="18" class="mr-2"></iconify-icon>
 					Sign in with Facile
 				</a>
 			{/if}
