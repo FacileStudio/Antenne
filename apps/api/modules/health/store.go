@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -41,11 +43,11 @@ type healthRow struct {
 //
 // Exported because it has to be: GORM's schema parser skips an unexported
 // embedded struct entirely, tag or no tag, so naming it lastSeenColumns drops
-// all six of these from the table it maps. Nothing errors when that happens —
-// mutableColumns still names them in the upsert's DoUpdates, so Postgres
-// resolves them against an INSERT that never listed them and writes NULL over
-// whatever the row held. TestStoreRoundTripsEveryField catches it, but only
-// with TEST_DATABASE_URL set.
+// all six of these from the table it maps. Nothing errors when that happens:
+// the row simply stops carrying them, and every save silently drops what they
+// held. TestStoreRoundTripsEveryField catches it — and now that assignments are
+// derived from this same schema rather than hand-listed, a drop can no longer
+// also turn into an upsert writing NULL over the columns it forgot.
 type LastSeenColumns struct {
 	LastObservedAt *time.Time
 	LastSuccessAt  *time.Time
@@ -57,26 +59,9 @@ type LastSeenColumns struct {
 
 func (healthRow) TableName() string { return "delivery_target_health" }
 
-// mutableColumns is every column an upsert may overwrite. target_id is the
-// conflict key and so is absent.
-var mutableColumns = []string{
-	"state",
-	"consecutive_failures",
-	"consecutive_successes",
-	"last_observed_at",
-	"last_success_at",
-	"last_failure_at",
-	"last_source",
-	"last_kind",
-	"last_detail",
-	"down_since",
-	"last_alert_at",
-	"alert_count",
-	"transitions",
-	"probe_suspended_until",
-	"probe_backoff_level",
-	"updated_at",
-}
+// conflictColumn is the upsert's conflict key, and so the one column an upsert
+// never assigns.
+const conflictColumn = "target_id"
 
 // Store persists one health record per delivery target.
 //
@@ -87,10 +72,46 @@ var mutableColumns = []string{
 // two.
 type Store struct {
 	db *gorm.DB
+
+	assignOnce sync.Once
+	assignCols []string
+	assignErr  error
 }
 
 // NewStore builds a health store over an existing connection.
 func NewStore(db *gorm.DB) *Store { return &Store{db: db} }
+
+// assignments is every column an upsert may overwrite: this model's own schema,
+// minus the conflict key.
+//
+// Derived rather than hand-listed, and that is the whole point. A hand-written
+// list cannot disagree with the struct loudly, only destructively — name a
+// column the INSERT does not carry and Postgres resolves it from excluded,
+// which holds NULL, so every save wipes a column instead of writing it. That is
+// not hypothetical: an unexported embedded field once dropped six columns from
+// this model while the list still named them. Deriving from the same schema
+// GORM inserts through leaves the two no way to drift apart.
+//
+// Parsed through s.db so the naming strategy is the one this connection
+// actually uses, and parsed once because it cannot change while the process
+// runs. A parse failure is returned rather than swallowed: an upsert that
+// assigns nothing would look like it worked.
+func (s *Store) assignments() ([]string, error) {
+	s.assignOnce.Do(func() {
+		statement := &gorm.Statement{DB: s.db}
+		if err := statement.Parse(&healthRow{}); err != nil {
+			s.assignErr = fmt.Errorf("parse the health row schema: %w", err)
+			return
+		}
+		for _, column := range statement.Schema.DBNames {
+			if column == conflictColumn {
+				continue
+			}
+			s.assignCols = append(s.assignCols, column)
+		}
+	})
+	return s.assignCols, s.assignErr
+}
 
 // Load returns the health of one target. A target that has never been observed
 // has no row, and gets StateUnknown rather than an error: "never measured" is a
@@ -162,9 +183,14 @@ func (s *Store) Upsert(ctx context.Context, record Record) error {
 		row.State = string(StateUnknown)
 	}
 
+	assignments, err := s.assignments()
+	if err != nil {
+		return err
+	}
+
 	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "target_id"}},
-		DoUpdates: clause.AssignmentColumns(mutableColumns),
+		Columns:   []clause.Column{{Name: conflictColumn}},
+		DoUpdates: clause.AssignmentColumns(assignments),
 	}).Create(&row).Error
 }
 

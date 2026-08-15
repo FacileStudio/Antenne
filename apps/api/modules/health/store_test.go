@@ -41,6 +41,72 @@ func TestStoreRoundTripsEveryField(t *testing.T) {
 	assertSameRecord(t, want, got)
 }
 
+// TestUpsertOverwritesEveryColumn is the one that fails when a column stops
+// being assigned on conflict. Checking a field or two after the second write is
+// not enough: a column missing from the upsert's assignment list keeps its old
+// value in silence, and the row still looks broadly updated. So every field is
+// written twice, with different values, and the second write must win outright.
+func TestUpsertOverwritesEveryColumn(t *testing.T) {
+	records, ctx := store(t)
+	id := target(t, "overwrite-every-column")
+
+	first := Record{
+		TargetID:             id,
+		State:                StatePending,
+		ConsecutiveFailures:  1,
+		ConsecutiveSuccesses: 7,
+		LastSeen: LastSeen{
+			LastObservedAt: moment(-3 * time.Hour),
+			LastSuccessAt:  moment(-4 * time.Hour),
+			LastFailureAt:  moment(-5 * time.Hour),
+			LastSource:     SourceDelivery,
+			LastKind:       KindUnreachable,
+			LastDetail:     "first",
+		},
+		DownSince:           moment(-6 * time.Hour),
+		LastAlertAt:         moment(-7 * time.Hour),
+		AlertCount:          1,
+		Transitions:         []bool{true},
+		ProbeSuspendedUntil: moment(2 * time.Hour),
+		ProbeBackoffLevel:   1,
+		UpdatedAt:           *moment(-3 * time.Hour),
+	}
+	if err := records.Upsert(ctx, first); err != nil {
+		t.Fatalf("first Upsert: %v", err)
+	}
+
+	second := Record{
+		TargetID:             id,
+		State:                StateDown,
+		ConsecutiveFailures:  9,
+		ConsecutiveSuccesses: 2,
+		LastSeen: LastSeen{
+			LastObservedAt: moment(0),
+			LastSuccessAt:  moment(-time.Hour),
+			LastFailureAt:  moment(-time.Minute),
+			LastSource:     SourceProbe,
+			LastKind:       KindDenied,
+			LastDetail:     "second",
+		},
+		DownSince:           moment(-30 * time.Minute),
+		LastAlertAt:         moment(-15 * time.Minute),
+		AlertCount:          4,
+		Transitions:         []bool{false, true, false},
+		ProbeSuspendedUntil: moment(time.Hour),
+		ProbeBackoffLevel:   3,
+		UpdatedAt:           *moment(0),
+	}
+	if err := records.Upsert(ctx, second); err != nil {
+		t.Fatalf("second Upsert: %v", err)
+	}
+
+	got, err := records.Load(ctx, id)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	assertSameRecord(t, second, got)
+}
+
 func TestUpsertOverwritesInPlace(t *testing.T) {
 	records, ctx := store(t)
 	id := target(t, "overwrite")
