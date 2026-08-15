@@ -60,8 +60,17 @@ type Definition struct {
 	Handle func(body []byte, ctx Context) (Result, error)
 }
 
-// Registry maps a provider type to its definition.
-var Registry = map[settings.ProviderType]Definition{
+// Lookup resolves the definition a provider type is handled by, and reports
+// whether Antenne knows that type at all. Callers must treat the second result
+// as authoritative: a provider row can name a type this build does not carry.
+func Lookup(providerType settings.ProviderType) (Definition, bool) {
+	definition, known := registry[providerType]
+	return definition, known
+}
+
+// registry is built once rather than per call: Lookup sits on the webhook
+// intake path, which is the one path here a third party can drive.
+var registry = map[settings.ProviderType]Definition{
 	settings.ProviderUptimeKuma: uptimeKuma,
 	settings.ProviderDocuSeal:   docuSeal,
 	settings.ProviderDokploy:    dokploy,

@@ -129,7 +129,7 @@ var formatterCases = []formatterCase{
 
 func TestProviderMessagesAreUnchanged(t *testing.T) {
 	for _, testCase := range formatterCases {
-		definition, known := Registry[testCase.provider]
+		definition, known := Lookup(testCase.provider)
 		if !known {
 			t.Fatalf("%s: no definition for %s", testCase.name, testCase.provider)
 		}
