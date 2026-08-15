@@ -64,6 +64,9 @@ func (m *Monitor) sweep(ctx context.Context, targets []settings.DeliveryTarget) 
 func (m *Monitor) prune(ctx context.Context, targets []settings.DeliveryTarget) {
 	records, err := m.records.LoadAll(ctx)
 	if err != nil {
+		// Logged rather than dropped: a prune that has quietly stopped working
+		// is indistinguishable from a prune with nothing left to do.
+		m.log.Warn("could not read target health to prune it", slog.Any("error", err))
 		return
 	}
 	live := make(map[string]struct{}, len(targets))
