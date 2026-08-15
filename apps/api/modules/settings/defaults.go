@@ -10,13 +10,14 @@ import (
 // NewID mints the identifier a new provider or delivery target carries. It is a
 // UUIDv4, which is what the pre-Go dashboard generated, so ids stay
 // interchangeable between the two.
+//
+// There is no error path because crypto/rand.Read has had none since Go 1.24:
+// it fills the buffer entirely or crashes the program itself. Handling a
+// failure here would be handling a case the standard library guarantees this
+// code can never observe.
 func NewID() string {
 	raw := make([]byte, 16)
-	if _, err := rand.Read(raw); err != nil {
-		// crypto/rand only fails when the OS entropy source is gone, which is
-		// not a condition a settings edit can recover from.
-		panic(err)
-	}
+	rand.Read(raw)
 	raw[6] = (raw[6] & 0x0f) | 0x40
 	raw[8] = (raw[8] & 0x3f) | 0x80
 
