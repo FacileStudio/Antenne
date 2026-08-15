@@ -21,12 +21,7 @@ type healthRow struct {
 	ConsecutiveFailures  int
 	ConsecutiveSuccesses int
 
-	LastObservedAt *time.Time
-	LastSuccessAt  *time.Time
-	LastFailureAt  *time.Time
-	LastSource     string
-	LastKind       string
-	LastDetail     string
+	LastSeenColumns
 
 	DownSince   *time.Time
 	LastAlertAt *time.Time
@@ -38,6 +33,26 @@ type healthRow struct {
 	ProbeBackoffLevel   int
 
 	UpdatedAt time.Time
+}
+
+// LastSeenColumns is what the most recent observation said. It is embedded
+// anonymously so every reader still says row.LastKind — the grouping is for the
+// eye, not the schema.
+//
+// Exported because it has to be: GORM's schema parser skips an unexported
+// embedded struct entirely, tag or no tag, so naming it lastSeenColumns drops
+// all six of these from the table it maps. Nothing errors when that happens —
+// mutableColumns still names them in the upsert's DoUpdates, so Postgres
+// resolves them against an INSERT that never listed them and writes NULL over
+// whatever the row held. TestStoreRoundTripsEveryField catches it, but only
+// with TEST_DATABASE_URL set.
+type LastSeenColumns struct {
+	LastObservedAt *time.Time
+	LastSuccessAt  *time.Time
+	LastFailureAt  *time.Time
+	LastSource     string
+	LastKind       string
+	LastDetail     string
 }
 
 func (healthRow) TableName() string { return "delivery_target_health" }
@@ -124,19 +139,21 @@ func (s *Store) Upsert(ctx context.Context, record Record) error {
 		State:                string(record.State),
 		ConsecutiveFailures:  record.ConsecutiveFailures,
 		ConsecutiveSuccesses: record.ConsecutiveSuccesses,
-		LastObservedAt:       record.LastObservedAt,
-		LastSuccessAt:        record.LastSuccessAt,
-		LastFailureAt:        record.LastFailureAt,
-		LastSource:           string(record.LastSource),
-		LastKind:             string(record.LastKind),
-		LastDetail:           record.LastDetail,
-		DownSince:            record.DownSince,
-		LastAlertAt:          record.LastAlertAt,
-		AlertCount:           record.AlertCount,
-		Transitions:          transitions,
-		ProbeSuspendedUntil:  record.ProbeSuspendedUntil,
-		ProbeBackoffLevel:    record.ProbeBackoffLevel,
-		UpdatedAt:            record.UpdatedAt,
+		LastSeenColumns: LastSeenColumns{
+			LastObservedAt: record.LastObservedAt,
+			LastSuccessAt:  record.LastSuccessAt,
+			LastFailureAt:  record.LastFailureAt,
+			LastSource:     string(record.LastSource),
+			LastKind:       string(record.LastKind),
+			LastDetail:     record.LastDetail,
+		},
+		DownSince:           record.DownSince,
+		LastAlertAt:         record.LastAlertAt,
+		AlertCount:          record.AlertCount,
+		Transitions:         transitions,
+		ProbeSuspendedUntil: record.ProbeSuspendedUntil,
+		ProbeBackoffLevel:   record.ProbeBackoffLevel,
+		UpdatedAt:           record.UpdatedAt,
 	}
 	if row.UpdatedAt.IsZero() {
 		row.UpdatedAt = time.Now().UTC()
@@ -164,26 +181,36 @@ func (r healthRow) record() Record {
 		State:                State(r.State),
 		ConsecutiveFailures:  r.ConsecutiveFailures,
 		ConsecutiveSuccesses: r.ConsecutiveSuccesses,
-		LastObservedAt:       r.LastObservedAt,
-		LastSuccessAt:        r.LastSuccessAt,
-		LastFailureAt:        r.LastFailureAt,
-		LastSource:           Source(r.LastSource),
-		LastKind:             Kind(r.LastKind),
-		LastDetail:           r.LastDetail,
-		DownSince:            r.DownSince,
-		LastAlertAt:          r.LastAlertAt,
-		AlertCount:           r.AlertCount,
-		ProbeSuspendedUntil:  r.ProbeSuspendedUntil,
-		ProbeBackoffLevel:    r.ProbeBackoffLevel,
-		UpdatedAt:            r.UpdatedAt,
+		LastSeen: LastSeen{
+			LastObservedAt: r.LastObservedAt,
+			LastSuccessAt:  r.LastSuccessAt,
+			LastFailureAt:  r.LastFailureAt,
+			LastSource:     Source(r.LastSource),
+			LastKind:       Kind(r.LastKind),
+			LastDetail:     r.LastDetail,
+		},
+		DownSince:           r.DownSince,
+		LastAlertAt:         r.LastAlertAt,
+		AlertCount:          r.AlertCount,
+		ProbeSuspendedUntil: r.ProbeSuspendedUntil,
+		ProbeBackoffLevel:   r.ProbeBackoffLevel,
+		UpdatedAt:           r.UpdatedAt,
 	}
-	// A ring that will not parse is dropped rather than fatal: flap detection
-	// rebuilds it from the next FlapWindow observations, and refusing to report
-	// a target's state because its history is malformed is the wrong trade.
-	if len(r.Transitions) > 0 {
-		_ = json.Unmarshal(r.Transitions, &record.Transitions)
-	}
+	record.Transitions = decodeRing(r.Transitions)
 	return record
+}
+
+// decodeRing reads the stored flap-detection ring, keeping whatever parsed.
+//
+// A ring that will not parse is dropped rather than fatal: flap detection
+// rebuilds it from the next FlapWindow observations, and refusing to report a
+// target's state because its history is malformed is the wrong trade.
+func decodeRing(blob []byte) []bool {
+	var ring []bool
+	if len(blob) > 0 {
+		json.Unmarshal(blob, &ring)
+	}
+	return ring
 }
 
 func emptyRing(ring []bool) []bool {

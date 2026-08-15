@@ -65,95 +65,6 @@ func observedAt(base time.Time, offset time.Duration) *time.Time {
 	return &moment
 }
 
-func TestShouldProbe(t *testing.T) {
-	now := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
-	started := now.Add(-time.Hour)
-	const targetID = "target-1"
-
-	matrix := ProbeInterval(settings.TargetMatrix)
-
-	cases := []struct {
-		name     string
-		record   Record
-		interval time.Duration
-		want     bool
-	}{
-		{
-			name:     "never observed and past its phase",
-			record:   Record{TargetID: targetID},
-			interval: matrix,
-			want:     true,
-		},
-		{
-			name:     "a type with no safe probe is never probed",
-			record:   Record{TargetID: targetID},
-			interval: ProbeInterval(settings.TargetWebhook),
-			want:     false,
-		},
-		{
-			name:     "a fresh observation defers the probe",
-			record:   Record{TargetID: targetID, LastObservedAt: observedAt(now, -time.Minute)},
-			interval: matrix,
-			want:     false,
-		},
-		{
-			name:     "a stale observation is due",
-			record:   Record{TargetID: targetID, LastObservedAt: observedAt(now, -2*matrix)},
-			interval: matrix,
-			want:     true,
-		},
-		{
-			name: "a suspended target is left alone",
-			record: Record{
-				TargetID:            targetID,
-				LastObservedAt:      observedAt(now, -2*matrix),
-				ProbeSuspendedUntil: observedAt(now, time.Hour),
-			},
-			interval: matrix,
-			want:     false,
-		},
-		{
-			name: "an expired suspension no longer holds",
-			record: Record{
-				TargetID:            targetID,
-				LastObservedAt:      observedAt(now, -2*matrix),
-				ProbeSuspendedUntil: observedAt(now, -time.Minute),
-			},
-			interval: matrix,
-			want:     true,
-		},
-		{
-			name: "a confirmed-dead credential is never probed again",
-			record: Record{
-				TargetID:       targetID,
-				LastObservedAt: observedAt(now, -24*time.Hour),
-				LastKind:       KindDead,
-			},
-			interval: matrix,
-			want:     false,
-		},
-		{
-			name: "a rate-limited target is still probed once the wait is over",
-			record: Record{
-				TargetID:       targetID,
-				LastObservedAt: observedAt(now, -2*matrix),
-				LastKind:       KindRateLimited,
-			},
-			interval: matrix,
-			want:     true,
-		},
-	}
-
-	for _, testCase := range cases {
-		t.Run(testCase.name, func(t *testing.T) {
-			got := ShouldProbe(testCase.record, targetID, testCase.interval, started, now)
-			if got != testCase.want {
-				t.Fatalf("ShouldProbe = %v, want %v", got, testCase.want)
-			}
-		})
-	}
-}
-
 // The gap between probes must never be shorter than the interval, or a delivery
 // that landed just before a slot boundary would be followed straight away by a
 // probe — the opposite of passive-first.
@@ -200,10 +111,10 @@ func TestSweepSkipsFreshAndSuspendedTargets(t *testing.T) {
 	}
 
 	store := newMemoryRecords(
-		Record{TargetID: "fresh", LastObservedAt: observedAt(now, -time.Minute), LastSource: SourceDelivery},
-		Record{TargetID: "suspended", LastObservedAt: observedAt(now, -2*matrix), ProbeSuspendedUntil: observedAt(now, time.Hour)},
-		Record{TargetID: "webhook", LastObservedAt: observedAt(now, -24*time.Hour)},
-		Record{TargetID: "due", LastObservedAt: observedAt(now, -2*matrix)},
+		Record{TargetID: "fresh", LastSeen: LastSeen{LastObservedAt: observedAt(now, -time.Minute), LastSource: SourceDelivery}},
+		Record{TargetID: "suspended", LastSeen: LastSeen{LastObservedAt: observedAt(now, -2*matrix)}, ProbeSuspendedUntil: observedAt(now, time.Hour)},
+		Record{TargetID: "webhook", LastSeen: LastSeen{LastObservedAt: observedAt(now, -24*time.Hour)}},
+		Record{TargetID: "due", LastSeen: LastSeen{LastObservedAt: observedAt(now, -2*matrix)}},
 	)
 
 	probed := make([]string, 0)

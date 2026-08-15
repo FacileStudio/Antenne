@@ -16,7 +16,17 @@ type sentAlert struct {
 	message  string
 }
 
-func escalatorFixture(states map[string]State, targets []settings.DeliveryTarget, failSends bool) (*Escalator, *[]sentAlert, *bytes.Buffer, *[]Notice) {
+// escalation is one Escalator under test together with the three places it
+// writes to, so a case can assert on all of them without the fixture handing
+// back a row of anonymous pointers.
+type escalation struct {
+	escalator *Escalator
+	sent      *[]sentAlert
+	logged    *bytes.Buffer
+	notices   *[]Notice
+}
+
+func escalatorFixture(states map[string]State, targets []settings.DeliveryTarget, failSends bool) escalation {
 	var logged bytes.Buffer
 	sent := make([]sentAlert, 0)
 	notices := make([]Notice, 0)
@@ -34,7 +44,7 @@ func escalatorFixture(states map[string]State, targets []settings.DeliveryTarget
 		},
 		func(notice Notice) { notices = append(notices, notice) },
 	)
-	return escalator, &sent, &logged, &notices
+	return escalation{escalator: escalator, sent: &sent, logged: &logged, notices: &notices}
 }
 
 func downDecision(now time.Time) Decision {
@@ -45,12 +55,14 @@ func downDecision(now time.Time) Decision {
 			TargetID:            "broken",
 			State:               StateDown,
 			ConsecutiveFailures: 3,
-			LastObservedAt:      &now,
-			LastFailureAt:       &now,
-			LastSource:          SourceProbe,
-			LastKind:            KindDenied,
-			LastDetail:          "M_FORBIDDEN: You don't have permission to post that to the room",
-			DownSince:           &failedAt,
+			LastSeen: LastSeen{
+				LastObservedAt: &now,
+				LastFailureAt:  &now,
+				LastSource:     SourceProbe,
+				LastKind:       KindDenied,
+				LastDetail:     "M_FORBIDDEN: You don't have permission to post that to the room",
+			},
+			DownSince: &failedAt,
 		},
 	}
 }
@@ -82,7 +94,8 @@ func TestEscalateExcludesTheSubjectTarget(t *testing.T) {
 		t.Run(string(subjectState), func(t *testing.T) {
 			states["broken"] = subjectState
 
-			escalator, sent, _, notices := escalatorFixture(states, targets, false)
+			fixture := escalatorFixture(states, targets, false)
+			escalator, sent, notices := fixture.escalator, fixture.sent, fixture.notices
 			escalator.now = func() time.Time { return now }
 			escalator.RecordUndelivered("broken")
 			escalator.RecordUndelivered("broken")
@@ -113,7 +126,8 @@ func TestEscalateFallsBackToTheLogWhenNothingIsHealthy(t *testing.T) {
 	targets := []settings.DeliveryTarget{broken}
 	states := map[string]State{"broken": StateDown}
 
-	escalator, sent, logged, notices := escalatorFixture(states, targets, false)
+	fixture := escalatorFixture(states, targets, false)
+	escalator, sent, logged, notices := fixture.escalator, fixture.sent, fixture.logged, fixture.notices
 	escalator.now = func() time.Time { return now }
 
 	escalator.Escalate(context.Background(), broken, downDecision(now))
@@ -136,7 +150,7 @@ func TestEscalateFallsBackToTheLogWhenNothingIsHealthy(t *testing.T) {
 func TestRecoveryClearsTheStandingBanner(t *testing.T) {
 	now := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
 	broken := settings.DeliveryTarget{ID: "broken", Type: settings.TargetMatrix, Name: "Ops room", Enabled: true}
-	escalator, _, _, _ := escalatorFixture(map[string]State{"broken": StateDown}, []settings.DeliveryTarget{broken}, false)
+	escalator := escalatorFixture(map[string]State{"broken": StateDown}, []settings.DeliveryTarget{broken}, false).escalator
 	escalator.now = func() time.Time { return now }
 
 	escalator.Escalate(context.Background(), broken, downDecision(now))
@@ -161,7 +175,8 @@ func TestEscalateTreatsAFailedSendAsUndelivered(t *testing.T) {
 	broken := settings.DeliveryTarget{ID: "broken", Type: settings.TargetMatrix, Name: "Ops room", Enabled: true}
 	targets := []settings.DeliveryTarget{broken, {ID: "healthy", Type: settings.TargetNtfy, Name: "Phone", Enabled: true}}
 
-	escalator, _, logged, _ := escalatorFixture(map[string]State{"broken": StateDown, "healthy": StateOK}, targets, true)
+	fixture := escalatorFixture(map[string]State{"broken": StateDown, "healthy": StateOK}, targets, true)
+	escalator, logged := fixture.escalator, fixture.logged
 	escalator.now = func() time.Time { return now }
 
 	escalator.Escalate(context.Background(), broken, downDecision(now))

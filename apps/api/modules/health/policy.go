@@ -34,13 +34,7 @@ func Evaluate(current Record, obs Observation, cfg Thresholds, now time.Time) De
 	}
 
 	at := now
-	next := current
-	next.Transitions = append([]bool(nil), current.Transitions...)
-	next.LastObservedAt = &at
-	next.LastSource = obs.Source
-	next.LastKind = obs.Kind
-	next.LastDetail = obs.Detail
-	next.UpdatedAt = at
+	next := seedNext(current, obs, at)
 
 	// The far side's Retry-After is binding regardless of what else this
 	// observation means.
@@ -48,28 +42,59 @@ func Evaluate(current Record, obs Observation, cfg Thresholds, now time.Time) De
 		suspendProbe(&next, at.Add(obs.RetryAfter))
 	}
 
-	// Three kinds say nothing about the target's health, so none of them touch
-	// the counters, the transition ring or the state machine. They only ever
-	// accompany a failure, which is why they are matched on the kind alone.
+	if decision, settled := judgeSilentKind(obs, next, at); settled {
+		return decision
+	}
+
+	applyCounters(current, &next, obs, at)
+	next.Transitions = pushTransition(next.Transitions, obs.OK)
+
+	return evaluation{current: current, next: next, obs: obs, cfg: cfg, at: at}.afterFlap()
+}
+
+// seedNext carries the current record forward with everything this observation
+// records unconditionally. The transition ring is copied rather than shared, so
+// a caller holding the old record still sees the old history.
+func seedNext(current Record, obs Observation, at time.Time) Record {
+	next := current
+	next.Transitions = append([]bool(nil), current.Transitions...)
+	next.LastObservedAt = &at
+	next.LastSource = obs.Source
+	next.LastKind = obs.Kind
+	next.LastDetail = obs.Detail
+	next.UpdatedAt = at
+	return next
+}
+
+// judgeSilentKind settles the three kinds that say nothing about the target's
+// health. None of them touch the counters, the transition ring or the state
+// machine, and they are matched on the kind alone because they only ever
+// accompany a failure.
+func judgeSilentKind(obs Observation, next Record, at time.Time) (Decision, bool) {
 	switch obs.Kind {
 	case KindUnsupported:
 		// No safe read-only probe exists for this target type. Grey is the
 		// honest colour; a green dot that cannot be justified is worse.
 		next.State = StateUnknown
-		return Decision{Next: next}
+		return Decision{Next: next}, true
 	case KindRateLimited:
 		// Being throttled is a fact about us, not about the target. Moving it
 		// toward StateDown here would open the circuit breaker on our own
 		// traffic and then blame the destination for it.
-		return Decision{Next: next}
+		return Decision{Next: next}, true
 	case KindUnreachable:
 		// DNS, TLS, a dead network or a 5xx: the target's own state is unknown,
-		// so keep the last one rather than blaming it. Grafana's keep-last-state
-		// for the same reason.
+		// so keep the last one rather than blaming it. Grafana's
+		// keep-last-state, for the same reason.
 		next.LastFailureAt = &at
-		return Decision{Next: next}
+		return Decision{Next: next}, true
 	}
+	return Decision{}, false
+}
 
+// applyCounters moves the consecutive tallies and the probe suspension that
+// this observation earns.
+func applyCounters(current Record, next *Record, obs Observation, at time.Time) {
 	if obs.OK {
 		next.ConsecutiveSuccesses = current.ConsecutiveSuccesses + 1
 		next.ConsecutiveFailures = 0
@@ -80,132 +105,17 @@ func Evaluate(current Record, obs Observation, cfg Thresholds, now time.Time) De
 		next.ProbeSuspendedUntil = nil
 		next.ProbeBackoffLevel = 0
 		if obs.RetryAfter > 0 {
-			suspendProbe(&next, at.Add(obs.RetryAfter))
+			suspendProbe(next, at.Add(obs.RetryAfter))
 		}
-	} else {
-		next.ConsecutiveFailures = current.ConsecutiveFailures + 1
-		next.ConsecutiveSuccesses = 0
-		next.LastFailureAt = &at
-		if obs.Kind.Terminal() {
-			suspendProbe(&next, at.Add(probeBackoff(current.ProbeBackoffLevel)))
-			next.ProbeBackoffLevel = current.ProbeBackoffLevel + 1
-		}
-	}
-	next.Transitions = pushTransition(next.Transitions, obs.OK)
-
-	percent, measurable := flapPercent(next.Transitions)
-
-	if current.State == StateFlapping {
-		if !measurable || percent >= cfg.FlapLeave {
-			next.State = StateFlapping
-			return Decision{Next: next}
-		}
-		return resolve(current, next, obs, cfg, at, true)
+		return
 	}
 
-	if measurable && percent > cfg.FlapEnter {
-		// One notice in place of the per-transition storm it replaces. It fires
-		// once because it fires on the transition into StateFlapping, and
-		// leaving that state is deliberately hard.
-		next.State = StateFlapping
-		next.LastAlertAt = &at
-		next.AlertCount = current.AlertCount + 1
-		return Decision{Next: next, Alert: AlertUnstable}
-	}
-
-	return resolve(current, next, obs, cfg, at, false)
-}
-
-// resolve applies the down/up hysteresis to a record whose counters are already
-// updated. leftFlapping says the target has just settled out of StateFlapping,
-// which is the one case where a recovery has to be announced without a recorded
-// outage: the unstable notice was sent, so the loop still has to be closed.
-func resolve(current, next Record, obs Observation, cfg Thresholds, at time.Time, leftFlapping bool) Decision {
-	if obs.OK {
-		if current.DownSince != nil {
-			// The asymmetry: consecutive successes AND a minimum dwell. Either
-			// one alone produces down/up/down/up and a notification for each.
-			recovered := next.ConsecutiveSuccesses >= cfg.SuccessesToRecover &&
-				at.Sub(*current.DownSince) >= cfg.MinDownDwell
-			if !recovered {
-				// Answering, but the outage is not closed yet. Saying "down"
-				// here is the one thing an operator can disprove by hand.
-				next.State = StateRecovering
-				return Decision{Next: next}
-			}
-			downtime := at.Sub(*current.DownSince)
-			announced := current.AlertCount > 0
-			next.State = StateOK
-			clearOutage(&next)
-			if announced {
-				return Decision{Next: next, Alert: AlertRecovered, Downtime: downtime}
-			}
-			// Broke and recovered inside the threshold: nobody was told, so
-			// nobody is told it is over. A recovery notice for an outage that
-			// was never announced is pure noise.
-			return Decision{Next: next}
-		}
-		next.State = StateOK
-		if leftFlapping && current.AlertCount > 0 {
-			clearOutage(&next)
-			return Decision{Next: next, Alert: AlertRecovered}
-		}
-		return Decision{Next: next}
-	}
-
-	/*
-	 * DownSince, not the state, is what says an outage is open — and it is the
-	 * only thing that survives a target answering once in the middle of one.
-	 *
-	 * Reading the state instead had two costs. A failure arriving after a
-	 * success inside an open outage restarted the failure count, so the target
-	 * fell back to StatePending: an amber "not confirmed yet" dot on an outage
-	 * already announced to everyone. And the next failure then found a state
-	 * that was not StateDown, took the first-notice path, and sent a second
-	 * "broke" alert for an outage that never ended.
-	 */
-	if current.DownSince == nil {
-		/*
-		 * A terminal kind skips the entry threshold, because it is certainty
-		 * rather than a sample. The threshold exists to filter blips;
-		 * `M_FORBIDDEN` on a login, a deleted Discord webhook and SMTP 535 are
-		 * not blips, and waiting for a second opinion on them buys nothing.
-		 *
-		 * It is also load-bearing rather than tidy. A terminal kind suspends
-		 * probing for an hour and then longer, which is what stops us hammering
-		 * a far side that has already said no — so a target parked in
-		 * StatePending would never receive the second failure that promotes it,
-		 * and would sit broken and silent indefinitely. Production found this
-		 * within a minute of the first deploy: a Matrix account over its device
-		 * limit, correctly suspended, correctly diagnosed, and reported to
-		 * nobody.
-		 */
-		if next.ConsecutiveFailures < cfg.FailuresToDown && !obs.Kind.Terminal() {
-			next.State = StatePending
-			return Decision{Next: next}
-		}
-		next.DownSince = &at
-		next.AlertCount = 0
-	}
-	next.State = StateDown
-
-	// StateRecovering is the same outage still open, so it owes no first notice.
-	if current.State != StateDown && current.State != StateRecovering {
-		next.LastAlertAt = &at
-		next.AlertCount++
-		return Decision{Next: next, Alert: AlertBroke, Downtime: at.Sub(*next.DownSince)}
-	}
-
-	if !repeatDue(current, cfg, at) {
-		return Decision{Next: next}
-	}
-	next.LastAlertAt = &at
-	next.AlertCount = current.AlertCount + 1
-	return Decision{
-		Next:     next,
-		Alert:    AlertStillBroken,
-		Downtime: at.Sub(*next.DownSince),
-		Reminder: next.AlertCount - 1,
+	next.ConsecutiveFailures = current.ConsecutiveFailures + 1
+	next.ConsecutiveSuccesses = 0
+	next.LastFailureAt = &at
+	if obs.Kind.Terminal() {
+		suspendProbe(next, at.Add(probeBackoff(current.ProbeBackoffLevel)))
+		next.ProbeBackoffLevel = current.ProbeBackoffLevel + 1
 	}
 }
 
