@@ -1,11 +1,8 @@
 package delivery
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -26,21 +23,6 @@ type matrixSession struct {
 	refreshToken string
 	deviceID     string
 	expiresAt    time.Time
-}
-
-type matrixError struct {
-	status  int
-	errcode string
-	body    string
-	method  string
-	path    string
-}
-
-func (e *matrixError) Error() string {
-	if e.body != "" {
-		return fmt.Sprintf("Matrix API %s %s -> HTTP %d %s", e.method, e.path, e.status, e.body)
-	}
-	return fmt.Sprintf("Matrix API %s %s -> HTTP %d", e.method, e.path, e.status)
 }
 
 var matrixTransaction atomic.Uint64
@@ -82,7 +64,7 @@ func (s *Sender) sendMatrixRoom(ctx context.Context, target settings.DeliveryTar
 		"formatted_body": message,
 	}
 
-	err = s.matrixRequest(ctx, target.Homeserver, token, http.MethodPut, path, body)
+	err = s.matrixRequest(ctx, matrixCall{homeserver: target.Homeserver, token: token, method: http.MethodPut, path: path, body: body})
 	if err == nil {
 		return nil
 	}
@@ -98,7 +80,7 @@ func (s *Sender) sendMatrixRoom(ctx context.Context, target settings.DeliveryTar
 	if err != nil {
 		return err
 	}
-	return s.matrixRequest(ctx, target.Homeserver, token, http.MethodPut, path, body)
+	return s.matrixRequest(ctx, matrixCall{homeserver: target.Homeserver, token: token, method: http.MethodPut, path: path, body: body})
 }
 
 func (s *Sender) matrixSessionFor(target settings.DeliveryTarget) *matrixSession {
@@ -199,7 +181,7 @@ func (s *Sender) loginMatrix(ctx context.Context, target settings.DeliveryTarget
 	}
 
 	var response matrixLoginResponse
-	if err := s.matrixJSON(ctx, target.Homeserver, "", http.MethodPost, "/_matrix/client/v3/login", body, &response); err != nil {
+	if err := s.matrixJSON(ctx, matrixCall{homeserver: target.Homeserver, method: http.MethodPost, path: "/_matrix/client/v3/login", body: body}, &response); err != nil {
 		return fmt.Errorf("matrix login failed: %w", err)
 	}
 
@@ -220,7 +202,7 @@ func (s *Sender) loginMatrix(ctx context.Context, target settings.DeliveryTarget
 func (s *Sender) refreshMatrix(ctx context.Context, target settings.DeliveryTarget, session *matrixSession) error {
 	var response matrixLoginResponse
 	body := map[string]string{"refresh_token": session.refreshToken}
-	if err := s.matrixJSON(ctx, target.Homeserver, "", http.MethodPost, "/_matrix/client/v3/refresh", body, &response); err != nil {
+	if err := s.matrixJSON(ctx, matrixCall{homeserver: target.Homeserver, method: http.MethodPost, path: "/_matrix/client/v3/refresh", body: body}, &response); err != nil {
 		return fmt.Errorf("matrix token refresh failed: %w", err)
 	}
 
@@ -233,84 +215,4 @@ func (s *Sender) refreshMatrix(ctx context.Context, target settings.DeliveryTarg
 		session.expiresAt = time.Now().Add(time.Duration(response.ExpiresInMS) * time.Millisecond)
 	}
 	return nil
-}
-
-func (s *Sender) matrixRequest(ctx context.Context, homeserver, token, method, path string, body any) error {
-	return s.matrixJSON(ctx, homeserver, token, method, path, body, nil)
-}
-
-func (s *Sender) matrixJSON(ctx context.Context, homeserver, token, method, path string, body any, out any) error {
-	base := homeserver
-	if !strings.HasSuffix(base, "/") {
-		base += "/"
-	}
-	endpoint, err := url.JoinPath(base, path)
-	if err != nil {
-		return err
-	}
-
-	var payload io.Reader
-	if body != nil {
-		encoded, err := json.Marshal(body)
-		if err != nil {
-			return err
-		}
-		payload = bytes.NewReader(encoded)
-	}
-
-	request, err := http.NewRequestWithContext(ctx, method, endpoint, payload)
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("User-Agent", "Antenne/1.0 uptime-bot")
-	if token != "" {
-		request.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	response, err := s.client.Do(request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	raw, _ := io.ReadAll(io.LimitReader(response.Body, 1<<16))
-
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		apiErr := &matrixError{status: response.StatusCode, body: strings.TrimSpace(string(raw)), method: method, path: path}
-		var decoded struct {
-			ErrCode string `json:"errcode"`
-		}
-		if json.Unmarshal(raw, &decoded) == nil {
-			apiErr.errcode = decoded.ErrCode
-		}
-		return apiErr
-	}
-
-	if out != nil {
-		return json.Unmarshal(raw, out)
-	}
-	return nil
-}
-
-// isUnknownMatrixToken reports the one failure a re-login fixes: the token we
-// hold is no longer a token the homeserver knows.
-func isUnknownMatrixToken(err error) bool {
-	var apiErr *matrixError
-	return asMatrixError(err, &apiErr) && apiErr.errcode == "M_UNKNOWN_TOKEN"
-}
-
-func asMatrixError(err error, target **matrixError) bool {
-	for err != nil {
-		if typed, ok := err.(*matrixError); ok {
-			*target = typed
-			return true
-		}
-		unwrapper, ok := err.(interface{ Unwrap() error })
-		if !ok {
-			return false
-		}
-		err = unwrapper.Unwrap()
-	}
-	return false
 }

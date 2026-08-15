@@ -89,14 +89,14 @@ func TestProbeRelogsInWhenTheTokenWasRevoked(t *testing.T) {
 		case r.URL.Path == "/_matrix/client/v3/login":
 			logins++
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"access_token":"fresh","user_id":"@antenne:example.org","device_id":"ANTENNE01"}`))
+			writeStub(t, w, `{"access_token":"fresh","user_id":"@antenne:example.org","device_id":"ANTENNE01"}`)
 		case r.Header.Get("Authorization") != "Bearer fresh":
 			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte(`{"errcode":"M_UNKNOWN_TOKEN","error":"Invalid access token"}`))
+			writeStub(t, w, `{"errcode":"M_UNKNOWN_TOKEN","error":"Invalid access token"}`)
 		case r.URL.Path == "/_matrix/client/v3/account/whoami":
-			_, _ = w.Write([]byte(`{"user_id":"@antenne:example.org","device_id":"ANTENNE01"}`))
+			writeStub(t, w, `{"user_id":"@antenne:example.org","device_id":"ANTENNE01"}`)
 		default:
-			_, _ = w.Write([]byte(`{"joined_rooms":["!room:example.org"]}`))
+			writeStub(t, w, `{"joined_rooms":["!room:example.org"]}`)
 		}
 	}))
 	defer server.Close()
@@ -128,5 +128,15 @@ func TestProbeRelogsInWhenTheTokenWasRevoked(t *testing.T) {
 	}
 	if logins != 1 {
 		t.Errorf("logins = %d, want exactly 1: the probe must not log in on a loop", logins)
+	}
+}
+
+// writeStub answers a stubbed homeserver's body and fails the test when the
+// write does not land. A stub that swallowed that would leave the assertions
+// arguing about an empty response for a reason the output never shows.
+func writeStub(t *testing.T, w http.ResponseWriter, body string) {
+	t.Helper()
+	if _, err := io.WriteString(w, body); err != nil {
+		t.Errorf("write stub response: %v", err)
 	}
 }

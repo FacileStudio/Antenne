@@ -111,27 +111,9 @@ func (s *Sender) sendPerception(ctx context.Context, target settings.DeliveryTar
 // sends one short multipart message per alert and needs no queue, no templating
 // and no attachments.
 func (s *Sender) sendSMTP(target settings.DeliveryTarget, message string) error {
-	address := net.JoinHostPort(target.Host, strconv.Itoa(target.Port))
-
-	var client *smtp.Client
-	var err error
-
-	if target.Secure {
-		// Implicit TLS, the submission-over-465 shape.
-		connection, dialErr := tls.Dial("tcp", address, &tls.Config{ServerName: target.Host})
-		if dialErr != nil {
-			return dialErr
-		}
-		client, err = smtp.NewClient(connection, target.Host)
-		if err != nil {
-			connection.Close()
-			return err
-		}
-	} else {
-		client, err = smtp.Dial(address)
-		if err != nil {
-			return err
-		}
+	client, err := connectSMTP(target, net.JoinHostPort(target.Host, strconv.Itoa(target.Port)))
+	if err != nil {
+		return err
 	}
 	defer client.Close()
 
@@ -150,22 +132,42 @@ func (s *Sender) sendSMTP(target settings.DeliveryTarget, message string) error 
 	if err := client.Hello(smtpEHLOName); err != nil {
 		return err
 	}
+	if err := upgradeSMTP(client, target); err != nil {
+		return err
+	}
+	if err := authenticateSMTP(client, target); err != nil {
+		return err
+	}
+	if err := writeSMTPMessage(client, target, message); err != nil {
+		return err
+	}
+	return client.Quit()
+}
 
+// connectSMTP opens the connection in whichever of the two shapes the target is
+// configured for: implicit TLS, the submission-over-465 shape, or plaintext
+// that STARTTLS upgrades afterwards. It does not greet, so the caller controls
+// when EHLO is issued.
+func connectSMTP(target settings.DeliveryTarget, address string) (*smtp.Client, error) {
 	if !target.Secure {
-		if ok, _ := client.Extension("STARTTLS"); ok {
-			if err := client.StartTLS(&tls.Config{ServerName: target.Host}); err != nil {
-				return err
-			}
-		}
+		return smtp.Dial(address)
 	}
 
-	if target.Username != "" && target.Password != nil && *target.Password != "" {
-		auth := smtp.PlainAuth("", target.Username, *target.Password, target.Host)
-		if err := client.Auth(auth); err != nil {
-			return err
-		}
+	connection, err := tls.Dial("tcp", address, &tls.Config{ServerName: target.Host})
+	if err != nil {
+		return nil, err
 	}
+	client, err := smtp.NewClient(connection, target.Host)
+	if err != nil {
+		connection.Close()
+		return nil, err
+	}
+	return client, nil
+}
 
+// writeSMTPMessage runs the transaction proper: envelope sender, recipients,
+// then the DATA body.
+func writeSMTPMessage(client *smtp.Client, target settings.DeliveryTarget, message string) error {
 	if err := client.Mail(sanitizeAddress(target.FromAddress)); err != nil {
 		return err
 	}
@@ -183,11 +185,7 @@ func (s *Sender) sendSMTP(target settings.DeliveryTarget, message string) error 
 		writer.Close()
 		return err
 	}
-	if err := writer.Close(); err != nil {
-		return err
-	}
-
-	return client.Quit()
+	return writer.Close()
 }
 
 func buildMIME(target settings.DeliveryTarget, message string) []byte {
