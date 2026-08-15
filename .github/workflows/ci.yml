@@ -14,6 +14,31 @@ jobs:
     defaults:
       run:
         working-directory: apps/api
+
+    # Postgres is here so the store tests stop skipping themselves. They gate on
+    # TEST_DATABASE_URL and answer a question no unit test can: whether the GORM
+    # models still map to the columns the migrations create. A refactor once
+    # dropped six columns from a model, and build, vet, race tests, filet and a
+    # manual smoke test were all green on it — the round-trip against a real
+    # Postgres was the only thing that failed. 16 matches production.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: antenne
+          POSTGRES_PASSWORD: antenne
+          POSTGRES_DB: antenne_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      TEST_DATABASE_URL: postgres://antenne:antenne@127.0.0.1:5432/antenne_test?sslmode=disable
+
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
