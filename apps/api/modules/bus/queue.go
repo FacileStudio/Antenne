@@ -263,115 +263,19 @@ func (q *Queue) ByToken(token string) (RegisteredApp, bool) {
 		Token:        row.Token,
 		RegisteredAt: row.RegisteredAt.UTC().Format(time.RFC3339),
 	}
-	_ = json.Unmarshal(row.EmitChannels, &app.EmitChannels)
-	_ = json.Unmarshal(row.ListenChannels, &app.ListenChannels)
+	app.EmitChannels = storedChannels(row.EmitChannels)
+	app.ListenChannels = storedChannels(row.ListenChannels)
 	return app, true
 }
 
-// Cleanup applies the retention policy.
-//
-// Events acked by every active listener of a channel are deleted past the 48h
-// floor. An app not seen for 14 days stops pinning the log, NATS-style. The
-// 30-day ceiling backstops everything; crossing it while a listener is still
-// behind is data loss, so it logs loudly rather than silently dropping.
-func (q *Queue) Cleanup() {
-	now := time.Now()
-
-	var apps []appRow
-	if err := q.db.Find(&apps).Error; err != nil {
-		q.log.Error("pool cleanup failed to read apps", slog.Any("error", err))
-		return
-	}
-
+// storedChannels reads a stored channel list. A list that no longer parses is
+// read as declaring nothing rather than everything: an app that appears to
+// declare no channels pins no retention and is fanned out to by nobody, where
+// guessing "all of them" would push events at a client that never asked.
+func storedChannels(blob []byte) []string {
 	var channels []string
-	if err := q.db.Model(&eventRow{}).Distinct().Pluck("channel", &channels).Error; err != nil {
-		q.log.Error("pool cleanup failed to read channels", slog.Any("error", err))
-		return
+	if json.Unmarshal(blob, &channels) != nil {
+		return nil
 	}
-
-	appByID := map[string]appRow{}
-	for _, app := range apps {
-		appByID[app.AppID] = app
-	}
-
-	for _, channel := range channels {
-		// Interest is the union of the declared listeners and whoever actually
-		// subscribed: a client may listen on channels beyond its declaration,
-		// and its cursor has to pin retention too.
-		interest := map[string]int64{}
-		for _, app := range apps {
-			var declared []string
-			if json.Unmarshal(app.ListenChannels, &declared) != nil {
-				continue
-			}
-			for _, candidate := range declared {
-				if candidate == channel || candidate == "*" {
-					interest[app.AppID] = q.LastAcked(app.AppID, channel)
-					break
-				}
-			}
-		}
-
-		var subscriptions []subscriptionRow
-		q.db.Where("channel = ?", channel).Find(&subscriptions)
-		for _, subscription := range subscriptions {
-			if _, ok := interest[subscription.SubscriberID]; !ok {
-				interest[subscription.SubscriberID] = subscription.LastAcked
-			}
-		}
-
-		type activeListener struct {
-			app   string
-			acked int64
-		}
-		active := make([]activeListener, 0, len(interest))
-		for appID, acked := range interest {
-			app, ok := appByID[appID]
-			if !ok {
-				continue
-			}
-			if app.LastSeenAt != nil && now.Sub(*app.LastSeenAt) < inactiveAfter {
-				active = append(active, activeListener{app: app.App, acked: acked})
-				continue
-			}
-			if app.LastSeenAt != nil {
-				q.log.Warn("pool listener inactive for over 14 days, no longer pinning retention",
-					slog.String("app", app.App), slog.String("channel", channel))
-			}
-		}
-		if len(active) == 0 {
-			continue
-		}
-
-		watermark := active[0].acked
-		for _, listener := range active {
-			if listener.acked < watermark {
-				watermark = listener.acked
-			}
-		}
-		if watermark > 0 {
-			q.db.Where("channel = ? AND offset_num <= ? AND emitted_at < ?",
-				channel, watermark, now.Add(-retentionFloor)).Delete(&eventRow{})
-		}
-
-		var doomed struct{ MaxOffset *int64 }
-		q.db.Model(&eventRow{}).
-			Select("max(offset_num) AS max_offset").
-			Where("channel = ? AND emitted_at < ?", channel, now.Add(-retentionCeiling)).
-			Scan(&doomed)
-		if doomed.MaxOffset == nil {
-			continue
-		}
-		for _, listener := range active {
-			if listener.acked < *doomed.MaxOffset {
-				q.log.Warn("pool retention ceiling reached, a listener is losing events",
-					slog.String("app", listener.app),
-					slog.String("channel", channel),
-					slog.Int64("from_offset", listener.acked+1),
-					slog.Int64("to_offset", *doomed.MaxOffset))
-			}
-		}
-	}
-
-	q.db.Where("emitted_at < ?", now.Add(-retentionCeiling)).Delete(&eventRow{})
+	return channels
 }
