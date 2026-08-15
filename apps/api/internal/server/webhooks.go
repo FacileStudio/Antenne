@@ -52,7 +52,7 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	definition, known := webhooks.Registry[provider.Type]
+	definition, known := webhooks.Lookup(provider.Type)
 	if !known {
 		httpjson.WriteError(w, apierrors.NotFound("not found"))
 		return
