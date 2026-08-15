@@ -25,7 +25,9 @@ func (c *connection) send(message any) error {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.socket.SetWriteDeadline(time.Now().Add(writeTimeout))
+	if err := c.socket.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+		return err
+	}
 	return c.socket.WriteMessage(websocket.TextMessage, encoded)
 }
 
