@@ -161,6 +161,18 @@ type Observation struct {
 // meaningful.
 const FlapWindow = 20
 
+// LastSeen is what the most recent observation said about a target. It is
+// embedded anonymously in Record, so every reader still says record.LastKind
+// and the grouping costs no call site anything.
+type LastSeen struct {
+	LastObservedAt *time.Time
+	LastSuccessAt  *time.Time
+	LastFailureAt  *time.Time
+	LastSource     Source
+	LastKind       Kind
+	LastDetail     string
+}
+
 // Record is the persisted health of one target. Everything the policy needs to
 // decide, and nothing it does not — it is written on every observation, so it
 // stays narrow on purpose.
@@ -171,12 +183,7 @@ type Record struct {
 	ConsecutiveFailures  int
 	ConsecutiveSuccesses int
 
-	LastObservedAt *time.Time
-	LastSuccessAt  *time.Time
-	LastFailureAt  *time.Time
-	LastSource     Source
-	LastKind       Kind
-	LastDetail     string
+	LastSeen
 
 	// DownSince is when this outage began, so an alert can state a duration and
 	// a recovery notice can say how long it lasted.

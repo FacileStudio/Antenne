@@ -17,12 +17,14 @@ func TestBuildHealthPageJoinsRecordsAndKeepsUnknownHonest(t *testing.T) {
 		{ID: "b", Name: "Generic hook", Type: settings.TargetWebhook, Enabled: true},
 	}
 	records := []health.Record{{
-		TargetID:   "a",
-		State:      health.StateDown,
-		DownSince:  &brokeAt,
-		LastSource: health.SourceProbe,
-		LastKind:   health.KindDead,
-		LastDetail: "M_UNKNOWN_TOKEN: Invalid access token passed.",
+		TargetID:  "a",
+		State:     health.StateDown,
+		DownSince: &brokeAt,
+		LastSeen: health.LastSeen{
+			LastSource: health.SourceProbe,
+			LastKind:   health.KindDead,
+			LastDetail: "M_UNKNOWN_TOKEN: Invalid access token passed.",
+		},
 	}}
 
 	page := buildHealthPage(targets, records, now)
