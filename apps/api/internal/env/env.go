@@ -74,15 +74,7 @@ type Config struct {
 // Load reads and validates the configuration. Every error it returns is a
 // reason not to start.
 func Load() (Config, error) {
-	port, err := troncenv.Int("PORT", DefaultPort)
-	if err != nil {
-		return Config{}, err
-	}
-	if port < 1 || port > 65535 {
-		return Config{}, fmt.Errorf("env: PORT must be a valid TCP port, got %d", port)
-	}
-
-	databaseURL, err := troncenv.Required("DATABASE_URL")
+	core, err := loadCore()
 	if err != nil {
 		return Config{}, err
 	}
@@ -95,40 +87,13 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("env: TIMEOUT must be a positive number of seconds, got %d", timeout)
 	}
 
-	// The receiver's own resolution bounds anything useful here: Grafana OnCall
-	// polls every 13 minutes and wants 15 or more, healthchecks.io has no floor.
-	// Five minutes suits the latter; an OnCall user raises it.
-	heartbeatInterval, err := troncenv.Duration("HEARTBEAT_INTERVAL", 5*time.Minute)
+	heartbeatInterval, err := loadHeartbeatInterval()
 	if err != nil {
 		return Config{}, err
 	}
-	if heartbeatInterval < time.Minute {
-		return Config{}, fmt.Errorf("env: HEARTBEAT_INTERVAL must be at least 1m, got %s", heartbeatInterval)
-	}
-
-	// Every field troncenv.Core grows has to be repeated here, because this
-	// literal exists to skip troncenv.LoadCore. A field left out keeps its
-	// zero value, which for TrustedProxies means TRUSTED_PROXIES is ignored
-	// while the deployment panel shows it set.
-	trustedProxies, err := troncenv.TrustedProxies()
-	if err != nil {
-		return Config{}, err
-	}
-	cdnProxies, cdnHeader := troncenv.CDN()
 
 	cfg := Config{
-		Core: troncenv.Core{
-			TrustedProxies:     trustedProxies,
-			CDNProxies:         cdnProxies,
-			CDNHeader:          cdnHeader,
-			AppEnv:             troncenv.ParseEnvironment(troncenv.String("APP_ENV", string(troncenv.Development))),
-			Port:               port,
-			LogLevel:           troncenv.String("LOG_LEVEL", "info"),
-			DatabaseURL:        databaseURL,
-			CORSAllowedOrigins: corsOrigins(),
-			JournalURL:         troncenv.String("JOURNAL_URL", ""),
-			JournalToken:       troncenv.String("JOURNAL_TOKEN", ""),
-		},
+		Core:          core,
 		AdminUsername: troncenv.String("ANTENNE_ADMIN_USERNAME", "admin"),
 		AdminPassword: troncenv.String("ANTENNE_ADMIN_PASSWORD", ""),
 		PoolSecret:    troncenv.String("ANTENNE_SECRET", ""),
@@ -143,26 +108,90 @@ func Load() (Config, error) {
 		HeartbeatInterval: heartbeatInterval,
 	}
 
-	ssoOnly, err := troncenv.Bool("SSO_ONLY", false)
-	if err != nil {
-		return Config{}, err
-	}
-
-	cfg.Porte = porte.Config{
-		Issuer:       troncenv.String("OIDC_ISSUER", ""),
-		ClientID:     troncenv.String("OIDC_CLIENT_ID", ""),
-		ClientSecret: troncenv.String("OIDC_CLIENT_SECRET", ""),
-		RedirectURL:  troncenv.String("OIDC_REDIRECT_URL", cfg.defaultRedirectURL()),
-		SuccessURL:   troncenv.String("OIDC_SUCCESS_URL", cfg.PublicURL+"/"),
-		FailureURL:   troncenv.String("OIDC_FAILURE_URL", ""),
-		ClaimsScope:  troncenv.String("OIDC_CLAIMS_SCOPE", ""),
-		SSOOnly:      ssoOnly,
-	}
-	if err := cfg.Porte.Validate(); err != nil {
+	if cfg.Porte, err = loadPorte(cfg); err != nil {
 		return Config{}, err
 	}
 
 	return cfg, cfg.validate()
+}
+
+// loadCore fills troncenv.Core field by field, which is what Antenne trades for
+// keeping its own PORT default instead of calling troncenv.LoadCore. Every field
+// Core grows has to be repeated here: one left out keeps its zero value, which
+// for TrustedProxies means TRUSTED_PROXIES is ignored while the deployment panel
+// shows it set.
+func loadCore() (troncenv.Core, error) {
+	port, err := troncenv.Int("PORT", DefaultPort)
+	if err != nil {
+		return troncenv.Core{}, err
+	}
+	if port < 1 || port > 65535 {
+		return troncenv.Core{}, fmt.Errorf("env: PORT must be a valid TCP port, got %d", port)
+	}
+
+	databaseURL, err := troncenv.Required("DATABASE_URL")
+	if err != nil {
+		return troncenv.Core{}, err
+	}
+
+	trustedProxies, err := troncenv.TrustedProxies()
+	if err != nil {
+		return troncenv.Core{}, err
+	}
+	cdnProxies, cdnHeader := troncenv.CDN()
+
+	return troncenv.Core{
+		TrustedProxies:     trustedProxies,
+		CDNProxies:         cdnProxies,
+		CDNHeader:          cdnHeader,
+		AppEnv:             troncenv.ParseEnvironment(troncenv.String("APP_ENV", string(troncenv.Development))),
+		Port:               port,
+		LogLevel:           troncenv.String("LOG_LEVEL", "info"),
+		DatabaseURL:        databaseURL,
+		CORSAllowedOrigins: corsOrigins(),
+		JournalURL:         troncenv.String("JOURNAL_URL", ""),
+		JournalToken:       troncenv.String("JOURNAL_TOKEN", ""),
+	}, nil
+}
+
+// loadHeartbeatInterval bounds the interval below by the receiver's own
+// resolution: Grafana OnCall polls every 13 minutes and wants 15 or more,
+// healthchecks.io has no floor. Five minutes suits the latter; an OnCall user
+// raises it.
+func loadHeartbeatInterval() (time.Duration, error) {
+	interval, err := troncenv.Duration("HEARTBEAT_INTERVAL", 5*time.Minute)
+	if err != nil {
+		return 0, err
+	}
+	if interval < time.Minute {
+		return 0, fmt.Errorf("env: HEARTBEAT_INTERVAL must be at least 1m, got %s", interval)
+	}
+	return interval, nil
+}
+
+// loadPorte reads the auth half of the configuration. It takes the Config it
+// belongs to because two of porte's URLs default off PublicURL, so this can only
+// run once the rest of the configuration exists.
+func loadPorte(c Config) (porte.Config, error) {
+	ssoOnly, err := troncenv.Bool("SSO_ONLY", false)
+	if err != nil {
+		return porte.Config{}, err
+	}
+
+	cfg := porte.Config{
+		Issuer:       troncenv.String("OIDC_ISSUER", ""),
+		ClientID:     troncenv.String("OIDC_CLIENT_ID", ""),
+		ClientSecret: troncenv.String("OIDC_CLIENT_SECRET", ""),
+		RedirectURL:  troncenv.String("OIDC_REDIRECT_URL", c.defaultRedirectURL()),
+		SuccessURL:   troncenv.String("OIDC_SUCCESS_URL", c.PublicURL+"/"),
+		FailureURL:   troncenv.String("OIDC_FAILURE_URL", ""),
+		ClaimsScope:  troncenv.String("OIDC_CLAIMS_SCOPE", ""),
+		SSOOnly:      ssoOnly,
+	}
+	if err := cfg.Validate(); err != nil {
+		return porte.Config{}, err
+	}
+	return cfg, nil
 }
 
 // defaultRedirectURL is the callback Authentik is configured with. Deriving it
