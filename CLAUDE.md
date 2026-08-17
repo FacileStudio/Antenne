@@ -175,6 +175,7 @@ what porte has no opinion about: what a user is, and who bootstraps the instance
 | `ANTENNE_SECRET` | Shared secret pool clients register with. The dashboard value wins | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set | — |
+| `JOURNAL_BROWSER_URL` / `JOURNAL_BROWSER_KEY` | Ship the dashboard's client-side errors to Journal. Both must be set; the URL must end in `/api` or the API refuses to boot | — |
 
 `PORT` deliberately does **not** follow `troncenv.Core`'s 8080 default: the published webhook
 URLs and every pool client point at 9090, and the client's dev proxy targets it too.

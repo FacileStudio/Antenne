@@ -150,8 +150,10 @@ func run() int {
 	}
 
 	authService := auth.NewService(db, appLogger, auth.Config{
-		AdminUsername: cfg.AdminUsername,
-		AdminPassword: cfg.AdminPassword,
+		AdminUsername:     cfg.AdminUsername,
+		AdminPassword:     cfg.AdminPassword,
+		JournalBrowserURL: cfg.JournalBrowserURL,
+		JournalBrowserKey: cfg.JournalBrowserKey,
 	}, userStore, identityStore.Identities(), sessions)
 
 	// oidc.New is the boot path: it performs discovery, so an unreachable or

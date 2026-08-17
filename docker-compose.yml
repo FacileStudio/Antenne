@@ -60,6 +60,12 @@ services:
       # Journal log shipping (optional — per-app key from Journal's Keys page)
       JOURNAL_URL: ${JOURNAL_URL:-}
       JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
+      # Journal error reporting from the dashboard (optional — a public key from
+      # Journal's Settings -> API). The URL must end in /api or Antenne refuses
+      # to boot; unlike JOURNAL_URL it is reached from the browser, not from the
+      # docker network.
+      JOURNAL_BROWSER_URL: ${JOURNAL_BROWSER_URL:-}
+      JOURNAL_BROWSER_KEY: ${JOURNAL_BROWSER_KEY:-}
     networks:
       - default
       - dokploy-network

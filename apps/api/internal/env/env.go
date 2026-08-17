@@ -53,6 +53,16 @@ type Config struct {
 	// bootstrap password below is the only credential.
 	Porte porte.Config
 
+	// JournalBrowserURL and JournalBrowserKey are the dashboard's half of
+	// Journal, handed to the browser over GET /api/auth/config rather than baked
+	// into the bundle: the client is adapter-static, so it has no environment to
+	// read and rotating a baked key would be a rebuild. They are a separate pair
+	// from JOURNAL_URL and JOURNAL_TOKEN because the server SDK talks to Journal
+	// over the docker network, which no browser can resolve, and because the
+	// browser key is public by design where the server token is not.
+	JournalBrowserURL string
+	JournalBrowserKey string
+
 	// HeartbeatURL is an external dead man's switch — healthchecks.io, Dead Man's
 	// Snitch, Grafana OnCall. Empty turns the feature off: it is the only failure
 	// report that survives this process dying, but it needs a third party, so it
@@ -125,6 +135,9 @@ func Load() (Config, error) {
 		ClientDir:     troncenv.String("CLIENT_DIR", "./client"),
 		Timeout:       timeout,
 		PublicURL:     strings.TrimSuffix(troncenv.String("PUBLIC_URL", ""), "/"),
+
+		JournalBrowserURL: strings.TrimSuffix(troncenv.String("JOURNAL_BROWSER_URL", ""), "/"),
+		JournalBrowserKey: troncenv.String("JOURNAL_BROWSER_KEY", ""),
 
 		HeartbeatURL:      troncenv.String("HEARTBEAT_URL", ""),
 		HeartbeatInterval: heartbeatInterval,
@@ -204,6 +217,14 @@ func (c Config) validate() error {
 		// sending the header downgrades nothing. Left unset in production the
 		// session cookie ships without either.
 		return fmt.Errorf("env: APP_ENV=production requires PUBLIC_URL to be the https origin Antenne is reached on, otherwise the session cookie is issued without Secure")
+	}
+	if c.JournalBrowserURL != "" && !strings.HasSuffix(c.JournalBrowserURL, "/api") {
+		// Journal's dashboard is the catch-all on its own domain, so a base URL
+		// without the /api suffix answers every report with 200 and an HTML
+		// document. The browser SDK never throws, which means the misconfiguration
+		// is invisible: the dashboard reports diligently into nowhere and Journal
+		// shows nothing. Refusing at boot is the only place it is loud.
+		return fmt.Errorf("env: JOURNAL_BROWSER_URL must end in /api (got %q), otherwise Journal's SPA catch-all answers every report with 200 and HTML and the reports are lost in silence", c.JournalBrowserURL)
 	}
 	return nil
 }

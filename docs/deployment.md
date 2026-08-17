@@ -98,3 +98,31 @@ are teed to [Journal](https://journal.facile.studio) under the app name `antenne
 key from Journal's Keys page; Antenne is not on Journal's docker network, so the URL is
 `https://journal.facile.studio/api` — with the `/api` suffix, which the SPA catch-all on the
 other end would otherwise answer with a silent 200.
+
+### Dashboard errors
+
+The API's log covers the server. What the dashboard itself throws in someone's browser — a
+component that failed to render, a load that rejected — never reaches stdout, so it ships
+separately: with `JOURNAL_BROWSER_URL` and `JOURNAL_BROWSER_KEY` both set, `hooks.client.ts`
+reports it to the same Journal instance with `meta.source = "browser"`.
+
+`JOURNAL_BROWSER_KEY` is a **public** key, minted in Journal under **Settings → API** with this
+deployment's origin on its allowlist. It is served to every browser that loads the dashboard,
+which is expected — a public key is not a secret, and the origin allowlist, the 60/min rate
+limit and the daily quota are what protect the instance. Do not put the server's
+`JOURNAL_TOKEN` here.
+
+The two pairs are separate variables because they are reached from different places.
+`JOURNAL_URL` may be a docker-internal address; `JOURNAL_BROWSER_URL` has to be the public
+origin, and it too must carry the `/api` suffix. Antenne **refuses to boot** without it: the
+browser SDK never throws, so the failure would otherwise be a dashboard reporting diligently
+into Journal's HTML catch-all with nothing anywhere to show it.
+
+The key is not baked into the bundle. The client is `adapter-static` and has no environment to
+read, so the API hands the pair over on `GET /api/auth/config`, which the dashboard already
+calls before it renders — rotating the key is a restart, not a rebuild. With either variable
+unset the key is absent from that payload and the client stays inert.
+
+Every report carries a `release`, which is SvelteKit's own build version — `kit.version.name` in
+`svelte.config.js`, an ISO timestamp. Nothing has to be passed at build time for it, and
+pivoting Journal on `meta.release` is how you tell which deploy started producing an error.

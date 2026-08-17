@@ -6,6 +6,7 @@
       "name": "antenne-client",
       "dependencies": {
         "@facile/muse": "github:FacileStudio/muse#v0.5.0",
+        "@facile/journal": "github:FacileStudio/Journal#ts",
         "iconify-icon": "^3.0.2",
       },
       "devDependencies": {
@@ -73,6 +74,8 @@
     "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.28.1", "", { "os": "win32", "cpu": "ia32" }, "sha512-zvb/mB2bSCoJOpoCBgYKKpX6YM6mJBlBUVUtVj41DlZJVEB6/0CKlRYxP5wWl1C1ILiCoAU5wZZ4q1P3qeS6Eg=="],
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.1", "", { "os": "win32", "cpu": "x64" }, "sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A=="],
+
+    "@facile/journal": ["@facile/journal@github:FacileStudio/Journal#853aa11", {}, "FacileStudio-Journal-853aa11", "sha512-Z2hMiwUp0iNkelzYon1CeSnMrWGnDnmRH3K/WT0FJ8kV/79+w3NiQnihfhVKnyNFNuTK9FMLWiI5BMfvd37knw=="],
 
     "@facile/muse": ["@facile/muse@github:FacileStudio/muse#bda8af7", { "dependencies": { "gsap": "^3.13.0", "tailwind-merge": "^3.5.0" }, "peerDependencies": { "svelte": "^5.0.0", "tailwindcss": "^4.0.0" } }, "FacileStudio-muse-bda8af7", "sha512-PyQLJa66dmG+NtGJhdMfjEPhdt1zcIi27b0V5SviQ9L99BTUqUAUvgP2qDL0P1jsS9x3Hc+OYgzL/baow5OgYQ=="],
 

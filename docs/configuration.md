@@ -25,6 +25,7 @@ Read once at startup. Every error `env.Load` returns is a reason not to boot.
 | `ANTENNE_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set for anything to ship | — |
+| `JOURNAL_BROWSER_URL` / `JOURNAL_BROWSER_KEY` | Ship the dashboard's own client-side errors to Journal. Both must be set, and the URL must end in `/api` or Antenne refuses to boot | — |
 
 Antenne refuses to boot with neither `ANTENNE_ADMIN_PASSWORD` nor `OIDC_ISSUER`, in every
 environment. There is no open mode: it used to serve a synthetic admin to every caller when no

@@ -220,6 +220,13 @@ func (s *Store) CountUsers(ctx context.Context) (int64, error) {
 type Config struct {
 	AdminUsername string
 	AdminPassword string
+
+	// JournalBrowserURL and JournalBrowserKey are relayed to the dashboard
+	// through ConfigExtra. They are not auth's business, but /auth/config is the
+	// one endpoint the client already calls before it renders anything, and the
+	// browser SDK has to be configured before the first error rather than after.
+	JournalBrowserURL string
+	JournalBrowserKey string
 }
 
 // Service seeds the bootstrap account and turns the user id porte
