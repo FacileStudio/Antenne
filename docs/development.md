@@ -12,9 +12,19 @@ Local setup, where the configuration comes from, and the quality gate.
 ## Setup
 
 ```sh
+mise install         # the pinned tools, then the git hooks
 mise run install     # client dependencies
-mise run hooks       # enable the tracked git hooks in this clone
 ```
+
+`mise install` ends with `lefthook install`, so the hooks in `lefthook.yml` are wired in this
+clone without a separate step.
+
+## Git hooks
+
+`commit-msg` comes from the shared config in `FacileStudio/hooks`, pinned by tag in
+`lefthook.yml`. It rejects a subject that is not `type(scope): summary` and rewrites the
+subject with the gitmoji for that type. `pre-push` is local to this repo and runs
+`sh scripts/check.sh`, the same gate described below.
 
 ## Running
 
@@ -61,9 +71,9 @@ mise run check-go    # the Go half only
 mise run format      # rewrite Go sources in place
 ```
 
-`scripts/check.sh` is invoked directly rather than through `mise` inside itself: `mise run`
-resolves every tool in the merged config before running a task body, so an unrelated broken
-tool in a global config would take the gate down with it.
+`scripts/check.sh` is the gate, and the `pre-push` job runs it with `sh` rather than through
+`mise`: `mise run` resolves every tool in the merged config before running a task body, so an
+unrelated broken tool in a global config would take the gate down with it.
 
 The gate also fails if a non-Postgres database driver appears in `go.mod`. Postgres is the only
 database in this suite, tests included — a test on SQLite builds a different schema from the
