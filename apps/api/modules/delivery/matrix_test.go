@@ -28,7 +28,7 @@ func TestMatrixLoginAlwaysNamesTheSameDevice(t *testing.T) {
 		Type: settings.TargetMatrix,
 		MatrixSettings: settings.MatrixSettings{
 			Homeserver: "https://matrix.org",
-			UserID:     "@nook-facile:matrix.org",
+			UserID:     "@antenne:matrix.org",
 		},
 	}
 
