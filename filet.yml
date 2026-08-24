@@ -9,6 +9,8 @@
 # below are the *published* defaults of the tools they come from rather than
 # numbers picked to make a count go away. Each one names its source.
 
+kind: app
+
 ignore:
   - .git
   - node_modules
