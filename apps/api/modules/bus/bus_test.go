@@ -132,7 +132,7 @@ func TestTheProtocolPingIsStillAnswered(t *testing.T) {
 	}
 }
 
-// Jardin emits sessions and subscribes to nothing, which is a healthy
+// Mycelium emits sessions and subscribes to nothing, which is a healthy
 // configuration and used to render as "No channel" — a working app reported as
 // a broken one. Stats has to carry what an app produces, not only what it
 // consumes.
@@ -141,10 +141,10 @@ func TestStatsReportsEmitOnlyApps(t *testing.T) {
 		queue:       &Queue{},
 		connections: map[string]*connection{},
 	}
-	server.connections["jardin-1"] = &connection{
+	server.connections["mycelium-1"] = &connection{
 		app: RegisteredApp{
-			AppID:        "jardin-1",
-			App:          "Jardin",
+			AppID:        "mycelium-1",
+			App:          "Mycelium",
 			EmitChannels: []string{"usage_alert.created", "agent_session.created"},
 		},
 		channels: map[string]bool{},
@@ -164,12 +164,12 @@ func TestStatsReportsEmitOnlyApps(t *testing.T) {
 		byApp[app.App] = app
 	}
 
-	jardin := byApp["Jardin"]
-	if len(jardin.Channels) != 0 {
-		t.Fatalf("Jardin subscribes to %v, want nothing", jardin.Channels)
+	mycelium := byApp["Mycelium"]
+	if len(mycelium.Channels) != 0 {
+		t.Fatalf("Mycelium subscribes to %v, want nothing", mycelium.Channels)
 	}
-	if len(jardin.Emits) != 2 || jardin.Emits[0] != "agent_session.created" {
-		t.Fatalf("Jardin emits = %v, want both channels sorted", jardin.Emits)
+	if len(mycelium.Emits) != 2 || mycelium.Emits[0] != "agent_session.created" {
+		t.Fatalf("Mycelium emits = %v, want both channels sorted", mycelium.Emits)
 	}
 
 	sablier := byApp["Sablier"]
@@ -197,7 +197,7 @@ func TestStatsNeverReportsNilChannels(t *testing.T) {
 // everything" made an emit-only client pin the whole queue at offset zero,
 // because an app that never subscribes never acks either.
 func TestAnUndeclaredListenListMeansNothing(t *testing.T) {
-	// Jardin's registration: it emits and declares no listeners.
+	// Mycelium's registration: it emits and declares no listeners.
 	emit, listen := declaredChannels([]string{"agent_session.created"}, nil)
 
 	if len(listen) != 0 {

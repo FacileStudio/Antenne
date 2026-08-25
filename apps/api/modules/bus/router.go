@@ -45,7 +45,7 @@ type registrationRequest struct {
 // The wildcard default was the opposite reading and it is not free: retention
 // here is interest-based, so an app recorded as listening to `*` pins every
 // channel at its last acked offset — and an app that never subscribes never
-// acks, so it pinned every channel at zero. Jardin, which only emits agent
+// acks, so it pinned every channel at zero. Mycelium, which only emits agent
 // sessions, was holding the whole queue that way. A client that genuinely wants
 // everything writes ["*"] and says so.
 //

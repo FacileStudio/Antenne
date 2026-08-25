@@ -1,7 +1,7 @@
 // Package spaces holds Antenne's teams and their members.
 //
 // `space` is the suite-wide name for a team, so the shape here matches Agenda,
-// Ardoise and Jardin rather than inventing a fourth one.
+// Ardoise and Mycelium rather than inventing a fourth one.
 package spaces
 
 import (

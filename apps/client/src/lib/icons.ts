@@ -46,7 +46,7 @@ const APP_ICONS: Record<string, string> = {
 	Plume: 'solar:pen-new-square-bold-duotone',
 	Glouton: 'solar:chef-hat-bold-duotone',
 	Vision: 'solar:panorama-bold-duotone',
-	Jardin: 'solar:global-bold-duotone'
+	Mycelium: 'solar:structure-bold-duotone'
 };
 
 export const FALLBACK_ICON = 'solar:widget-2-bold-duotone';

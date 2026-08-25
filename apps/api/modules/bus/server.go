@@ -101,7 +101,7 @@ type Stats struct {
 // StatsApp is one connected app.
 //
 // Channels is what the app subscribes to and Emits is what it declared it
-// produces. Both are reported because an emit-only client — Jardin, which
+// produces. Both are reported because an emit-only client — Mycelium, which
 // pushes sessions and consumes nothing — legitimately subscribes to no channel,
 // and a view showing only subscriptions renders that healthy state as an empty
 // one. "No channel" is true and reads like a fault.
