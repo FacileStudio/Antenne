@@ -1,4 +1,5 @@
 export type WebhookProviderType =
+	| 'sonde'
 	| 'uptime-kuma'
 	| 'docuseal'
 	| 'dokploy'
@@ -36,7 +37,7 @@ export interface RssProvider extends ProviderBase {
 	includeContent: boolean;
 }
 
-export interface ImapProvider extends ProviderBase {
+export interface IMAPProvider extends ProviderBase {
 	type: 'imap';
 	host: string;
 	port: number;
@@ -54,12 +55,13 @@ export interface WebhookProvider extends ProviderBase {
 	secretValue: string | null;
 }
 
-export type Provider = WebsiteProvider | RssProvider | ImapProvider | WebhookProvider;
+export type Provider = WebsiteProvider | RssProvider | IMAPProvider | WebhookProvider;
 
 export const providerTypes: ProviderType[] = [
 	'website',
 	'imap',
 	'rss',
+	'sonde',
 	'ardoise',
 	'docuseal',
 	'filet',
@@ -79,6 +81,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 	website: 'Website',
 	imap: 'IMAP',
 	rss: 'RSS',
+	sonde: 'Sonde',
 	docuseal: 'DocuSeal',
 	dokploy: 'Dokploy',
 	git: 'Git',
@@ -99,6 +102,7 @@ export function providerLabel(type: ProviderType): string {
 }
 
 const WEBHOOK_SECRET_HEADERS: Record<WebhookProviderType, string> = {
+	sonde: 'x-sonde-signature-256',
 	'uptime-kuma': 'x-webhook-secret',
 	docuseal: 'x-docuseal-secret',
 	dokploy: 'x-dokploy-secret',

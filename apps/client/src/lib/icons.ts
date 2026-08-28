@@ -5,6 +5,7 @@ const PROVIDER_ICONS: Record<string, string> = {
 	website: 'solar:global-bold-duotone',
 	imap: 'solar:letter-bold-duotone',
 	rss: 'solar:feed-bold-duotone',
+	sonde: 'solar:radar-bold-duotone',
 	'uptime-kuma': 'solar:heart-pulse-bold-duotone',
 	docuseal: 'solar:document-bold-duotone',
 	dokploy: 'solar:server-bold-duotone',
@@ -40,6 +41,7 @@ const SOURCE_ICONS: Record<string, string> = {
 
 /** Apps that connect to the pool, for the settings page's connected list. */
 const APP_ICONS: Record<string, string> = {
+	Sonde: 'solar:radar-bold-duotone',
 	Opus: 'solar:widget-2-bold-duotone',
 	Sablier: 'solar:hourglass-bold-duotone',
 	Ardoise: 'solar:bill-list-bold-duotone',

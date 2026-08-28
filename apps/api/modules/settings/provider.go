@@ -8,6 +8,7 @@ type ProviderType string
 // Provider types. The first thirteen are webhook receivers; the last three are
 // pollers Antenne drives itself.
 const (
+	ProviderSonde      ProviderType = "sonde"
 	ProviderFilet      ProviderType = "filet"
 	ProviderUptimeKuma ProviderType = "uptime-kuma"
 	ProviderDocuSeal   ProviderType = "docuseal"
@@ -32,7 +33,7 @@ const (
 // the result cannot change what every other caller sees.
 func WebhookProviderTypes() []ProviderType {
 	return []ProviderType{
-		ProviderUptimeKuma, ProviderDocuSeal, ProviderDokploy, ProviderGit,
+		ProviderSonde, ProviderUptimeKuma, ProviderDocuSeal, ProviderDokploy, ProviderGit,
 		ProviderVikunja, ProviderArdoise, ProviderSablier, ProviderPerception,
 		ProviderOpus, ProviderVision, ProviderPlume, ProviderNuage, ProviderFilet,
 	}
@@ -188,6 +189,8 @@ func ProviderLabel(providerType ProviderType) string {
 		return "Nuage"
 	case ProviderFilet:
 		return "filet"
+	case ProviderSonde:
+		return "Sonde"
 	case ProviderUptimeKuma:
 		return "Uptime Kuma"
 	}
@@ -206,6 +209,8 @@ func WebhookDefaultPath(providerType ProviderType) string {
 // secret or signature from.
 func WebhookDefaultSecretHeader(providerType ProviderType) string {
 	switch providerType {
+	case ProviderSonde:
+		return "x-sonde-signature-256"
 	case ProviderUptimeKuma:
 		return "x-webhook-secret"
 	case ProviderDocuSeal:
