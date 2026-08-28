@@ -42,7 +42,9 @@
 			.then((config) => {
 				passwordRequired = config.password_required && !config.sso_only;
 				ssoEnabled = config.oidc_enabled;
-				email = config.email;
+				if (passwordRequired && !ssoEnabled) {
+					email = config.email;
+				}
 			})
 			.catch(() => {});
 	});
@@ -93,7 +95,13 @@
 
 			<h1 class="font-heading text-2xl font-semibold tracking-tight">Welcome back</h1>
 			<p class="mt-1.5 text-sm text-muted-foreground">
-				Sign in as <strong class="font-medium text-foreground">{dashboard.username}</strong>
+				{#if !passwordRequired && ssoEnabled}
+					Sign in with your Facile account to access Antenne.
+				{:else if ssoEnabled}
+					Sign in with your Facile account or password credentials.
+				{:else}
+					Sign in to your Antenne dashboard.
+				{/if}
 			</p>
 
 			{#if ssoError}

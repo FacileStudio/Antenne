@@ -3,6 +3,8 @@ export interface SessionPayload {
 	passwordRequired: boolean;
 	username: string;
 	email: string;
+	name?: string;
+	role?: string;
 }
 
 /**

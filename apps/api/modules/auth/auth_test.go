@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -76,5 +77,87 @@ func TestAnAnonymousContextIsNotAuthenticated(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/session", nil)
 	if identity := authcontext.From(request); identity.IsAuthenticated() || identity.IsAdmin() {
 		t.Fatalf("the zero identity reads as authenticated=%v admin=%v", identity.IsAuthenticated(), identity.IsAdmin())
+	}
+}
+
+func TestHandleSessionResolvesIdentity(t *testing.T) {
+	service := &Service{cfg: Config{AdminUsername: "admin", AdminPassword: "secret"}}
+
+	for _, tc := range []struct {
+		name         string
+		identity     authcontext.Identity
+		wantUsername string
+		wantEmail    string
+		wantName     string
+		wantRole     string
+	}{
+		{
+			name: "bootstrap admin",
+			identity: authcontext.Identity{
+				UserID: 1,
+				Email:  "admin@antenne.local",
+				Role:   authcontext.RoleAdmin,
+			},
+			wantUsername: "admin",
+			wantEmail:    "admin@antenne.local",
+			wantRole:     "ADMIN",
+		},
+		{
+			name: "oidc user with name",
+			identity: authcontext.Identity{
+				UserID: 2,
+				Email:  "saravenpi@facile.studio",
+				Name:   "saravenpi",
+				Role:   authcontext.RoleAdmin,
+			},
+			wantUsername: "saravenpi",
+			wantEmail:    "saravenpi@facile.studio",
+			wantName:     "saravenpi",
+			wantRole:     "ADMIN",
+		},
+		{
+			name: "oidc user without name falls back to local email part",
+			identity: authcontext.Identity{
+				UserID: 3,
+				Email:  "jane.doe@facile.studio",
+				Role:   authcontext.RoleAdmin,
+			},
+			wantUsername: "jane.doe",
+			wantEmail:    "jane.doe@facile.studio",
+			wantRole:     "ADMIN",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/session", nil)
+			req = req.WithContext(authcontext.With(req.Context(), tc.identity))
+			rec := httptest.NewRecorder()
+
+			service.handleSession(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("got status %d, want 200", rec.Code)
+			}
+
+			var resp sessionResponse
+			if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+				t.Fatalf("failed to decode response: %v", err)
+			}
+
+			if !resp.Authenticated {
+				t.Errorf("got authenticated = false, want true")
+			}
+			if resp.Username != tc.wantUsername {
+				t.Errorf("got username %q, want %q", resp.Username, tc.wantUsername)
+			}
+			if resp.Email != tc.wantEmail {
+				t.Errorf("got email %q, want %q", resp.Email, tc.wantEmail)
+			}
+			if resp.Name != tc.wantName {
+				t.Errorf("got name %q, want %q", resp.Name, tc.wantName)
+			}
+			if resp.Role != tc.wantRole {
+				t.Errorf("got role %q, want %q", resp.Role, tc.wantRole)
+			}
+		})
 	}
 }

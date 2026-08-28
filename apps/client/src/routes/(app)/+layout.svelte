@@ -67,7 +67,9 @@
 	 */
 	const routeKey = $derived(onSettings ? '/settings' : page.url.pathname);
 
-	const user = $derived({ name: dashboard.username });
+	const user = $derived({
+		name: dashboard.name?.trim() || dashboard.username?.trim() || dashboard.email || 'User'
+	});
 	const switcherSpaces = $derived(spaces.spaces.map((space) => ({ id: space.id, name: space.name })));
 
 	$effect(() => {

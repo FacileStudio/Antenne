@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,6 +18,8 @@ type sessionResponse struct {
 	PasswordRequired bool   `json:"passwordRequired"`
 	Username         string `json:"username"`
 	Email            string `json:"email"`
+	Name             string `json:"name,omitempty"`
+	Role             string `json:"role,omitempty"`
 }
 
 // RegisterRoutes mounts the routes porte does not own.
@@ -57,11 +60,23 @@ func (s *Service) ConfigExtra() func() map[string]any {
 
 func (s *Service) handleSession(w http.ResponseWriter, r *http.Request) {
 	identity := authcontext.From(r)
+	username := identity.Name
+	if username == "" {
+		if identity.Email == s.AdminEmail() {
+			username = s.cfg.AdminUsername
+		} else if before, _, found := strings.Cut(identity.Email, "@"); found && before != "" {
+			username = before
+		} else {
+			username = identity.Email
+		}
+	}
 	httpjson.WriteJSON(w, http.StatusOK, sessionResponse{
 		Authenticated:    identity.IsAuthenticated(),
 		PasswordRequired: s.PasswordRequired(),
-		Username:         s.cfg.AdminUsername,
+		Username:         username,
 		Email:            identity.Email,
+		Name:             identity.Name,
+		Role:             string(identity.Role),
 	})
 }
 

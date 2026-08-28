@@ -53,7 +53,10 @@ class DashboardStore {
 	runtime = $state<RuntimeStatus | null>(null);
 	matrixConfigured = $state(false);
 	passwordRequired = $state(false);
-	username = $state('admin');
+	username = $state('');
+	email = $state('');
+	name = $state('');
+	role = $state('');
 
 	loading = $state(true);
 	saving = $state(false);
@@ -74,6 +77,9 @@ class DashboardStore {
 			this.matrixConfigured = payload.matrixConfigured;
 			this.passwordRequired = session.passwordRequired;
 			this.username = session.username;
+			this.email = session.email;
+			this.name = session.name ?? session.username;
+			this.role = session.role ?? '';
 			this.loaded = true;
 		} catch (error) {
 			if (isUnauthenticated(error)) {
