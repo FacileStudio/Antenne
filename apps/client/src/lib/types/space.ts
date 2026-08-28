@@ -4,6 +4,8 @@ export interface Space {
 	id: string;
 	name: string;
 	description: string;
+	/** The reading caller's own role in this space, not a property of the space. */
+	role: SpaceRole;
 	createdAt: string;
 	updatedAt: string;
 }
