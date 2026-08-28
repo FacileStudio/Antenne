@@ -52,6 +52,7 @@ services:
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
       OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-}
       OIDC_SUCCESS_URL: ${OIDC_SUCCESS_URL:-}
+      OIDC_CLI_AUDIENCE: ${OIDC_CLI_AUDIENCE:-}
       SSO_ONLY: ${SSO_ONLY:-false}
       TIMEOUT: ${TIMEOUT:-10}
       # ANTENNE_SETTINGS_PATH is deliberately unset. The one-time import from the

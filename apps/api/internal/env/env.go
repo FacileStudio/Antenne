@@ -186,6 +186,7 @@ func loadPorte(c Config) (porte.Config, error) {
 		SuccessURL:   troncenv.String("OIDC_SUCCESS_URL", c.PublicURL+"/"),
 		FailureURL:   troncenv.String("OIDC_FAILURE_URL", ""),
 		ClaimsScope:  troncenv.String("OIDC_CLAIMS_SCOPE", ""),
+		CLIAudience:  troncenv.String("OIDC_CLI_AUDIENCE", ""),
 		SSOOnly:      ssoOnly,
 	}
 	if err := cfg.Validate(); err != nil {
