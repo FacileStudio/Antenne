@@ -40,6 +40,14 @@ type Space struct {
 // TableName pins the spaces table name.
 func (Space) TableName() string { return "spaces" }
 
+// SpaceView is a space as one of its members sees it: the space itself plus
+// that member's own role, so a caller can tell what it may do here without a
+// second round trip to the member list.
+type SpaceView struct {
+	Space
+	Role Role `json:"role"`
+}
+
 // Member is one person's membership of one space.
 type Member struct {
 	SpaceID  string    `gorm:"primaryKey;column:space_id" json:"spaceId"`
@@ -62,11 +70,41 @@ type Service struct {
 // NewService builds the service.
 func NewService(db *gorm.DB) *Service { return &Service{db: db} }
 
-// List returns every space, oldest first.
-func (s *Service) List() ([]Space, error) {
-	spaces := []Space{}
-	err := s.db.Order("created_at asc").Find(&spaces).Error
-	return spaces, err
+// ListForMember returns the spaces userID belongs to, oldest first, each
+// carrying userID's role in it. The role rides on the join that already scopes
+// the query, so it costs nothing extra.
+//
+// There is deliberately no method returning every space: membership is the only
+// way into a space, for an instance administrator as much as for anyone else.
+func (s *Service) ListForMember(userID string) ([]SpaceView, error) {
+	views := []SpaceView{}
+	err := s.db.Model(&Space{}).
+		Select("spaces.*, space_members.role").
+		Joins("JOIN space_members ON space_members.space_id = spaces.id AND space_members.user_id = ?", userID).
+		Order("spaces.created_at asc").
+		Find(&views).Error
+	return views, err
+}
+
+// MemberRole returns userID's role in a space, or ErrNotFound when there is no
+// such membership.
+func (s *Service) MemberRole(spaceID, userID string) (Role, error) {
+	var member Member
+	err := s.db.Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	return member.Role, nil
+}
+
+// CountOwners returns how many owners a space has.
+func (s *Service) CountOwners(spaceID string) (int64, error) {
+	var count int64
+	err := s.db.Model(&Member{}).Where("space_id = ? AND role = ?", spaceID, RoleOwner).Count(&count).Error
+	return count, err
 }
 
 // Get returns one space.

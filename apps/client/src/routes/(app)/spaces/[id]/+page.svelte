@@ -31,6 +31,10 @@
 
 	let confirmDeleteSpace = $state(false);
 
+	const role = $derived(space?.role ?? 'member');
+	const mayEdit = $derived(role === 'owner' || role === 'admin');
+	const mayDelete = $derived(role === 'owner');
+
 	async function load() {
 		if (!spaceId) return;
 		loading = true;
@@ -104,48 +108,55 @@
 				{members.length === 1 ? 'member' : 'members'} · created
 				{formatDateTime(space.createdAt)}
 			</p>
+			{#if !mayEdit && space.description}
+				<p class="max-w-2xl text-fc-sm text-fc-fg-muted">{space.description}</p>
+			{/if}
 		</div>
 
-		<section class="flex flex-col gap-4">
-			<div class="flex flex-col gap-1">
-				<h2 class="text-fc-lg font-semibold text-fc-fg">Details</h2>
-				<p class="text-fc-sm text-fc-fg-muted">The name members see in the switcher.</p>
-			</div>
-
-			<Card class="flex max-w-2xl flex-col gap-4">
-				<Field label="Name">
-					<Input bind:value={name} />
-				</Field>
-
-				<Field label="Description">
-					<Textarea bind:value={description} rows={3} />
-				</Field>
-
-				<div>
-					<Button icon={icons.check} onclick={saveSpace} disabled={savingSpace}>
-						{savingSpace ? 'Saving…' : 'Save'}
-					</Button>
+		{#if mayEdit}
+			<section class="flex flex-col gap-4">
+				<div class="flex flex-col gap-1">
+					<h2 class="text-fc-lg font-semibold text-fc-fg">Details</h2>
+					<p class="text-fc-sm text-fc-fg-muted">The name members see in the switcher.</p>
 				</div>
-			</Card>
-		</section>
 
-		<SpaceMembers {spaceId} bind:members />
+				<Card class="flex max-w-2xl flex-col gap-4">
+					<Field label="Name">
+						<Input bind:value={name} />
+					</Field>
 
-		<section class="flex flex-col gap-4">
-			<div class="flex flex-col gap-1">
-				<h2 class="text-fc-lg font-semibold text-fc-fg">Danger zone</h2>
-				<p class="text-fc-sm text-fc-fg-muted">Deleting a space cannot be undone.</p>
-			</div>
+					<Field label="Description">
+						<Textarea bind:value={description} rows={3} />
+					</Field>
 
-			<Card class="flex flex-wrap items-center justify-between gap-4">
-				<p class="text-fc-sm text-fc-fg-muted">
-					Removes the space, every membership in it, and any scoping that pointed at it.
-				</p>
-				<Button variant="danger" icon={icons.remove} onclick={() => (confirmDeleteSpace = true)}>
-					Delete space
-				</Button>
-			</Card>
-		</section>
+					<div>
+						<Button icon={icons.check} onclick={saveSpace} disabled={savingSpace}>
+							{savingSpace ? 'Saving…' : 'Save'}
+						</Button>
+					</div>
+				</Card>
+			</section>
+		{/if}
+
+		<SpaceMembers {spaceId} {role} bind:members />
+
+		{#if mayDelete}
+			<section class="flex flex-col gap-4">
+				<div class="flex flex-col gap-1">
+					<h2 class="text-fc-lg font-semibold text-fc-fg">Danger zone</h2>
+					<p class="text-fc-sm text-fc-fg-muted">Deleting a space cannot be undone.</p>
+				</div>
+
+				<Card class="flex flex-wrap items-center justify-between gap-4">
+					<p class="text-fc-sm text-fc-fg-muted">
+						Removes the space, every membership in it, and any scoping that pointed at it.
+					</p>
+					<Button variant="danger" icon={icons.remove} onclick={() => (confirmDeleteSpace = true)}>
+						Delete space
+					</Button>
+				</Card>
+			</section>
+		{/if}
 	{/if}
 </div>
 

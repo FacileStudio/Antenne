@@ -14,12 +14,6 @@ import (
 type spaceRequest struct {
 	Name        *string `json:"name"`
 	Description *string `json:"description"`
-	OwnerUserID string  `json:"ownerUserId"`
-}
-
-type memberRequest struct {
-	UserID string `json:"userId"`
-	Role   string `json:"role"`
 }
 
 // RegisterRoutes mounts the spaces API.
@@ -38,7 +32,13 @@ func (s *Service) RegisterRoutes(router chi.Router) {
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
-	spaces, err := s.List()
+	key := callerKey(r)
+	if key == "" {
+		httpjson.WriteError(w, apierrors.Unauthorized("authentication is required"))
+		return
+	}
+
+	spaces, err := s.ListForMember(key)
 	if err != nil {
 		httpjson.WriteError(w, err)
 		return
@@ -47,6 +47,12 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
+	key := callerKey(r)
+	if key == "" {
+		httpjson.WriteError(w, apierrors.Unauthorized("authentication is required"))
+		return
+	}
+
 	var body spaceRequest
 	if err := httpjson.DecodeJSON(w, r, &body); err != nil {
 		httpjson.WriteError(w, apierrors.Invalid("Invalid JSON body."))
@@ -62,16 +68,23 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		description = strings.TrimSpace(*body.Description)
 	}
 
-	space, err := s.Create(strings.TrimSpace(*body.Name), description, body.OwnerUserID)
+	space, err := s.Create(strings.TrimSpace(*body.Name), description, key)
 	if err != nil {
 		httpjson.WriteError(w, err)
 		return
 	}
-	httpjson.WriteJSON(w, http.StatusCreated, map[string]any{"space": space})
+	httpjson.WriteJSON(w, http.StatusCreated, map[string]any{
+		"space": SpaceView{Space: space, Role: RoleOwner},
+	})
 }
 
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
-	space, err := s.Get(param(r, "id"))
+	spaceID, role, ok := s.guard(w, r, RoleOwner, RoleAdmin, RoleMember)
+	if !ok {
+		return
+	}
+
+	space, err := s.Get(spaceID)
 	if err != nil {
 		writeSpaceError(w, err)
 		return
@@ -81,93 +94,41 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, err)
 		return
 	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"space": space, "members": members})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
+		"space":   SpaceView{Space: space, Role: role},
+		"members": members,
+	})
 }
 
 func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	spaceID, role, ok := s.guard(w, r, RoleOwner, RoleAdmin)
+	if !ok {
+		return
+	}
+
 	var body spaceRequest
 	if err := httpjson.DecodeJSON(w, r, &body); err != nil {
 		httpjson.WriteError(w, apierrors.Invalid("Invalid JSON body."))
 		return
 	}
 
-	space, err := s.Update(param(r, "id"), trimPointer(body.Name), trimPointer(body.Description))
+	space, err := s.Update(spaceID, trimPointer(body.Name), trimPointer(body.Description))
 	if err != nil {
 		writeSpaceError(w, err)
 		return
 	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"space": space})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
+		"space": SpaceView{Space: space, Role: role},
+	})
 }
 
 func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
-	if err := s.Delete(param(r, "id")); err != nil {
-		writeSpaceError(w, err)
-		return
-	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-func (s *Service) handleListMembers(w http.ResponseWriter, r *http.Request) {
-	spaceID := param(r, "id")
-	if _, err := s.Get(spaceID); err != nil {
-		writeSpaceError(w, err)
-		return
-	}
-	members, err := s.Members(spaceID)
-	if err != nil {
-		httpjson.WriteError(w, err)
-		return
-	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"members": members})
-}
-
-func (s *Service) handleAddMember(w http.ResponseWriter, r *http.Request) {
-	var body memberRequest
-	if err := httpjson.DecodeJSON(w, r, &body); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid("Invalid JSON body."))
-		return
-	}
-	if strings.TrimSpace(body.UserID) == "" {
-		httpjson.WriteError(w, apierrors.Invalid("userId is required"))
+	spaceID, _, ok := s.guard(w, r, RoleOwner)
+	if !ok {
 		return
 	}
 
-	role := Role(body.Role)
-	if !role.IsValid() {
-		role = RoleMember
-	}
-
-	member, err := s.AddMember(param(r, "id"), strings.TrimSpace(body.UserID), role)
-	if err != nil {
-		writeSpaceError(w, err)
-		return
-	}
-	httpjson.WriteJSON(w, http.StatusCreated, map[string]any{"member": member})
-}
-
-func (s *Service) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
-	var body memberRequest
-	if err := httpjson.DecodeJSON(w, r, &body); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid("Invalid JSON body."))
-		return
-	}
-
-	role := Role(body.Role)
-	if !role.IsValid() {
-		httpjson.WriteError(w, apierrors.Invalid("valid role is required (owner, admin, member)"))
-		return
-	}
-
-	member, err := s.UpdateMemberRole(param(r, "id"), param(r, "userId"), role)
-	if err != nil {
-		writeSpaceError(w, err)
-		return
-	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"member": member})
-}
-
-func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
-	if err := s.RemoveMember(param(r, "id"), param(r, "userId")); err != nil {
+	if err := s.Delete(spaceID); err != nil {
 		writeSpaceError(w, err)
 		return
 	}

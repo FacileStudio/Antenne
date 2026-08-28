@@ -18,11 +18,26 @@
 
 	let {
 		spaceId,
+		role,
 		members = $bindable()
 	}: {
 		spaceId: string;
+		role: SpaceRole;
 		members: SpaceMember[];
 	} = $props();
+
+	const isOwner = $derived(role === 'owner');
+	const mayStaff = $derived(role === 'owner' || role === 'admin');
+	const ownerCount = $derived(members.filter((member) => member.role === 'owner').length);
+
+	function mayChangeRole(member: SpaceMember) {
+		return isOwner && !(member.role === 'owner' && ownerCount <= 1);
+	}
+
+	function mayRemove(member: SpaceMember) {
+		if (!mayStaff) return false;
+		return member.role === 'owner' ? isOwner && ownerCount > 1 : true;
+	}
 
 	let newMember = $state('');
 	/* Typed as a plain string because muse's `Select` binds `string`; narrowed at the call. */
@@ -87,23 +102,27 @@
 		<p class="text-fc-sm text-fc-fg-muted">Who belongs to this space, and at what level.</p>
 	</div>
 
-	<Card class="flex flex-col gap-4">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-end">
-			<Field label="Identifier" class="min-w-0 flex-1">
-				<Input bind:value={newMember} placeholder="someone@facile.studio" />
-			</Field>
-			<Field label="Role" class="sm:w-40">
-				<Select bind:value={newRole}>
-					<option value="owner">Owner</option>
-					<option value="admin">Admin</option>
-					<option value="member">Member</option>
-				</Select>
-			</Field>
-			<Button size="lg" icon={icons.plus} onclick={addMember} disabled={addingMember}>
-				Add
-			</Button>
-		</div>
-	</Card>
+	{#if mayStaff}
+		<Card class="flex flex-col gap-4">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-end">
+				<Field label="Identifier" class="min-w-0 flex-1">
+					<Input bind:value={newMember} placeholder="someone@facile.studio" />
+				</Field>
+				<Field label="Role" class="sm:w-40">
+					<Select bind:value={newRole}>
+						{#if isOwner}
+							<option value="owner">Owner</option>
+						{/if}
+						<option value="admin">Admin</option>
+						<option value="member">Member</option>
+					</Select>
+				</Field>
+				<Button size="lg" icon={icons.plus} onclick={addMember} disabled={addingMember}>
+					Add
+				</Button>
+			</div>
+		</Card>
+	{/if}
 
 	{#if members.length === 0}
 		<EmptyState
@@ -129,32 +148,31 @@
 					</div>
 
 					<div class="flex shrink-0 items-center gap-2">
-						<!--
-							The role is read off the change event rather than bound: `changeRole` refetches
-							the row and rewrites `members`, and a binding would race its own listener —
-							the refetched value lands back in the select mid-dispatch and the change is lost.
-						-->
-						<Select
-							value={member.role}
-							class="w-36"
-							onchange={(event) =>
-								changeRole(member.userId, event.currentTarget.value as SpaceRole)}
-						>
-							<option value="owner">Owner</option>
-							<option value="admin">Admin</option>
-							<option value="member">Member</option>
-						</Select>
-						<Button
-							variant="ghost-danger"
-							size="lg"
-							icon={icons.remove}
-							class="w-11 px-0"
-							aria-label={`Remove ${member.userId}`}
-							onclick={() => {
-								removalTarget = member;
-								confirmRemoveMember = true;
-							}}
-						/>
+						{#if mayChangeRole(member)}
+							<Select
+								value={member.role}
+								class="w-36"
+								onchange={(event) =>
+									changeRole(member.userId, event.currentTarget.value as SpaceRole)}
+							>
+								<option value="owner">Owner</option>
+								<option value="admin">Admin</option>
+								<option value="member">Member</option>
+							</Select>
+						{/if}
+						{#if mayRemove(member)}
+							<Button
+								variant="ghost-danger"
+								size="lg"
+								icon={icons.remove}
+								class="w-11 px-0"
+								aria-label={`Remove ${member.userId}`}
+								onclick={() => {
+									removalTarget = member;
+									confirmRemoveMember = true;
+								}}
+							/>
+						{/if}
 					</div>
 				</div>
 			{/each}
