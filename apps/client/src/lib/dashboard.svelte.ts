@@ -21,16 +21,37 @@ function emptySettings(): AppSettings {
 	};
 }
 
-/**
- * The API omits an empty pool block and an unset secret. The settings form
- * binds straight into both, so they are filled in on the way in.
- */
 function withPool(settings: AppSettings): AppSettings {
 	return {
 		...settings,
 		bus: {
 			secret: settings.bus?.secret ?? '',
 			logActivity: settings.bus?.logActivity ?? true
+		},
+		providers: {
+			...settings.providers,
+			items: (settings.providers?.items ?? []).map((p) => {
+				const copy = { ...p, tags: p.tags ?? [] };
+				if ('secretValue' in copy && copy.secretValue == null) copy.secretValue = '';
+				if ('secretHeader' in copy && copy.secretHeader == null) copy.secretHeader = '';
+				if ('password' in copy && copy.password == null) copy.password = '';
+				return copy as Provider;
+			})
+		},
+		delivery: {
+			...settings.delivery,
+			items: (settings.delivery?.items ?? []).map((t) => {
+				const copy = {
+					...t,
+					providerIds: t.providerIds ?? [],
+					providerTags: t.providerTags ?? []
+				};
+				if ('password' in copy && copy.password == null) copy.password = '';
+				if ('accessToken' in copy && copy.accessToken == null) copy.accessToken = '';
+				if ('refreshToken' in copy && copy.refreshToken == null) copy.refreshToken = '';
+				if ('webhookUrl' in copy && copy.webhookUrl == null) copy.webhookUrl = '';
+				return copy as DeliveryTarget;
+			})
 		}
 	};
 }
@@ -144,7 +165,7 @@ class DashboardStore {
 	get availableTags(): string[] {
 		const tags = new Set<string>();
 		for (const provider of this.settings.providers.items) {
-			for (const tag of provider.tags) tags.add(tag);
+			for (const tag of provider.tags ?? []) tags.add(tag);
 		}
 		return [...tags].sort((left, right) => left.localeCompare(right));
 	}

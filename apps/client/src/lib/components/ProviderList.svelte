@@ -45,10 +45,20 @@
 
 	const doomed = $derived(pendingRemoval >= 0 ? providers[pendingRemoval] : null);
 
+	const NULLABLE_TEXT = ['secretValue', 'secretHeader', 'password'] as const;
+
+	function hydrate(provider: Provider): Provider {
+		const draft = provider as unknown as Record<string, unknown>;
+		for (const key of NULLABLE_TEXT) {
+			if (draft[key] === null) draft[key] = '';
+		}
+		if (!draft.tags) draft.tags = [];
+		return provider;
+	}
+
 	function open(index: number) {
 		editingIndex = index;
-		// A structured clone, so closing without saving discards the edit.
-		editing = structuredClone($state.snapshot(providers[index])) as Provider;
+		editing = hydrate(structuredClone($state.snapshot(providers[index])) as Provider);
 		drawerOpen = true;
 	}
 
