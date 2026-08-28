@@ -71,6 +71,7 @@ func Lookup(providerType settings.ProviderType) (Definition, bool) {
 // registry is built once rather than per call: Lookup sits on the webhook
 // intake path, which is the one path here a third party can drive.
 var registry = map[settings.ProviderType]Definition{
+	settings.ProviderSonde:      sonde,
 	settings.ProviderUptimeKuma: uptimeKuma,
 	settings.ProviderDocuSeal:   docuSeal,
 	settings.ProviderDokploy:    dokploy,
