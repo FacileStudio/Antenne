@@ -91,7 +91,8 @@
 			pages={navPages}
 			spaces={switcherSpaces}
 			activeSpaceId={spaces.currentId}
-			onSpaceSelect={(id) => id && spaces.select(id)}
+			onSpaceSelect={(id) => spaces.select(id!)}
+			personalSpaceLabel={null}
 			manageSpacesHref="/spaces"
 			{user}
 			userHref="/settings"
@@ -117,7 +118,8 @@
 						<SpaceSwitcher
 							spaces={switcherSpaces}
 							activeId={spaces.currentId}
-							onSelect={(id) => id && spaces.select(id)}
+							onSelect={(id) => spaces.select(id!)}
+							personalLabel={null}
 							manageHref="/spaces"
 						/>
 					</div>
