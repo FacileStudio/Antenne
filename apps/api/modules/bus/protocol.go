@@ -136,6 +136,13 @@ func (s *Server) handleEvent(conn *connection, raw []byte) {
 	recipients := s.fanOut(conn, event)
 	conn.send(map[string]any{"type": "ack", "channel": event.Channel, "offset": event.Offset})
 
+	s.mu.RLock()
+	handler := s.eventHandler
+	s.mu.RUnlock()
+	if handler != nil {
+		handler(conn.app.App, frame.Channel, frame.Payload)
+	}
+
 	s.report(Activity{
 		Type:   "pool.event",
 		App:    conn.app.App,

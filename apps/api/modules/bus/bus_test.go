@@ -226,3 +226,43 @@ func TestAnUndeclaredListenListMeansNothing(t *testing.T) {
 		t.Fatalf("listen = %v, want the explicit wildcard preserved", listen)
 	}
 }
+
+func TestOnEventHandlerInvoked(t *testing.T) {
+	receivedApp := make(chan string, 1)
+	receivedChannel := make(chan string, 1)
+	receivedPayload := make(chan string, 1)
+
+	client := serve(t, func(socket *websocket.Conn) {
+		server := &Server{
+			queue:       NewQueue(nil, discardLogger()),
+			log:         discardLogger(),
+			connections: map[string]*connection{},
+			subscribers: map[string]map[string]bool{},
+		}
+		server.OnEvent(func(app string, channel string, payload []byte) {
+			receivedApp <- app
+			receivedChannel <- channel
+			receivedPayload <- string(payload)
+		})
+		conn := &connection{app: RegisteredApp{AppID: "sonde-1", App: "sonde"}, socket: socket, closed: make(chan struct{})}
+		defer close(conn.closed)
+		server.handleEvent(conn, []byte(`{"type":"event","channel":"monitor.down","payload":{"status":"down"}}`))
+	})
+	defer client.Close()
+
+	select {
+	case app := <-receivedApp:
+		if app != "sonde" {
+			t.Errorf("expected app sonde, got %s", app)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event handler")
+	}
+
+	if ch := <-receivedChannel; ch != "monitor.down" {
+		t.Errorf("expected channel monitor.down, got %s", ch)
+	}
+	if p := <-receivedPayload; p != `{"status":"down"}` {
+		t.Errorf("unexpected payload: %s", p)
+	}
+}
