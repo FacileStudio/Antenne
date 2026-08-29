@@ -36,17 +36,21 @@ type Activity struct {
 // ActivityLogger receives pool lifecycle events. It may be nil.
 type ActivityLogger func(Activity)
 
+// EventHandler receives event payloads pushed to the pool.
+type EventHandler func(app string, channel string, payload []byte)
+
 // Server is the pool's WebSocket half.
 type Server struct {
 	queue    *Queue
 	log      *slog.Logger
 	upgrader websocket.Upgrader
 
-	mu          sync.RWMutex
-	secret      string
-	connections map[string]*connection
-	subscribers map[string]map[string]bool
-	activity    ActivityLogger
+	mu           sync.RWMutex
+	secret       string
+	connections  map[string]*connection
+	subscribers  map[string]map[string]bool
+	activity     ActivityLogger
+	eventHandler EventHandler
 }
 
 // NewServer builds the pool server.
@@ -64,10 +68,7 @@ func NewServer(db *gorm.DB, log *slog.Logger, secret string) *Server {
 		secret:      secret,
 		connections: map[string]*connection{},
 		subscribers: map[string]map[string]bool{},
-		// Origin is not checked: pool clients are servers, not browsers, and
-		// they authenticate with a token in the query string. A browser origin
-		// check would protect nothing here and would break every Go client.
-		upgrader: websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }},
+		upgrader:    websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }},
 	}
 }
 
@@ -85,6 +86,13 @@ func (s *Server) SetSecret(secret string) {
 func (s *Server) OnActivity(logger ActivityLogger) {
 	s.mu.Lock()
 	s.activity = logger
+	s.mu.Unlock()
+}
+
+// OnEvent installs the event handler called whenever an app pushes to the bus.
+func (s *Server) OnEvent(handler EventHandler) {
+	s.mu.Lock()
+	s.eventHandler = handler
 	s.mu.Unlock()
 }
 

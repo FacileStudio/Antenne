@@ -109,6 +109,11 @@ func (q *Queue) Push(channel string, payload json.RawMessage, sender string) (Ev
 		Timestamp: time.Now().UnixMilli(),
 	}
 
+	if q.db == nil {
+		event.Offset = 1
+		return event, nil
+	}
+
 	err := q.db.Transaction(func(tx *gorm.DB) error {
 		// The row lock is what keeps two concurrent emitters on one channel
 		// from being handed the same offset.

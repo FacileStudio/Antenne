@@ -20,6 +20,7 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/modules/events"
 	"github.com/FacileStudio/Antenne/apps/api/modules/providers"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
+	"github.com/FacileStudio/Antenne/apps/api/modules/webhooks"
 )
 
 // dedupWindow is how long an identical message from the same provider is
@@ -409,6 +410,69 @@ func (a *App) Dispatch(ctx context.Context, alert Alert) ([]delivery.Attempt, er
 		return attempts, failure
 	}
 	return attempts, nil
+}
+
+// DispatchBusEvent parses an event payload pushed on the bus through the
+// corresponding provider definition and delivers it to active delivery targets.
+func (a *App) DispatchBusEvent(ctx context.Context, providerType settings.ProviderType, body []byte) {
+	current := a.store.Get()
+	var (
+		providerID   string
+		providerName string
+		providerTags []string
+	)
+	for _, p := range current.Providers.Items {
+		if p.Enabled && p.Type == providerType {
+			providerID = p.ID
+			providerName = p.Name
+			providerTags = p.Tags
+			break
+		}
+	}
+	if providerName == "" {
+		providerName = settings.ProviderLabel(providerType)
+	}
+
+	definition, known := webhooks.Lookup(providerType)
+	if !known {
+		return
+	}
+
+	result, err := definition.Handle(body, webhooks.Context{
+		ProviderID:   providerID,
+		ProviderName: providerName,
+		ProviderType: providerType,
+	})
+	if err != nil || result.MessageHTML == "" {
+		return
+	}
+
+	var raw any
+	if result.RawPayloadAllowed {
+		raw = body
+	}
+
+	if _, err := a.Dispatch(ctx, Alert{
+		Source:            envelope.Source("pool"),
+		ProviderID:        providerID,
+		ProviderType:      string(providerType),
+		ProviderName:      providerName,
+		ProviderTags:      providerTags,
+		Event:             result.Description,
+		EventType:         result.EventType,
+		EventTitle:        result.EventTitle,
+		EventURL:          result.EventURL,
+		MessageHTML:       result.MessageHTML,
+		OccurredAt:        result.OccurredAt,
+		Actor:             result.Actor,
+		Subject:           result.Subject,
+		Normalized:        result.Normalized,
+		RawPayload:        raw,
+		ContainsPII:       result.ContainsPII,
+		RawPayloadAllowed: result.RawPayloadAllowed,
+	}); err != nil {
+		a.log.Warn("bus event dispatch failed", slog.Any("error", err), slog.String("provider", providerName))
+	}
 }
 
 func (a *App) notifyDeliveryFailure(ctx context.Context, label string, attempts []delivery.Attempt) {

@@ -243,6 +243,13 @@ func run() int {
 	busServer.OnActivity(func(activity bus.Activity) {
 		application.LogBusActivity(activity.Type, activity.App, activity.Detail)
 	})
+	busServer.OnEvent(func(appName, channel string, rawPayload []byte) {
+		go func() {
+			if strings.EqualFold(appName, "sonde") || strings.HasPrefix(channel, "monitor.") {
+				application.DispatchBusEvent(context.Background(), settings.ProviderSonde, rawPayload)
+			}
+		}()
+	})
 	// A secret rotated from the dashboard takes effect on save, not on the next
 	// restart — otherwise an operator changes it, sees it saved, and every pool
 	// client keeps authenticating against the old one.
