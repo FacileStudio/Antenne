@@ -61,7 +61,7 @@ const (
 // targetHealth is one dashboard row: the health record joined to the target it
 // describes. A record is keyed by id and carries nothing else, so a client
 // holding records alone would have to guess at names.
-type targetHealth struct {
+type TargetHealth struct {
 	TargetID string `json:"targetId"`
 	Name     string `json:"name"`
 	Type     string `json:"type"`
@@ -98,8 +98,8 @@ type targetHealth struct {
 	AlertCount          int        `json:"alertCount"`
 }
 
-type healthPage struct {
-	Targets []targetHealth `json:"targets"`
+type DeliveryHealthPage struct {
+	Targets []TargetHealth `json:"targets"`
 
 	// AnyDeliverable is false when no enabled target can currently receive
 	// anything. That is the case where Antenne cannot tell anyone anything, so
@@ -111,7 +111,7 @@ type healthPage struct {
 	StandingAlerts []health.StandingAlert `json:"standingAlerts"`
 }
 
-type checkResult struct {
+type TargetCheckResult struct {
 	TargetID string `json:"targetId"`
 	OK       bool   `json:"ok"`
 	Kind     string `json:"kind"`
@@ -166,7 +166,7 @@ func (a *API) handleCheckTargetHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, checkResult{
+	httpjson.WriteJSON(w, http.StatusOK, TargetCheckResult{
 		TargetID:          targetID,
 		OK:                observation.OK,
 		Kind:              string(observation.Kind),
@@ -177,8 +177,8 @@ func (a *API) handleCheckTargetHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func buildHealthPage(targets []settings.DeliveryTarget, records []health.Record, now time.Time) healthPage {
-	page := healthPage{Targets: make([]targetHealth, 0, len(targets))}
+func buildHealthPage(targets []settings.DeliveryTarget, records []health.Record, now time.Time) DeliveryHealthPage {
+	page := DeliveryHealthPage{Targets: make([]TargetHealth, 0, len(targets))}
 	for _, target := range targets {
 		row := describeHealth(target, recordFor(records, target.ID), now)
 		if row.Enabled && row.Deliverable {
@@ -201,12 +201,12 @@ func recordFor(records []health.Record, targetID string) health.Record {
 	return health.Record{TargetID: targetID, State: health.StateUnknown}
 }
 
-func describeHealth(target settings.DeliveryTarget, record health.Record, now time.Time) targetHealth {
+func describeHealth(target settings.DeliveryTarget, record health.Record, now time.Time) TargetHealth {
 	state := record.State
 	if state == "" {
 		state = health.StateUnknown
 	}
-	return targetHealth{
+	return TargetHealth{
 		TargetID:            target.ID,
 		Name:                target.Name,
 		Type:                string(target.Type),

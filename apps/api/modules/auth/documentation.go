@@ -1,16 +1,18 @@
 package auth
 
-import "github.com/FacileStudio/tronc/apiref"
+import (
+	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/tronc/apiref"
+)
 
-// Documentation returns this module's entry in the reference at /docs. A route
-// absent from it fails TestEveryRouteIsDocumented.
-//
-// Most of what is listed here is mounted by porte rather than by this package,
-// and the OIDC half only appears when OIDC_ISSUER is set. It is documented
-// unconditionally because the reference describes the contract an integrator
-// codes against, not the subset one deployment happens to have switched on —
-// and because the test cannot reach the OIDC routes at all: mounting them
-// performs discovery against a live issuer.
+type AuthConfigResponse struct {
+	SSOOnly          bool   `json:"sso_only"`
+	OIDCEnabled      bool   `json:"oidc_enabled"`
+	PasswordRequired bool   `json:"password_required"`
+	Username         string `json:"username"`
+	Email            string `json:"email"`
+}
+
 func Documentation() apiref.Module {
 	routes := passwordRoutes()
 	routes = append(routes, oidcRoutes()...)
@@ -22,8 +24,6 @@ func Documentation() apiref.Module {
 	}
 }
 
-// passwordRoutes are what a deployment has before any identity provider is
-// configured, and what SSO_ONLY takes away again.
 func passwordRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -32,8 +32,8 @@ func passwordRoutes() []apiref.Route {
 			Summary:      "Sign in with the bootstrap password",
 			Description:  "Exchanges the admin address and password for a session: the cookie is set and the bearer token is returned, so one call serves the dashboard and the CLI. Not registered at all under SSO_ONLY, nor when no admin password is configured. Refused attempts are throttled per client address: five within ten minutes blocks that address for ten minutes.",
 			Auth:         "none",
-			RequestBody:  "CredentialsRequest",
-			ResponseBody: "ExchangeResponse",
+			RequestBody:  porte.CredentialsRequest{},
+			ResponseBody: porte.ExchangeResponse{},
 			Errors: []apiref.Error{
 				{Status: 400, Code: "invalid_argument", Description: "the body is not JSON, or the address is not an address"},
 				{Status: 401, Code: "unauthenticated", Description: "wrong address or password — deliberately the same answer for both, and it costs the same time"},
@@ -46,7 +46,7 @@ func passwordRoutes() []apiref.Route {
 			Summary:      "Sign out",
 			Description:  "Revokes the session this request carries and expires the cookie. Idempotent: a stale cookie is cleared rather than refused, because the state that makes someone log out is the state where the credential is already dead. A caller presenting a cookie must still send X-Facile-CSRF.",
 			Auth:         "session or bearer",
-			ResponseBody: "LogoutResponse",
+			ResponseBody: porte.LogoutResponse{},
 		},
 		{
 			Method:       "GET",
@@ -54,14 +54,11 @@ func passwordRoutes() []apiref.Route {
 			Summary:      "Read what this instance accepts",
 			Description:  "Whether single sign-on is available, whether it is mandatory, and whether a password form should be drawn at all. The login page reads this before showing anything.",
 			Auth:         "none",
-			ResponseBody: "AuthConfigResponse",
+			ResponseBody: AuthConfigResponse{},
 		},
 	}
 }
 
-// oidcRoutes are documented unconditionally even though they are only mounted
-// when OIDC_ISSUER is set: the reference describes the contract an integrator
-// codes against, not the subset one deployment happens to have switched on.
 func oidcRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -84,8 +81,8 @@ func oidcRoutes() []apiref.Route {
 			Summary:      "Trade a CLI login code for a token",
 			Description:  "The one-time code issued to a CLI at the end of a browser login, exchanged for a bearer token. Single use, sixty seconds.",
 			Auth:         "none",
-			RequestBody:  "ExchangeRequest",
-			ResponseBody: "ExchangeResponse",
+			RequestBody:  porte.ExchangeRequest{},
+			ResponseBody: porte.ExchangeResponse{},
 			Errors: []apiref.Error{
 				{Status: 400, Code: "invalid_argument", Description: "the code is unknown, expired, or already consumed"},
 			},
@@ -96,7 +93,7 @@ func oidcRoutes() []apiref.Route {
 			Summary:      "Refresh the profile from the identity provider",
 			Description:  "Pulls the name and address Authentik holds. Rate-limited to one refresh per account per five minutes; a call inside that window answers synced false rather than failing.",
 			Auth:         "session or bearer",
-			ResponseBody: "SyncProfileResponse",
+			ResponseBody: porte.SyncProfileResponse{},
 		},
 		{
 			Method:      "POST",
@@ -108,8 +105,6 @@ func oidcRoutes() []apiref.Route {
 	}
 }
 
-// sessionRoutes is what every transport shares once authenticated, whichever
-// way the session was obtained.
 func sessionRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -118,7 +113,7 @@ func sessionRoutes() []apiref.Route {
 			Summary:      "Read the current session",
 			Description:  "The authenticated caller, and the login label the dashboard shows.",
 			Auth:         "session or bearer",
-			ResponseBody: "SessionResponse",
+			ResponseBody: SessionResponse{},
 			Errors: []apiref.Error{
 				{Status: 401, Code: "unauthenticated", Description: "no valid session"},
 			},

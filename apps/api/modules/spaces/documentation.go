@@ -2,7 +2,41 @@ package spaces
 
 import "github.com/FacileStudio/tronc/apiref"
 
-// Documentation returns this module's entry in the reference at /docs.
+type SpaceRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+type SpaceResponse struct {
+	Space SpaceView `json:"space"`
+}
+
+type SpaceListResponse struct {
+	Spaces []SpaceView `json:"spaces"`
+}
+
+type SpaceDetailResponse struct {
+	Space   SpaceView `json:"space"`
+	Members []Member  `json:"members"`
+}
+
+type MemberRequest struct {
+	UserID string `json:"userId"`
+	Role   string `json:"role,omitempty"`
+}
+
+type MemberResponse struct {
+	Member Member `json:"member"`
+}
+
+type MemberListResponse struct {
+	Members []Member `json:"members"`
+}
+
+type OkResponse struct {
+	Ok bool `json:"ok"`
+}
+
 func Documentation() apiref.Module {
 	return apiref.Module{
 		Name:        "Spaces",
@@ -11,7 +45,6 @@ func Documentation() apiref.Module {
 	}
 }
 
-// spaceRoutes cover the spaces themselves.
 func spaceRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -20,7 +53,7 @@ func spaceRoutes() []apiref.Route {
 			Summary:      "List spaces",
 			Description:  "Only the spaces the caller is a member of. Each carries the caller's own role in it.",
 			Auth:         "session",
-			ResponseBody: "SpaceListResponse",
+			ResponseBody: SpaceListResponse{},
 		},
 		{
 			Method:       "POST",
@@ -28,8 +61,8 @@ func spaceRoutes() []apiref.Route {
 			Summary:      "Create a space",
 			Description:  "The caller becomes the space's owner.",
 			Auth:         "session",
-			RequestBody:  "SpaceRequest",
-			ResponseBody: "SpaceResponse",
+			RequestBody:  SpaceRequest{},
+			ResponseBody: SpaceResponse{},
 			Errors: []apiref.Error{
 				{Status: 400, Code: "invalid_argument", Description: "name is required"},
 			},
@@ -41,7 +74,7 @@ func spaceRoutes() []apiref.Route {
 			Description:  "Returns the space, the caller's own role in it, and its members in one call.",
 			Auth:         "session",
 			PathParams:   []apiref.Field{{Name: "id", Type: "string", Description: "the space id"}},
-			ResponseBody: "SpaceDetailResponse",
+			ResponseBody: SpaceDetailResponse{},
 			Errors: []apiref.Error{
 				{Status: 403, Code: "permission_denied", Description: "the caller is not a member of this space"},
 			},
@@ -53,8 +86,8 @@ func spaceRoutes() []apiref.Route {
 			Description:  "An absent field is left alone.",
 			Auth:         "session",
 			PathParams:   []apiref.Field{{Name: "id", Type: "string", Description: "the space id"}},
-			RequestBody:  "SpaceRequest",
-			ResponseBody: "SpaceResponse",
+			RequestBody:  SpaceRequest{},
+			ResponseBody: SpaceResponse{},
 			Errors: []apiref.Error{
 				{Status: 403, Code: "permission_denied", Description: "owner or admin only"},
 			},
@@ -66,7 +99,7 @@ func spaceRoutes() []apiref.Route {
 			Description:  "Its memberships go with it.",
 			Auth:         "session",
 			PathParams:   []apiref.Field{{Name: "id", Type: "string", Description: "the space id"}},
-			ResponseBody: "OkResponse",
+			ResponseBody: OkResponse{},
 			Errors: []apiref.Error{
 				{Status: 403, Code: "permission_denied", Description: "owner only"},
 			},
@@ -74,7 +107,6 @@ func spaceRoutes() []apiref.Route {
 	}
 }
 
-// memberRoutes cover who is in a space and what they may do there.
 func memberRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -83,7 +115,7 @@ func memberRoutes() []apiref.Route {
 			Summary:      "List members",
 			Auth:         "session",
 			PathParams:   []apiref.Field{{Name: "id", Type: "string", Description: "the space id"}},
-			ResponseBody: "MemberListResponse",
+			ResponseBody: MemberListResponse{},
 			Errors: []apiref.Error{
 				{Status: 403, Code: "permission_denied", Description: "the caller is not a member of this space"},
 			},
@@ -95,8 +127,8 @@ func memberRoutes() []apiref.Route {
 			Description:  "Adding someone already in the space returns that membership unchanged rather than erroring. An unknown role falls back to member.",
 			Auth:         "session",
 			PathParams:   []apiref.Field{{Name: "id", Type: "string", Description: "the space id"}},
-			RequestBody:  "MemberRequest",
-			ResponseBody: "MemberResponse",
+			RequestBody:  MemberRequest{},
+			ResponseBody: MemberResponse{},
 			Errors: []apiref.Error{
 				{Status: 400, Code: "invalid_argument", Description: "userId is required"},
 				{Status: 403, Code: "permission_denied", Description: "owner or admin only; only an owner may grant ownership"},
@@ -105,7 +137,6 @@ func memberRoutes() []apiref.Route {
 	}
 }
 
-// membershipRoutes cover changing and ending one membership.
 func membershipRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -118,8 +149,8 @@ func membershipRoutes() []apiref.Route {
 				{Name: "id", Type: "string", Description: "the space id"},
 				{Name: "userId", Type: "string", Description: "the member's identifier, percent-encoded"},
 			},
-			RequestBody:  "MemberRequest",
-			ResponseBody: "MemberResponse",
+			RequestBody:  MemberRequest{},
+			ResponseBody: MemberResponse{},
 			Errors: []apiref.Error{
 				{Status: 400, Code: "invalid_argument", Description: "role must be owner, admin or member"},
 				{Status: 403, Code: "permission_denied", Description: "owner only"},
@@ -136,7 +167,7 @@ func membershipRoutes() []apiref.Route {
 				{Name: "id", Type: "string", Description: "the space id"},
 				{Name: "userId", Type: "string", Description: "the member's identifier, percent-encoded"},
 			},
-			ResponseBody: "OkResponse",
+			ResponseBody: OkResponse{},
 			Errors: []apiref.Error{
 				{Status: 403, Code: "permission_denied", Description: "owner or admin only; only an owner may remove an owner"},
 				{Status: 404, Code: "not_found", Description: "no such membership"},

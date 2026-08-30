@@ -26,7 +26,7 @@ import (
 // enough that the endpoint cannot be used to exhaust memory.
 const maxSettingsBody = 4 << 20
 
-type settingsResponse struct {
+type SettingsResponse struct {
 	Settings         settings.AppSettings   `json:"settings"`
 	Runtime          settings.RuntimeStatus `json:"runtime"`
 	MatrixConfigured bool                   `json:"matrixConfigured"`
@@ -90,9 +90,9 @@ func (a *API) handlePutSettings(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, a.snapshot())
 }
 
-func (a *API) snapshot() settingsResponse {
+func (a *API) snapshot() SettingsResponse {
 	current := a.app.Settings()
-	return settingsResponse{
+	return SettingsResponse{
 		Settings:         settings.Redact(current),
 		Runtime:          a.app.RuntimeStatus(),
 		MatrixConfigured: delivery.HasConfiguredMatrix(current.Delivery),

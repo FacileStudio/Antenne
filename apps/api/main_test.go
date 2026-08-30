@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/env"
@@ -55,6 +56,24 @@ func TestEveryRouteIsDocumented(t *testing.T) {
 	// to the root; it is not part of the API surface.
 	if missing := apiref.Undocumented(router, refConfig(), "/dashboard"); len(missing) > 0 {
 		t.Errorf("routes missing from the API registry: %v", missing)
+	}
+}
+
+func TestRegistryIsComplete(t *testing.T) {
+	if issues := apiref.Incomplete(
+		refConfig(),
+		"/api/auth/logout",
+		"/api/auth/oidc",
+		"/api/auth/oidc/callback",
+		"/api/auth/backchannel-logout",
+		"/api/auth/sync-profile",
+		"/api/test-alert",
+		"/api/delivery-health/{targetId}/check",
+		"/api/events/stream",
+		"/antenne/ws",
+		"/api/antenne/ws",
+	); len(issues) > 0 {
+		t.Errorf("incomplete documentation routes:\n  %s", strings.Join(issues, "\n  "))
 	}
 }
 

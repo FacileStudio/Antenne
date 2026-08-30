@@ -3,10 +3,29 @@ package server
 import (
 	"slices"
 
+	"github.com/FacileStudio/Antenne/apps/api/modules/events"
+	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 	"github.com/FacileStudio/tronc/apiref"
 )
 
-// SettingsDocumentation returns the reference entry covering the configuration and action endpoints.
+type OkResponse struct {
+	Ok bool `json:"ok"`
+}
+
+type TargetTestRequest struct {
+	TargetID string `json:"targetId"`
+}
+
+type ProviderTestRequest struct {
+	ProviderID string `json:"providerId"`
+}
+
+type EventPage struct {
+	Events []events.Entry `json:"events"`
+	Total  int64          `json:"total"`
+	Stats  events.Stats   `json:"stats"`
+}
+
 func SettingsDocumentation() apiref.Module {
 	return apiref.Module{
 		Name: "Settings",
@@ -17,7 +36,6 @@ func SettingsDocumentation() apiref.Module {
 	}
 }
 
-// configurationRoutes read and write the settings document itself.
 func configurationRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -26,7 +44,7 @@ func configurationRoutes() []apiref.Route {
 			Summary:      "Read the settings",
 			Description:  "Returns the redacted settings, the runtime status, and whether a usable Matrix target exists.",
 			Auth:         "session",
-			ResponseBody: "SettingsResponse",
+			ResponseBody: SettingsResponse{},
 		},
 		{
 			Method:       "PUT",
@@ -34,8 +52,8 @@ func configurationRoutes() []apiref.Route {
 			Summary:      "Replace the settings",
 			Description:  "Replaces the whole document. A rejected save leaves the current settings untouched. The listener port takes effect on the next restart; everything else re-applies live.",
 			Auth:         "session",
-			RequestBody:  "AppSettings",
-			ResponseBody: "SettingsResponse",
+			RequestBody:  settings.AppSettings{},
+			ResponseBody: SettingsResponse{},
 			Errors: []apiref.Error{
 				{Status: 400, Code: "invalid_argument", Description: "a non-positive timeout, an unrooted webhook path, two enabled webhook providers on one path, an unknown delivery target type, or an invalid listener port"},
 			},
@@ -43,8 +61,6 @@ func configurationRoutes() []apiref.Route {
 	}
 }
 
-// diagnosticRoutes exercise the configuration rather than change it: the test
-// alert, the per-target and per-provider checks, and the health they report.
 func diagnosticRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -53,7 +69,7 @@ func diagnosticRoutes() []apiref.Route {
 			Summary:      "Send a test alert",
 			Description:  "Goes through the whole pipeline, routing rules included, so it stays silent unless a target lists the reserved provider id __antenne_system__.",
 			Auth:         "session",
-			ResponseBody: "OkResponse",
+			ResponseBody: OkResponse{},
 			Errors:       []apiref.Error{{Status: 400, Code: "invalid_argument", Description: "no delivery target is configured"}},
 		},
 		{
@@ -62,8 +78,8 @@ func diagnosticRoutes() []apiref.Route {
 			Summary:      "Test one delivery target",
 			Description:  "Sends straight to one target, bypassing the routing rules. This is the one that answers \"does this target work at all\".",
 			Auth:         "session",
-			RequestBody:  "TargetTestRequest",
-			ResponseBody: "OkResponse",
+			RequestBody:  TargetTestRequest{},
+			ResponseBody: OkResponse{},
 			Errors:       []apiref.Error{{Status: 400, Code: "invalid_argument", Description: "targetId is required, unknown, or the send failed"}},
 		},
 		{
@@ -72,15 +88,13 @@ func diagnosticRoutes() []apiref.Route {
 			Summary:      "Test a provider connection",
 			Description:  "IMAP only: connects, logs in and selects INBOX. Every other provider type is rejected.",
 			Auth:         "session",
-			RequestBody:  "ProviderTestRequest",
-			ResponseBody: "OkResponse",
+			RequestBody:  ProviderTestRequest{},
+			ResponseBody: OkResponse{},
 			Errors:       []apiref.Error{{Status: 400, Code: "invalid_argument", Description: "providerId is required, unknown, not an IMAP provider, or the connection failed"}},
 		},
 	}
 }
 
-// healthRoutes report what the probes made of each delivery target, and let an
-// operator ask for one on demand.
 func healthRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
@@ -97,7 +111,7 @@ func healthRoutes() []apiref.Route {
 				"standingAlerts are the notices that outage swallowed — the only local record that " +
 				"nobody was told.",
 			Auth:         "session",
-			ResponseBody: "DeliveryHealthPage",
+			ResponseBody: DeliveryHealthPage{},
 		},
 		{
 			Method:  "POST",
@@ -112,7 +126,7 @@ func healthRoutes() []apiref.Route {
 				"observation itself: one failure inside the hysteresis threshold leaves a target pending.",
 			Auth:         "session",
 			PathParams:   []apiref.Field{{Name: "targetId", Type: "string", Description: "the delivery target id"}},
-			ResponseBody: "TargetCheckResult",
+			ResponseBody: TargetCheckResult{},
 			Errors: []apiref.Error{
 				{Status: 404, Code: "not_found", Description: "no such delivery target"},
 				{Status: 429, Code: "rate_limited", Description: "too many checks from this client; Retry-After says how long to wait"},
@@ -122,7 +136,6 @@ func healthRoutes() []apiref.Route {
 	}
 }
 
-// EventsDocumentation returns the reference entry covering the activity log.
 func EventsDocumentation() apiref.Module {
 	return apiref.Module{
 		Name: "Events",
@@ -135,7 +148,7 @@ func EventsDocumentation() apiref.Module {
 				Summary:      "List events",
 				Description:  "Newest first. Query parameters: limit (default 50), offset, q for full-text search, and source to filter by webhook, website, imap, rss, system or test. The returned stats describe the whole filtered set, not the page.",
 				Auth:         "session",
-				ResponseBody: "EventPage",
+				ResponseBody: EventPage{},
 			},
 			{
 				Method:       "GET",
@@ -143,7 +156,7 @@ func EventsDocumentation() apiref.Module {
 				Summary:      "List one provider's events",
 				Auth:         "session",
 				PathParams:   []apiref.Field{{Name: "providerId", Type: "string", Description: "the provider id"}},
-				ResponseBody: "EventPage",
+				ResponseBody: EventPage{},
 			},
 			{
 				Method:       "GET",
@@ -152,7 +165,7 @@ func EventsDocumentation() apiref.Module {
 				Description:  "Every event with a delivery attempt against this target, successful or not.",
 				Auth:         "session",
 				PathParams:   []apiref.Field{{Name: "targetId", Type: "string", Description: "the delivery target id"}},
-				ResponseBody: "EventPage",
+				ResponseBody: EventPage{},
 			},
 			{
 				Method:      "GET",
@@ -168,8 +181,8 @@ func EventsDocumentation() apiref.Module {
 				Description:  "Re-sends a logged envelope to one target, bypassing the routing rules. Only events that carry an envelope can be replayed.",
 				Auth:         "session",
 				PathParams:   []apiref.Field{{Name: "eventId", Type: "string", Description: "the logged event id"}},
-				RequestBody:  "TargetTestRequest",
-				ResponseBody: "OkResponse",
+				RequestBody:  TargetTestRequest{},
+				ResponseBody: OkResponse{},
 				Errors: []apiref.Error{
 					{Status: 400, Code: "invalid_argument", Description: "targetId is required, the event has no envelope, or the send failed"},
 				},
@@ -178,7 +191,6 @@ func EventsDocumentation() apiref.Module {
 	}
 }
 
-// WebhooksDocumentation returns the reference entry covering the third-party intake.
 func WebhooksDocumentation() apiref.Module {
 	return apiref.Module{
 		Name: "Webhooks",
@@ -199,7 +211,8 @@ func WebhooksDocumentation() apiref.Module {
 					"unauthenticated calls on that path.",
 				Auth:         "provider secret or signature",
 				PathParams:   []apiref.Field{{Name: "provider", Type: "string", Description: "the configured path segment, e.g. dokploy"}},
-				ResponseBody: "OkResponse",
+				RequestBody:  map[string]any{},
+				ResponseBody: OkResponse{},
 				Errors: []apiref.Error{
 					{Status: 400, Code: "invalid_argument", Description: "the body is not JSON"},
 					{Status: 401, Code: "unauthenticated", Description: "the secret or signature did not verify"},

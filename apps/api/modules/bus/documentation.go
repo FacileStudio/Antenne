@@ -2,11 +2,23 @@ package bus
 
 import "github.com/FacileStudio/tronc/apiref"
 
-// Documentation returns this module's entry in the reference at /docs.
-//
-// The root-level and /api-prefixed forms of register and ws are both listed,
-// because both are real routes: pool clients pin whichever they were given, and
-// dropping either would break them.
+type PoolRegistrationEvents struct {
+	Emit   []string `json:"emit,omitempty"`
+	Listen []string `json:"listen,omitempty"`
+}
+
+type PoolRegistrationRequest struct {
+	App        string                 `json:"app"`
+	InstanceID string                 `json:"instance_id,omitempty"`
+	Secret     string                 `json:"secret"`
+	Events     PoolRegistrationEvents `json:"events,omitempty"`
+}
+
+type PoolRegistrationResponse struct {
+	Token string `json:"token"`
+	AppID string `json:"app_id"`
+}
+
 func Documentation() apiref.Module {
 	return apiref.Module{
 		Name: "Pool",
@@ -20,8 +32,8 @@ func Documentation() apiref.Module {
 				Summary:      "Register an app",
 				Description:  "Exchanges the shared secret for a connection token. Re-registering an app keeps its existing token, so a restarting client does not invalidate the token another instance is using.",
 				Auth:         "pool secret",
-				RequestBody:  "PoolRegistrationRequest",
-				ResponseBody: "PoolRegistrationResponse",
+				RequestBody:  PoolRegistrationRequest{},
+				ResponseBody: PoolRegistrationResponse{},
 				Errors: []apiref.Error{
 					{Status: 400, Code: "invalid_argument", Description: "app is required, or the body is not JSON"},
 					{Status: 403, Code: "permission_denied", Description: "the secret did not match"},
@@ -33,8 +45,8 @@ func Documentation() apiref.Module {
 				Summary:      "Register an app (prefixed)",
 				Description:  "Identical to POST /pool/register. Both forms exist because clients pin whichever they were given.",
 				Auth:         "pool secret",
-				RequestBody:  "PoolRegistrationRequest",
-				ResponseBody: "PoolRegistrationResponse",
+				RequestBody:  PoolRegistrationRequest{},
+				ResponseBody: PoolRegistrationResponse{},
 			},
 			{
 				Method:      "GET",
@@ -60,7 +72,7 @@ func Documentation() apiref.Module {
 				Summary:      "Read the live pool state",
 				Description:  "The boot epoch, the live connection count, and every connected app with the channels it subscribed to.",
 				Auth:         "session",
-				ResponseBody: "PoolStats",
+				ResponseBody: Stats{},
 				Errors:       []apiref.Error{{Status: 401, Code: "unauthenticated", Description: "no valid session cookie"}},
 			},
 		},

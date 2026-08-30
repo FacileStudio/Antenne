@@ -138,7 +138,7 @@ func TestHandleSessionResolvesIdentity(t *testing.T) {
 				t.Fatalf("got status %d, want 200", rec.Code)
 			}
 
-			var resp sessionResponse
+			var resp SessionResponse
 			if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 				t.Fatalf("failed to decode response: %v", err)
 			}

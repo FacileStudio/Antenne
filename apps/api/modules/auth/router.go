@@ -13,7 +13,7 @@ import (
 	"github.com/FacileStudio/tronc/httpjson"
 )
 
-type sessionResponse struct {
+type SessionResponse struct {
 	Authenticated    bool   `json:"authenticated"`
 	PasswordRequired bool   `json:"passwordRequired"`
 	Username         string `json:"username"`
@@ -70,7 +70,7 @@ func (s *Service) handleSession(w http.ResponseWriter, r *http.Request) {
 			username = identity.Email
 		}
 	}
-	httpjson.WriteJSON(w, http.StatusOK, sessionResponse{
+	httpjson.WriteJSON(w, http.StatusOK, SessionResponse{
 		Authenticated:    identity.IsAuthenticated(),
 		PasswordRequired: s.PasswordRequired(),
 		Username:         username,
