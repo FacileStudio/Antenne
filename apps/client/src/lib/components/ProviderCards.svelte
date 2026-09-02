@@ -24,7 +24,7 @@
 	{#each entries as { provider, index } (provider.id)}
 		<Card
 			href={`/providers/${provider.id}`}
-			class={cn('flex flex-col gap-4', !provider.enabled && 'opacity-60')}
+			class={cn('flex flex-col gap-4', !provider.enabled && 'opacity-60', 'min-h-[200px]')}
 		>
 				<div class="flex items-start justify-between gap-4">
 					<span

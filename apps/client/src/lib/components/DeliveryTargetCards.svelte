@@ -35,7 +35,7 @@
 	{#each targets as target, index (target.id)}
 		<Card
 			href={`/targets/${target.id}`}
-			class={cn('flex flex-col gap-4', !target.enabled && 'opacity-55')}
+			class={cn('flex flex-col gap-4', !target.enabled && 'opacity-55', 'min-h-[200px]')}
 		>
 				<div class="flex items-start justify-between gap-3">
 					<span
