@@ -33,8 +33,10 @@
 
 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 	{#each targets as target, index (target.id)}
-		<a href={`/targets/${target.id}`} class="block">
-			<Card class={cn('flex flex-col gap-4', !target.enabled && 'opacity-55')}>
+		<Card
+			href={`/targets/${target.id}`}
+			class={cn('flex flex-col gap-4', !target.enabled && 'opacity-55')}
+		>
 				<div class="flex items-start justify-between gap-3">
 					<span
 						class="flex size-10 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted"
@@ -96,6 +98,5 @@
 					/>
 				</div>
 			</Card>
-		</a>
 	{/each}
 </div>
