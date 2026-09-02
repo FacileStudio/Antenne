@@ -96,12 +96,12 @@ var uptimeKuma = Definition{
 
 		switch status {
 		case "up":
-			result.MessageHTML = fmt.Sprintf("<b>[Uptime Kuma] %s</b> is back UP", escape(name))
+			result.MessageHTML = fmt.Sprintf("🟢 <b>[Uptime Kuma] %s</b> is back UP", escape(name))
 			if reason != "" {
 				result.MessageHTML += "<br/><i>" + escape(reason) + "</i>"
 			}
 		case "down":
-			result.MessageHTML = fmt.Sprintf("<b>[Uptime Kuma] %s</b> is DOWN", escape(name))
+			result.MessageHTML = fmt.Sprintf("🚨 <b>[Uptime Kuma] %s</b> is DOWN", escape(name))
 			if reason != "" {
 				result.MessageHTML += " — " + escape(reason)
 			}

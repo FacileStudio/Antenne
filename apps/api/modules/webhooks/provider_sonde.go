@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
@@ -173,13 +174,13 @@ var sonde = Definition{
 			name = firstNonEmpty(slug, monitorID, "unknown")
 		}
 
-		eventType := "sonde.monitor." + firstNonEmpty(status, "event")
+			eventType := "sonde.monitor." + firstNonEmpty(status, "event")
 		eventTitle := fmt.Sprintf("%s %s", name, firstNonEmpty(status, "event"))
 
 		var messageHTML string
 		switch status {
 		case "down":
-			messageHTML = fmt.Sprintf("<b>[Sonde] %s</b> is DOWN", escape(name))
+			messageHTML = fmt.Sprintf("🚨 <b>[Sonde] %s</b> is DOWN", escape(name))
 			if errStr != "" {
 				messageHTML += " — " + escape(errStr)
 			}
@@ -187,7 +188,17 @@ var sonde = Definition{
 				messageHTML += "<br/><code>" + escape(urlStr) + "</code>"
 			}
 		case "up":
-			messageHTML = fmt.Sprintf("<b>[Sonde] %s</b> is back UP", escape(name))
+			messageHTML = fmt.Sprintf("🟢 <b>[Sonde] %s</b> is back UP", escape(name))
+			if payload.Incident != nil && payload.Incident.StartedAt != "" {
+				started, err := time.Parse(time.RFC3339, payload.Incident.StartedAt)
+				resolved := time.Now()
+				if payload.Incident.ResolvedAt != nil && *payload.Incident.ResolvedAt != "" {
+					resolved, _ = time.Parse(time.RFC3339, *payload.Incident.ResolvedAt)
+				}
+				if err == nil && resolved.After(started) {
+					messageHTML += fmt.Sprintf(" (was down for %s)", humanDuration(resolved.Sub(started)))
+				}
+			}
 			if latencyMS > 0 {
 				messageHTML += fmt.Sprintf(" (latency: %dms)", latencyMS)
 			}
