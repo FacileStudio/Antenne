@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Badge, Button, EmptyState, Spinner, StatCard, icons, toast } from '@facile/muse';
+	import { Badge, Button, Drawer, EmptyState, Spinner, StatCard, icons, toast } from '@facile/muse';
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
+	import ProviderEditorFields from '$lib/components/ProviderEditorFields.svelte';
 	import TagPill from '$lib/components/TagPill.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { providerIcon } from '$lib/icons';
 	import { tagToneMap } from '$lib/tags';
-	import { providerLabel, type EventEntry, type EventStats } from '$lib/types';
+	import { providerLabel, type EventEntry, type EventStats, type Provider } from '$lib/types';
 
 	const providerId = $derived(page.params.id ?? '');
 	const provider = $derived(
@@ -18,6 +19,8 @@
 	let events = $state<EventEntry[]>([]);
 	let stats = $state<EventStats | null>(null);
 	let loading = $state(false);
+	let editing = $state<Provider | null>(null);
+	let drawerOpen = $state(false);
 
 	async function refresh() {
 		if (!providerId) return;
@@ -33,6 +36,31 @@
 		}
 	}
 
+	function openEdit() {
+		const p = dashboard.settings.providers.items.find((c) => c.id === providerId);
+		if (p) {
+			editing = structuredClone(p);
+			drawerOpen = true;
+		}
+	}
+
+	function closeEdit() {
+		editing = null;
+		drawerOpen = false;
+	}
+
+	async function saveEdit() {
+		if (!editing) return;
+		const current = editing;
+		try {
+			dashboard.setProviders(dashboard.settings.providers.items.map((p) => (p.id === current.id ? current : p)));
+			await dashboard.save();
+			closeEdit();
+		} catch (error) {
+			toast.danger(error instanceof Error ? error.message : 'Failed to save changes');
+		}
+	}
+
 	$effect(() => {
 		void providerId;
 		void refresh();
@@ -40,16 +68,17 @@
 </script>
 
 <div class="flex flex-col gap-10">
-	<div class="flex flex-col gap-2">
-		<Button
-			variant="ghost"
-			size="sm"
-			icon={icons.chevronLeft}
-			href="/providers"
-			class="-ml-3.5 w-fit"
-		>
-			Back to providers
-		</Button>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between">
+			<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/providers" class="-ml-3.5 w-fit">
+				Back to providers
+			</Button>
+			{#if provider}
+				<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
+					Edit provider
+				</Button>
+			{/if}
+		</div>
 
 		{#if provider}
 			<div class="flex flex-wrap items-center gap-3">
@@ -108,3 +137,20 @@
 		</EmptyState>
 	{/if}
 </div>
+
+<Drawer
+	bind:open={drawerOpen}
+	showClose
+	title={editing ? `Edit ${editing.name}` : 'Edit provider'}
+	description={editing ? providerLabel(editing.type) : undefined}
+>
+	{#if editing}
+		<ProviderEditorFields bind:provider={editing} availableTags={dashboard.availableTags} {tones} />
+	{/if}
+
+	{#snippet footer()}
+		<Button icon={icons.check} onclick={saveEdit} disabled={dashboard.saving}>
+			{dashboard.saving ? 'Saving…' : 'Save'}
+		</Button>
+	{/snippet}
+</Drawer>

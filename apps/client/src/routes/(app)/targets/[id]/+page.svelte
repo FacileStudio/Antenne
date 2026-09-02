@@ -2,10 +2,12 @@
 	import { page } from '$app/state';
 	import { Alert, Badge, Button, EmptyState, Spinner, StatCard, icons, toast } from '@facile/muse';
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
+	import DeliveryEditorDrawer from '$lib/components/DeliveryEditorDrawer.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { deliveryIcon } from '$lib/icons';
-	import { targetLabel, type EventEntry, type EventStats } from '$lib/types';
+	import { targetLabel, type EventEntry, type EventStats, type DeliveryTarget } from '$lib/types';
+	import { tagToneMap } from '$lib/tags';
 
 	const targetId = $derived(page.params.id ?? '');
 	const target = $derived(
@@ -15,6 +17,9 @@
 	let events = $state<EventEntry[]>([]);
 	let stats = $state<EventStats | null>(null);
 	let loading = $state(false);
+	let drawerOpen = $state(false);
+	let editing = $state<DeliveryTarget | null>(null);
+	const tones = $derived(tagToneMap(dashboard.availableTags));
 
 	async function refresh() {
 		if (!targetId) return;
@@ -30,6 +35,31 @@
 		}
 	}
 
+	function openEdit() {
+		const t = dashboard.settings.delivery.items.find((c) => c.id === targetId);
+		if (t) {
+			editing = structuredClone(t);
+			drawerOpen = true;
+		}
+	}
+
+	function closeEdit() {
+		editing = null;
+		drawerOpen = false;
+	}
+
+	async function saveEdit() {
+		if (!editing) return;
+		const current = editing;
+		try {
+			dashboard.setTargets(dashboard.settings.delivery.items.map((t) => (t.id === current.id ? current : t)));
+			await dashboard.save();
+			closeEdit();
+		} catch (error) {
+			toast.danger(error instanceof Error ? error.message : 'Failed to save changes');
+		}
+	}
+
 	$effect(() => {
 		void targetId;
 		void refresh();
@@ -38,9 +68,16 @@
 
 <div class="flex flex-col gap-10">
 	<div class="flex flex-col gap-4">
-		<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/delivery" class="-ml-3.5 w-fit">
-			Back to delivery
-		</Button>
+		<div class="flex items-center justify-between">
+			<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/delivery" class="-ml-3.5 w-fit">
+				Back to delivery
+			</Button>
+			{#if target}
+				<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
+					Edit target
+				</Button>
+			{/if}
+		</div>
 
 		{#if target}
 			<div class="flex flex-col gap-2">
@@ -96,3 +133,13 @@
 		{/if}
 	</section>
 </div>
+
+<DeliveryEditorDrawer
+	bind:open={drawerOpen}
+	bind:target={editing}
+	providers={dashboard.settings.providers.items}
+	availableTags={dashboard.availableTags}
+	tones={tones}
+	saving={dashboard.saving}
+	onSave={saveEdit}
+/>
