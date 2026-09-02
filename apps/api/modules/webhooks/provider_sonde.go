@@ -174,7 +174,7 @@ var sonde = Definition{
 			name = firstNonEmpty(slug, monitorID, "unknown")
 		}
 
-			eventType := "sonde.monitor." + firstNonEmpty(status, "event")
+		eventType := "sonde.monitor." + firstNonEmpty(status, "event")
 		eventTitle := fmt.Sprintf("%s %s", name, firstNonEmpty(status, "event"))
 
 		var messageHTML string
