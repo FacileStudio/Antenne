@@ -17,7 +17,14 @@
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { tagToneMap } from '$lib/tags';
-	import { createProvider, providerLabel, providerTypes, type Provider, type ProviderType } from '$lib/types';
+	import {
+		createProvider,
+		hydrateProvider,
+		providerLabel,
+		providerTypes,
+		type Provider,
+		type ProviderType
+	} from '$lib/types';
 
 	const providers = $derived(dashboard.settings.providers.items);
 	const tones = $derived(tagToneMap(dashboard.availableTags));
@@ -45,20 +52,9 @@
 
 	const doomed = $derived(pendingRemoval >= 0 ? providers[pendingRemoval] : null);
 
-	const NULLABLE_TEXT = ['secretValue', 'secretHeader', 'password'] as const;
-
-	function hydrate(provider: Provider): Provider {
-		const draft = provider as unknown as Record<string, unknown>;
-		for (const key of NULLABLE_TEXT) {
-			if (draft[key] === null) draft[key] = '';
-		}
-		if (!draft.tags) draft.tags = [];
-		return provider;
-	}
-
 	function open(index: number) {
 		editingIndex = index;
-		editing = hydrate(structuredClone($state.snapshot(providers[index])) as Provider);
+		editing = hydrateProvider($state.snapshot(providers[index]));
 		drawerOpen = true;
 	}
 
@@ -70,7 +66,7 @@
 
 	async function commit() {
 		if (!editing || editingIndex < 0) return;
-		const draft = structuredClone($state.snapshot(editing)) as Provider;
+		const draft = $state.snapshot(editing);
 		dashboard.setProviders(providers.map((current, index) => (index === editingIndex ? draft : current)));
 		await dashboard.save();
 		drawerOpen = false;

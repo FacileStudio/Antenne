@@ -170,3 +170,25 @@ export function createTarget(type: DeliveryTargetType): DeliveryTarget {
 			return { ...base, type: 'webhook', url: '', secretValue: null, includeRawPayload: false };
 	}
 }
+
+const NULLABLE_DELIVERY_FIELDS = [
+	'accessToken',
+	'refreshToken',
+	'password',
+	'deviceId',
+	'secretValue',
+	'clickUrl',
+	'webhookUrl'
+] as const;
+
+export function hydrateDeliveryTarget(target: DeliveryTarget): DeliveryTarget {
+	const draft = target as unknown as Record<string, unknown>;
+	for (const key of NULLABLE_DELIVERY_FIELDS) {
+		if (draft[key] === null) draft[key] = '';
+	}
+	if (!draft.providerIds) draft.providerIds = [];
+	if (!draft.providerTags) draft.providerTags = [];
+	return target;
+}
+
+

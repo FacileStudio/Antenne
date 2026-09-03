@@ -8,7 +8,7 @@
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { providerIcon } from '$lib/icons';
 	import { tagToneMap } from '$lib/tags';
-	import { providerLabel, type EventEntry, type EventStats, type Provider } from '$lib/types';
+	import { hydrateProvider, providerLabel, type EventEntry, type EventStats, type Provider } from '$lib/types';
 
 	const providerId = $derived(page.params.id ?? '');
 	const provider = $derived(
@@ -39,7 +39,7 @@
 	function openEdit() {
 		const p = dashboard.settings.providers.items.find((c) => c.id === providerId);
 		if (p) {
-			editing = structuredClone(p);
+			editing = hydrateProvider($state.snapshot(p));
 			drawerOpen = true;
 		}
 	}
@@ -51,7 +51,7 @@
 
 	async function saveEdit() {
 		if (!editing) return;
-		const current = editing;
+		const current = $state.snapshot(editing);
 		try {
 			dashboard.setProviders(dashboard.settings.providers.items.map((p) => (p.id === current.id ? current : p)));
 			await dashboard.save();

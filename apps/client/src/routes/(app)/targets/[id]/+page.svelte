@@ -6,7 +6,7 @@
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { deliveryIcon } from '$lib/icons';
-	import { targetLabel, type EventEntry, type EventStats, type DeliveryTarget } from '$lib/types';
+	import { hydrateDeliveryTarget, targetLabel, type EventEntry, type EventStats, type DeliveryTarget } from '$lib/types';
 	import { tagToneMap } from '$lib/tags';
 
 	const targetId = $derived(page.params.id ?? '');
@@ -38,7 +38,7 @@
 	function openEdit() {
 		const t = dashboard.settings.delivery.items.find((c) => c.id === targetId);
 		if (t) {
-			editing = structuredClone(t);
+			editing = hydrateDeliveryTarget($state.snapshot(t));
 			drawerOpen = true;
 		}
 	}
@@ -50,7 +50,7 @@
 
 	async function saveEdit() {
 		if (!editing) return;
-		const current = editing;
+		const current = $state.snapshot(editing);
 		try {
 			dashboard.setTargets(dashboard.settings.delivery.items.map((t) => (t.id === current.id ? current : t)));
 			await dashboard.save();

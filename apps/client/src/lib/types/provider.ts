@@ -154,3 +154,15 @@ export function createProvider(type: ProviderType): Provider {
 		secretValue: null
 	};
 }
+
+const NULLABLE_PROVIDER_FIELDS = ['secretValue', 'secretHeader', 'password'] as const;
+
+export function hydrateProvider(provider: Provider): Provider {
+	const draft = provider as unknown as Record<string, unknown>;
+	for (const key of NULLABLE_PROVIDER_FIELDS) {
+		if (draft[key] === null) draft[key] = '';
+	}
+	if (!draft.tags) draft.tags = [];
+	return provider;
+}
+

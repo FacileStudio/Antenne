@@ -20,6 +20,7 @@
 	import {
 		createTarget,
 		deliveryTargetTypes,
+		hydrateDeliveryTarget,
 		targetLabel,
 		type DeliveryTarget,
 		type DeliveryTargetType,
@@ -121,31 +122,9 @@
 		}
 	}
 
-	/*
-	 * Every optional credential is `string | null` on the wire and the form controls want a
-	 * string. The API maps an empty string back to null on the way in (settings.optionalString),
-	 * so the round-trip is lossless and no field silently gains an empty-string value.
-	 */
-	const NULLABLE_TEXT = [
-		'accessToken',
-		'refreshToken',
-		'password',
-		'deviceId',
-		'secretValue',
-		'clickUrl'
-	] as const;
-
-	function hydrate(target: DeliveryTarget): DeliveryTarget {
-		const draft = target as unknown as Record<string, unknown>;
-		for (const key of NULLABLE_TEXT) {
-			if (draft[key] === null) draft[key] = '';
-		}
-		return target;
-	}
-
 	function open(index: number) {
 		editingIndex = index;
-		editing = hydrate(structuredClone($state.snapshot(targets[index])) as DeliveryTarget);
+		editing = hydrateDeliveryTarget($state.snapshot(targets[index]));
 		drawerOpen = true;
 	}
 
@@ -156,7 +135,7 @@
 
 	async function commit() {
 		if (!editing || editingIndex < 0) return;
-		const draft = structuredClone($state.snapshot(editing)) as DeliveryTarget;
+		const draft = $state.snapshot(editing);
 		dashboard.setTargets(
 			targets.map((current, index) => (index === editingIndex ? draft : current))
 		);
