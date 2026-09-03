@@ -16,7 +16,7 @@
 		tones: Record<string, number>;
 		onToggle: (index: number, enabled: boolean) => void;
 		onOpen: (index: number) => void;
-		onRemove: (index: number) => void;
+		onRemove?: (index: number) => void;
 	} = $props();
 </script>
 
@@ -49,11 +49,11 @@
 					</div>
 				{/if}
 
-				<div class="mt-auto flex items-center gap-1 border-t border-fc-border pt-4">
+				<div class="mt-auto flex items-center border-t border-fc-border pt-4">
 					<Button
 						variant="ghost"
 						icon={icons.edit}
-						class="flex-1"
+						class="w-full"
 						onclick={(e) => {
 							e.preventDefault();
 							e.stopPropagation();
@@ -62,16 +62,6 @@
 					>
 						Edit
 					</Button>
-					<Button
-						variant="ghost-danger"
-						icon={icons.remove}
-						onclick={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							onRemove(index);
-						}}
-						aria-label={`Delete ${provider.name}`}
-					/>
 				</div>
 			</Card>
 	{/each}

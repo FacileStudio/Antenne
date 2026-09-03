@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Badge, Button, Drawer, EmptyState, Spinner, StatCard, icons, toast } from '@facile/muse';
+	import { Badge, Button, ConfirmModal, Drawer, EmptyState, Spinner, StatCard, Switch, icons, toast } from '@facile/muse';
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
 	import ProviderEditorFields from '$lib/components/ProviderEditorFields.svelte';
 	import TagPill from '$lib/components/TagPill.svelte';
@@ -21,6 +22,7 @@
 	let loading = $state(false);
 	let editing = $state<Provider | null>(null);
 	let drawerOpen = $state(false);
+	let confirmOpen = $state(false);
 
 	async function refresh() {
 		if (!providerId) return;
@@ -61,6 +63,30 @@
 		}
 	}
 
+	async function toggleEnabled(enabled: boolean) {
+		if (!provider) return;
+		dashboard.setProviders(
+			dashboard.settings.providers.items.map((p) =>
+				p.id === provider.id ? { ...p, enabled } : p
+			)
+		);
+		await dashboard.save({ silent: true });
+	}
+
+	function askDelete() {
+		confirmOpen = true;
+	}
+
+	async function removeProvider() {
+		if (!provider) return;
+		confirmOpen = false;
+		dashboard.setProviders(
+			dashboard.settings.providers.items.filter((p) => p.id !== provider.id)
+		);
+		await dashboard.save();
+		await goto('/providers');
+	}
+
 	$effect(() => {
 		void providerId;
 		void refresh();
@@ -69,14 +95,29 @@
 
 <div class="flex flex-col gap-10">
 	<div class="flex flex-col gap-4">
-		<div class="flex items-center justify-between">
+		<div class="flex flex-wrap items-center justify-between gap-4">
 			<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/providers" class="-ml-3.5 w-fit">
 				Back to providers
 			</Button>
 			{#if provider}
-				<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
-					Edit provider
-				</Button>
+				<div class="flex items-center gap-3">
+					<Switch
+						label="Enabled"
+						bind:checked={() => provider.enabled, (enabled) => toggleEnabled(enabled)}
+					/>
+					<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
+						Edit provider
+					</Button>
+					<Button
+						variant="ghost-danger"
+						size="sm"
+						icon={icons.remove}
+						onclick={askDelete}
+						aria-label={`Delete ${provider.name}`}
+					>
+						Delete
+					</Button>
+				</div>
 			{/if}
 		</div>
 
@@ -154,3 +195,15 @@
 		</Button>
 	{/snippet}
 </Drawer>
+
+<ConfirmModal
+	bind:open={confirmOpen}
+	tone="danger"
+	title="Delete this provider?"
+	description={provider
+		? `${provider.name} stops being watched and every delivery target routing on it — by id or by tag — loses that source. Events already in the log are kept.`
+		: ''}
+	confirmLabel="Delete"
+	onConfirm={removeProvider}
+	onCancel={() => (confirmOpen = false)}
+/>

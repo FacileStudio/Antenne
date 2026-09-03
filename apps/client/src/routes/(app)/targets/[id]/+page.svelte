@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Alert, Badge, Button, EmptyState, Spinner, StatCard, icons, toast } from '@facile/muse';
+	import { Alert, Badge, Button, ConfirmModal, EmptyState, Spinner, StatCard, Switch, icons, toast } from '@facile/muse';
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
 	import DeliveryEditorDrawer from '$lib/components/DeliveryEditorDrawer.svelte';
 	import { api } from '$lib/backend';
@@ -19,6 +20,7 @@
 	let loading = $state(false);
 	let drawerOpen = $state(false);
 	let editing = $state<DeliveryTarget | null>(null);
+	let confirmOpen = $state(false);
 	const tones = $derived(tagToneMap(dashboard.availableTags));
 
 	async function refresh() {
@@ -60,6 +62,30 @@
 		}
 	}
 
+	async function toggleEnabled(enabled: boolean) {
+		if (!target) return;
+		dashboard.setTargets(
+			dashboard.settings.delivery.items.map((t) =>
+				t.id === target.id ? { ...t, enabled } : t
+			)
+		);
+		await dashboard.save({ silent: true });
+	}
+
+	function askDelete() {
+		confirmOpen = true;
+	}
+
+	async function removeTarget() {
+		if (!target) return;
+		confirmOpen = false;
+		dashboard.setTargets(
+			dashboard.settings.delivery.items.filter((t) => t.id !== target.id)
+		);
+		await dashboard.save();
+		await goto('/delivery');
+	}
+
 	$effect(() => {
 		void targetId;
 		void refresh();
@@ -68,14 +94,29 @@
 
 <div class="flex flex-col gap-10">
 	<div class="flex flex-col gap-4">
-		<div class="flex items-center justify-between">
+		<div class="flex flex-wrap items-center justify-between gap-4">
 			<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/delivery" class="-ml-3.5 w-fit">
 				Back to delivery
 			</Button>
 			{#if target}
-				<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
-					Edit target
-				</Button>
+				<div class="flex items-center gap-3">
+					<Switch
+						label="Enabled"
+						bind:checked={() => target.enabled, (enabled) => toggleEnabled(enabled)}
+					/>
+					<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
+						Edit target
+					</Button>
+					<Button
+						variant="ghost-danger"
+						size="sm"
+						icon={icons.remove}
+						onclick={askDelete}
+						aria-label={`Delete ${target.name}`}
+					>
+						Delete
+					</Button>
+				</div>
 			{/if}
 		</div>
 
@@ -142,4 +183,14 @@
 	tones={tones}
 	saving={dashboard.saving}
 	onSave={saveEdit}
+/>
+
+<ConfirmModal
+	bind:open={confirmOpen}
+	tone="danger"
+	title="Delete this delivery target?"
+	description={target ? `${target.name} stops receiving alerts immediately.` : ''}
+	confirmLabel="Delete"
+	onConfirm={removeTarget}
+	onCancel={() => (confirmOpen = false)}
 />

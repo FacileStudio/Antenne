@@ -27,7 +27,7 @@
 		onToggle: (index: number, enabled: boolean) => void;
 		onOpen: (index: number) => void;
 		onCheck: (target: DeliveryTarget) => void;
-		onRemove: (target: DeliveryTarget) => void;
+		onRemove?: (target: DeliveryTarget) => void;
 	} = $props();
 </script>
 
@@ -70,7 +70,7 @@
 					onCheck={() => onCheck(target)}
 				/>
 
-				<div class="mt-auto flex items-center gap-2">
+				<div class="mt-auto flex items-center">
 					<Button
 						variant="outline"
 						size="sm"
@@ -83,19 +83,6 @@
 					>
 						Edit
 					</Button>
-					<Button
-						variant="ghost-danger"
-						size="sm"
-						icon={icons.remove}
-						onclick={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							onRemove(target);
-						}}
-						title="Delete"
-						aria-label={`Delete ${target.name}`}
-						class="ml-auto"
-					/>
 				</div>
 			</Card>
 	{/each}
