@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Alert, SettingsRow, SettingsSection, Switch } from '@facile/muse';
+	import { Alert, Button, SettingsRow, SettingsSection, Switch, icons } from '@facile/muse';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { SYSTEM_PROVIDER_ID, type SystemEvents } from '$lib/types';
 
@@ -21,6 +21,18 @@
 		title="System events"
 		description="The events Antenne emits about itself, on top of the ones its providers report."
 	>
+		{#snippet actions()}
+			<Button
+				variant="outline"
+				size="sm"
+				icon={icons.bolt}
+				onclick={() => dashboard.sendTestAlert()}
+				disabled={dashboard.testing || dashboard.loading}
+			>
+				{dashboard.testing ? 'Sending…' : 'Send test alert'}
+			</Button>
+		{/snippet}
+
 		{#each rows as row (row.key)}
 			<!-- The description is the wire key, so the row's own paragraph is set in mono
 			     rather than dropping a second element beside it. -->
@@ -29,7 +41,11 @@
 				description={`system.events.${row.key}`}
 				class="[&_p]:font-fc-mono"
 			>
-				<Switch aria-label={row.label} bind:checked={events[row.key]} />
+				<Switch
+					aria-label={row.label}
+					bind:checked={events[row.key]}
+					onchange={() => dashboard.autoSave(0)}
+				/>
 			</SettingsRow>
 		{/each}
 	</SettingsSection>

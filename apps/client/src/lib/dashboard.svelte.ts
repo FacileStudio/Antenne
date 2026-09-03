@@ -132,6 +132,26 @@ class DashboardStore {
 		}
 	}
 
+	private saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+	autoSave(delay = 500) {
+		if (!this.loaded) return;
+		if (this.saveTimer) clearTimeout(this.saveTimer);
+		this.saveTimer = setTimeout(() => {
+			this.saveTimer = null;
+			void this.save({ silent: true });
+		}, delay);
+	}
+
+	flushSave() {
+		if (this.saveTimer) {
+			clearTimeout(this.saveTimer);
+			this.saveTimer = null;
+			void this.save({ silent: true });
+		}
+	}
+
+
 	async sendTestAlert() {
 		this.testing = true;
 		try {

@@ -3,7 +3,6 @@
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import {
-		Button,
 		MobileNav,
 		PageTransition,
 		SideBar,
@@ -104,17 +103,11 @@
 	<!-- `min-w-0` so a wide table scrolls itself instead of pushing the shell sideways, and
 	     `overscroll-contain` because <main> is the only scroller. -->
 	<main bind:this={scroller} class="min-w-0 flex-1 overflow-auto overscroll-contain pb-28 md:pb-0">
-		<!--
-			Settings are one document: PUT /api/settings replaces the whole thing, so a provider
-			edited on one page and a target edited on another are saved together or not at all.
-			That is why the two actions live in the shell rather than on a page — they are not
-			this page's actions, they are the document's.
-		-->
-		<Topbar>
+		<Topbar class="md:hidden">
 			<div class="flex min-w-0 flex-1 items-center gap-3">
-				<span class="text-fc-md font-semibold text-fc-fg md:hidden">Antenne</span>
+				<span class="text-fc-md font-semibold text-fc-fg">Antenne</span>
 				{#if switcherSpaces.length > 0}
-					<div class="min-w-0 max-w-56 flex-1 md:hidden">
+					<div class="min-w-0 max-w-56 flex-1">
 						<SpaceSwitcher
 							spaces={switcherSpaces}
 							activeId={spaces.currentId}
@@ -124,26 +117,6 @@
 						/>
 					</div>
 				{/if}
-			</div>
-
-			<div class="flex shrink-0 items-center gap-2">
-				<Button
-					variant="outline"
-					size="sm"
-					icon={icons.bolt}
-					onclick={() => dashboard.sendTestAlert()}
-					disabled={dashboard.testing || dashboard.loading}
-				>
-					<span class="max-sm:sr-only">{dashboard.testing ? 'Sending…' : 'Test alert'}</span>
-				</Button>
-				<Button
-					size="sm"
-					icon={icons.check}
-					onclick={() => dashboard.save()}
-					disabled={dashboard.saving || dashboard.loading}
-				>
-					<span class="max-sm:sr-only">{dashboard.saving ? 'Saving…' : 'Save'}</span>
-				</Button>
 			</div>
 		</Topbar>
 

@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
 	import { Divider, PageTransition, Tabs, icons } from '@facile/muse';
+	import { dashboard } from '$lib/dashboard.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -27,13 +28,35 @@
 			.find(({ id }) => page.url.pathname === id || page.url.pathname.startsWith(id + '/'))?.id ??
 			'/settings'
 	);
+
+	let previousSerialized = '';
+	$effect(() => {
+		if (!dashboard.loaded) return;
+		const current = JSON.stringify({
+			bus: dashboard.settings.bus,
+			system: dashboard.settings.system,
+			timeout: dashboard.settings.timeout,
+			providersPort: dashboard.settings.providers.port
+		});
+		if (!previousSerialized) {
+			previousSerialized = current;
+			return;
+		}
+		if (current !== previousSerialized) {
+			previousSerialized = current;
+			dashboard.autoSave(500);
+		}
+		return () => {
+			dashboard.flushSave();
+		};
+	});
 </script>
 
 <div class="flex flex-col gap-8">
 	<div class="flex flex-col gap-1">
 		<h1 class="text-fc-2xl font-semibold text-fc-fg">Settings</h1>
 		<p class="text-fc-sm text-fc-fg-muted">
-			This instance's configuration. Changes are drafts until the Save button up top writes them.
+			This instance's configuration. Changes save automatically.
 		</p>
 	</div>
 

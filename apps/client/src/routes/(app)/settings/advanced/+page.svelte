@@ -38,14 +38,21 @@
 </script>
 
 <div class="flex flex-col gap-10">
-	<SettingsSection title="Runtime tuning" description="Applied on the next save and runtime reload.">
+	<SettingsSection title="Runtime tuning" description="Applied automatically on runtime reload.">
 		<SettingsRow
 			label="Request timeout"
 			description="Seconds a website check waits before it counts as down."
 			for="timeout"
 			stacked
 		>
-			<Input id="timeout" type="number" min="1" step="1" bind:value={dashboard.settings.timeout} />
+			<Input
+				id="timeout"
+				type="number"
+				min="1"
+				step="1"
+				bind:value={dashboard.settings.timeout}
+				onchange={() => dashboard.autoSave(0)}
+			/>
 		</SettingsRow>
 
 		<SettingsRow
@@ -60,6 +67,7 @@
 				min="1"
 				step="1"
 				bind:value={dashboard.settings.providers.port}
+				onchange={() => dashboard.autoSave(0)}
 			/>
 		</SettingsRow>
 	</SettingsSection>

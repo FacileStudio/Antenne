@@ -95,6 +95,7 @@
 				editable
 				placeholder="pool"
 				class="w-full"
+				onchange={() => dashboard.autoSave(0)}
 			/>
 		</SettingsRow>
 
@@ -107,6 +108,7 @@
 			<Switch
 				aria-label="Log pool events to Activity"
 				bind:checked={dashboard.settings.bus.logActivity}
+				onchange={() => dashboard.autoSave(0)}
 			/>
 		</SettingsRow>
 	</SettingsSection>
