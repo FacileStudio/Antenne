@@ -2,11 +2,8 @@ package settings
 
 import "encoding/json"
 
-// ProviderType names a source Antenne watches or receives from.
 type ProviderType string
 
-// Provider types. The first thirteen are webhook receivers; the last three are
-// pollers Antenne drives itself.
 const (
 	ProviderSonde      ProviderType = "sonde"
 	ProviderFilet      ProviderType = "filet"
@@ -28,25 +25,19 @@ const (
 	ProviderJournal    ProviderType = "journal"
 )
 
-// WebhookProviderTypes are the provider types that receive HTTP webhooks.
-//
-// It is a function rather than a slice so that a caller who reorders or trims
-// the result cannot change what every other caller sees.
 func WebhookProviderTypes() []ProviderType {
 	return []ProviderType{
 		ProviderSonde, ProviderUptimeKuma, ProviderDocuSeal, ProviderDokploy, ProviderGit,
 		ProviderVikunja, ProviderArdoise, ProviderSablier, ProviderPerception,
 		ProviderOpus, ProviderVision, ProviderPlume, ProviderNuage, ProviderFilet,
+		ProviderJournal,
 	}
 }
 
-// ProviderTypes are every provider type, webhook receivers first. The order is
-// the dashboard's picker order, so appending here appends there.
 func ProviderTypes() []ProviderType {
-	return append(WebhookProviderTypes(), ProviderIMAP, ProviderWebsite, ProviderRSS, ProviderJournal)
+	return append(WebhookProviderTypes(), ProviderIMAP, ProviderWebsite, ProviderRSS)
 }
 
-// IsWebhook reports whether this provider type receives webhooks.
 func (t ProviderType) IsWebhook() bool {
 	for _, candidate := range WebhookProviderTypes() {
 		if candidate == t {
@@ -56,7 +47,6 @@ func (t ProviderType) IsWebhook() bool {
 	return false
 }
 
-// IsValid reports whether the type is one Antenne knows.
 func (t ProviderType) IsValid() bool {
 	for _, candidate := range ProviderTypes() {
 		if candidate == t {
@@ -66,23 +56,16 @@ func (t ProviderType) IsValid() bool {
 	return false
 }
 
-// WebsiteSettings configures an HTTP uptime check.
-//
-// This and its siblings are embedded anonymously and carry no json tag, so
-// encoding/json flattens them: the wire shape is the same flat object the
-// dashboard has always sent, and the grouping exists only in Go.
 type WebsiteSettings struct {
 	URL      string `json:"url,omitempty"`
 	Interval int    `json:"interval,omitempty"`
 }
 
-// RSSSettings configures a feed poller.
 type RSSSettings struct {
 	FeedURL        string `json:"feedUrl,omitempty"`
 	IncludeContent bool   `json:"includeContent,omitempty"`
 }
 
-// IMAPSettings configures a mailbox poller.
 type IMAPSettings struct {
 	Host             string  `json:"host,omitempty"`
 	Port             int     `json:"port,omitempty"`
@@ -92,37 +75,25 @@ type IMAPSettings struct {
 	IncludeEmailBody bool    `json:"includeEmailBody,omitempty"`
 }
 
-// WebhookSettings configures an inbound receiver: where it listens and how a
-// caller proves it is entitled to post there.
 type WebhookSettings struct {
 	Path         string  `json:"path,omitempty"`
 	SecretHeader *string `json:"secretHeader,omitempty"`
 	SecretValue  *string `json:"secretValue,omitempty"`
 }
 
-// Provider is one configured source.
-//
-// It is a single flat struct rather than an interface because the settings
-// document is edited as a whole by the dashboard, and MarshalJSON emits only
-// the fields that belong to the type — so the wire shape stays exactly as
-// narrow as the TypeScript union it replaces.
 type Provider struct {
-	ID      string       `json:"id"`
-	Type    ProviderType `json:"type"`
-	Name    string       `json:"name"`
-	Enabled bool         `json:"enabled"`
-	Tags    []string     `json:"tags"`
-
-	// PollInterval is shared by the IMAP and RSS pollers, so it sits above both.
-	PollInterval int `json:"pollInterval,omitempty"`
-
+	ID           string       `json:"id"`
+	Type         ProviderType `json:"type"`
+	Name         string       `json:"name"`
+	Enabled      bool         `json:"enabled"`
+	Tags         []string     `json:"tags"`
+	PollInterval int          `json:"pollInterval,omitempty"`
 	WebsiteSettings
 	RSSSettings
 	IMAPSettings
 	WebhookSettings
 }
 
-// MarshalJSON writes only the fields that belong to the provider's type.
 func (p Provider) MarshalJSON() ([]byte, error) {
 	out := map[string]any{
 		"id":      p.ID,
@@ -157,7 +128,6 @@ func (p Provider) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-// ProviderLabel is the human name for a provider type.
 func ProviderLabel(providerType ProviderType) string {
 	switch providerType {
 	case ProviderWebsite:
@@ -189,9 +159,9 @@ func ProviderLabel(providerType ProviderType) string {
 	case ProviderNuage:
 		return "Nuage"
 	case ProviderFilet:
+		return "filet"
 	case ProviderJournal:
 		return "Journal"
-		return "filet"
 	case ProviderSonde:
 		return "Sonde"
 	case ProviderUptimeKuma:
@@ -200,7 +170,6 @@ func ProviderLabel(providerType ProviderType) string {
 	return string(providerType)
 }
 
-// WebhookDefaultPath is the path a new webhook provider of this type listens on.
 func WebhookDefaultPath(providerType ProviderType) string {
 	if providerType.IsWebhook() {
 		return "/webhook/" + string(providerType)
@@ -208,8 +177,6 @@ func WebhookDefaultPath(providerType ProviderType) string {
 	return ""
 }
 
-// WebhookDefaultSecretHeader is the header a new webhook provider reads its
-// secret or signature from.
 func WebhookDefaultSecretHeader(providerType ProviderType) string {
 	switch providerType {
 	case ProviderSonde:
@@ -237,9 +204,9 @@ func WebhookDefaultSecretHeader(providerType ProviderType) string {
 	case ProviderNuage:
 		return "x-nuage-signature-256"
 	case ProviderFilet:
-	case ProviderJournal:
-		return "Journal"
 		return "x-filet-signature-256"
+	case ProviderJournal:
+		return "x-journal-signature-256"
 	case ProviderDokploy:
 		return "x-dokploy-secret"
 	}
