@@ -58,7 +58,7 @@ const (
 	checkBlock  = time.Minute
 )
 
-// targetHealth is one dashboard row: the health record joined to the target it
+// TargetHealth is one dashboard row: the health record joined to the target it
 // describes. A record is keyed by id and carries nothing else, so a client
 // holding records alone would have to guess at names.
 type TargetHealth struct {
@@ -98,6 +98,9 @@ type TargetHealth struct {
 	AlertCount          int        `json:"alertCount"`
 }
 
+// DeliveryHealthPage is the full health snapshot for every configured delivery
+// target, plus the boolean that says whether any target can currently receive
+// anything and the standing alerts that the alerting system could not carry.
 type DeliveryHealthPage struct {
 	Targets []TargetHealth `json:"targets"`
 
@@ -111,6 +114,9 @@ type DeliveryHealthPage struct {
 	StandingAlerts []health.StandingAlert `json:"standingAlerts"`
 }
 
+// TargetCheckResult is the response to one on-demand probe: the verbatim result
+// from the far side, the derived state after policy, and the retry budget
+// consumed (only when the far side asked for one).
 type TargetCheckResult struct {
 	TargetID string `json:"targetId"`
 	OK       bool   `json:"ok"`

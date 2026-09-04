@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/env"
+	"github.com/FacileStudio/Antenne/apps/api/internal/server"
 	"github.com/FacileStudio/Antenne/apps/api/modules/auth"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
@@ -50,18 +51,18 @@ func TestEveryRouteIsDocumented(t *testing.T) {
 		t.Fatalf("local: %v", err)
 	}
 
-	router := buildRouter(cfg, log, nil, nil, authService, sessions, kit, passwords, nil, nil)
+	router := server.BuildRouter(cfg, log, nil, nil, authService, sessions, kit, passwords, nil, nil)
 
 	// /dashboard is a legacy redirect kept for links made before the client moved
 	// to the root; it is not part of the API surface.
-	if missing := apiref.Undocumented(router, refConfig(), "/dashboard"); len(missing) > 0 {
+	if missing := apiref.Undocumented(router, server.RefConfig(), "/dashboard"); len(missing) > 0 {
 		t.Errorf("routes missing from the API registry: %v", missing)
 	}
 }
 
 func TestRegistryIsComplete(t *testing.T) {
 	if issues := apiref.Incomplete(
-		refConfig(),
+		server.RefConfig(),
 		"/api/auth/logout",
 		"/api/auth/oidc",
 		"/api/auth/oidc/callback",
@@ -80,7 +81,7 @@ func TestRegistryIsComplete(t *testing.T) {
 // TestTheReferenceRendersEveryModule catches an empty or malformed registry,
 // which would otherwise serve a valid-looking but useless reference page.
 func TestTheReferenceRendersEveryModule(t *testing.T) {
-	document := apiref.OpenAPI(refConfig())
+	document := apiref.OpenAPI(server.RefConfig())
 
 	paths, ok := document["paths"].(map[string]any)
 	if !ok {

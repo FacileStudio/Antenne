@@ -26,10 +26,40 @@ import (
 // enough that the endpoint cannot be used to exhaust memory.
 const maxSettingsBody = 4 << 20
 
+// SettingsResponse is the dashboard's full settings snapshot: redacted settings,
+// runtime status, and whether a usable Matrix target exists for the pool health
+// system.
 type SettingsResponse struct {
 	Settings         settings.AppSettings   `json:"settings"`
 	Runtime          settings.RuntimeStatus `json:"runtime"`
 	MatrixConfigured bool                   `json:"matrixConfigured"`
+}
+
+// OkResponse is a minimal {ok: true} payload used by diagnostic endpoints that
+// do not need to return state.
+type OkResponse struct {
+	Ok bool `json:"ok"`
+}
+
+// TargetTestRequest carries the id of a delivery target to test in isolation
+// from the routing rules.
+type TargetTestRequest struct {
+	TargetID string `json:"targetId"`
+}
+
+// ProviderTestRequest carries the id of a provider to test the connection of;
+// only IMAP providers have a connectable protocol.
+type ProviderTestRequest struct {
+	ProviderID string `json:"providerId"`
+}
+
+// EventPage is a single page from the activity log: the entries themselves,
+// the total count across the whole filtered set, and stats describing that set
+// (not this page).
+type EventPage struct {
+	Events []events.Entry `json:"events"`
+	Total  int64          `json:"total"`
+	Stats  events.Stats   `json:"stats"`
 }
 
 // API serves the dashboard's endpoints.

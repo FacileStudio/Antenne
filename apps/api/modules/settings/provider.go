@@ -25,6 +25,7 @@ const (
 	ProviderIMAP       ProviderType = "imap"
 	ProviderWebsite    ProviderType = "website"
 	ProviderRSS        ProviderType = "rss"
+	ProviderJournal    ProviderType = "journal"
 )
 
 // WebhookProviderTypes are the provider types that receive HTTP webhooks.
@@ -42,7 +43,7 @@ func WebhookProviderTypes() []ProviderType {
 // ProviderTypes are every provider type, webhook receivers first. The order is
 // the dashboard's picker order, so appending here appends there.
 func ProviderTypes() []ProviderType {
-	return append(WebhookProviderTypes(), ProviderIMAP, ProviderWebsite, ProviderRSS)
+	return append(WebhookProviderTypes(), ProviderIMAP, ProviderWebsite, ProviderRSS, ProviderJournal)
 }
 
 // IsWebhook reports whether this provider type receives webhooks.
@@ -188,6 +189,8 @@ func ProviderLabel(providerType ProviderType) string {
 	case ProviderNuage:
 		return "Nuage"
 	case ProviderFilet:
+	case ProviderJournal:
+		return "Journal"
 		return "filet"
 	case ProviderSonde:
 		return "Sonde"
@@ -234,6 +237,8 @@ func WebhookDefaultSecretHeader(providerType ProviderType) string {
 	case ProviderNuage:
 		return "x-nuage-signature-256"
 	case ProviderFilet:
+	case ProviderJournal:
+		return "Journal"
 		return "x-filet-signature-256"
 	case ProviderDokploy:
 		return "x-dokploy-secret"

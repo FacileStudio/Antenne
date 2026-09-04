@@ -3,29 +3,12 @@ package server
 import (
 	"slices"
 
-	"github.com/FacileStudio/Antenne/apps/api/modules/events"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 	"github.com/FacileStudio/tronc/apiref"
 )
 
-type OkResponse struct {
-	Ok bool `json:"ok"`
-}
-
-type TargetTestRequest struct {
-	TargetID string `json:"targetId"`
-}
-
-type ProviderTestRequest struct {
-	ProviderID string `json:"providerId"`
-}
-
-type EventPage struct {
-	Events []events.Entry `json:"events"`
-	Total  int64          `json:"total"`
-	Stats  events.Stats   `json:"stats"`
-}
-
+// SettingsDocumentation registers the configuration endpoints: read, replace,
+// the three diagnostic buttons and the delivery-health read / probe pair.
 func SettingsDocumentation() apiref.Module {
 	return apiref.Module{
 		Name: "Settings",
@@ -136,6 +119,8 @@ func healthRoutes() []apiref.Route {
 	}
 }
 
+// EventsDocumentation registers the activity log endpoints: list, filter,
+// stream, replay and the per-provider and per-target views.
 func EventsDocumentation() apiref.Module {
 	return apiref.Module{
 		Name: "Events",
@@ -191,6 +176,8 @@ func EventsDocumentation() apiref.Module {
 	}
 }
 
+// WebhooksDocumentation registers the single wildcard intake route that
+// absorbs every configured provider's webhook path at the root.
 func WebhooksDocumentation() apiref.Module {
 	return apiref.Module{
 		Name: "Webhooks",
