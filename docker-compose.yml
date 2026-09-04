@@ -7,14 +7,23 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-antenne}
     volumes:
-      - antenne-postgres:/var/lib/postgresql/data
+    - antenne-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-antenne} -d ${POSTGRES_DB:-antenne}"]
-      interval: 10s
+      test:
+      - CMD
+      - nc
+      - -z
+      - localhost
+      - '3000'
+      interval: 30s
       timeout: 5s
-      retries: 5
-      start_period: 10s
-
+      retries: 3
+    deploy:
+      update_config:
+        order: start-first
+        parallelism: 1
+      restart_policy:
+        condition: any
   app:
     build:
       context: .
@@ -24,29 +33,20 @@ services:
       postgres:
         condition: service_healthy
     expose:
-      - "9090"
+    - '9090'
     environment:
       APP_ENV: ${APP_ENV:-production}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
-      # Pinned rather than interpolated. The webhook URLs registered in Dokploy,
-      # DocuSeal and the git forges point at this port, and the healthcheck has
-      # to agree with it — the old `${PORT:-9090}` in both places went stale the
-      # moment the port was changed from the dashboard.
-      PORT: "9090"
+      PORT: '9090'
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgres://${POSTGRES_USER:-antenne}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-antenne}?sslmode=disable
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       ANTENNE_ADMIN_USERNAME: ${ANTENNE_ADMIN_USERNAME:-admin}
-      ANTENNE_ADMIN_PASSWORD: ${ANTENNE_ADMIN_PASSWORD:?ANTENNE_ADMIN_PASSWORD is required}
+      ANTENNE_ADMIN_PASSWORD: ${ANTENNE_ADMIN_PASSWORD:?ANTENNE_ADMIN_PASSWORD is
+        required}
       ANTENNE_SECRET: ${ANTENNE_SECRET:-}
-      # porte reads the Secure attribute and the __Host- cookie prefix off this
-      # value rather than off X-Forwarded-Proto, so that a proxy which stops
-      # sending the header downgrades nothing. Production refuses to boot unless
-      # it is an https origin.
-      PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL is required — the https origin Antenne is reached on}
-      # Single sign-on against the suite's Authentik. Unset OIDC_ISSUER and the
-      # bootstrap password above is the only way in; set SSO_ONLY and it is the
-      # only way in. OIDC_REDIRECT_URL defaults to PUBLIC_URL + the callback path.
+      PUBLIC_URL: "${PUBLIC_URL:?PUBLIC_URL is required \u2014 the https origin Antenne\
+        \ is reached on}"
       OIDC_ISSUER: ${OIDC_ISSUER:-}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
@@ -55,43 +55,43 @@ services:
       OIDC_CLI_AUDIENCE: ${OIDC_CLI_AUDIENCE:-}
       SSO_ONLY: ${SSO_ONLY:-false}
       TIMEOUT: ${TIMEOUT:-10}
-      # ANTENNE_SETTINGS_PATH is deliberately unset. The one-time import from the
-      # pre-Postgres antenne.json has run and the volume is gone; point it at a
-      # file again only to re-import into an empty database.
-      # Journal log shipping (optional — per-app key from Journal's Keys page)
       JOURNAL_URL: ${JOURNAL_URL:-}
       JOURNAL_TOKEN: ${JOURNAL_TOKEN:-}
-      # Journal error reporting from the dashboard (optional — a public key from
-      # Journal's Settings -> API). The URL must end in /api or Antenne refuses
-      # to boot; unlike JOURNAL_URL it is reached from the browser, not from the
-      # docker network.
       JOURNAL_BROWSER_URL: ${JOURNAL_BROWSER_URL:-}
       JOURNAL_BROWSER_KEY: ${JOURNAL_BROWSER_KEY:-}
     networks:
-      - default
-      - dokploy-network
+    - default
+    - dokploy-network
     labels:
-      traefik.enable: "true"
+      traefik.enable: 'true'
       traefik.docker.network: dokploy-network
-      traefik.http.routers.antenne-web.rule: "Host(`antenne.facile.studio`)"
+      traefik.http.routers.antenne-web.rule: Host(`antenne.facile.studio`)
       traefik.http.routers.antenne-web.entrypoints: web
       traefik.http.routers.antenne-web.middlewares: redirect-to-https@file
       traefik.http.routers.antenne-web.service: antenne-svc
-      traefik.http.routers.antenne-secure.rule: "Host(`antenne.facile.studio`)"
+      traefik.http.routers.antenne-secure.rule: Host(`antenne.facile.studio`)
       traefik.http.routers.antenne-secure.entrypoints: websecure
       traefik.http.routers.antenne-secure.tls.certresolver: letsencrypt
       traefik.http.routers.antenne-secure.service: antenne-svc
-      traefik.http.services.antenne-svc.loadbalancer.server.port: "9090"
+      traefik.http.services.antenne-svc.loadbalancer.server.port: '9090'
     healthcheck:
-      test: ["CMD", "/antenne", "healthcheck"]
-      interval: 10s
+      test:
+      - CMD
+      - nc
+      - -z
+      - localhost
+      - '9090'
+      interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
-
+    deploy:
+      update_config:
+        order: start-first
+        parallelism: 1
+      restart_policy:
+        condition: any
 volumes:
-  antenne-postgres:
-
+  antenne-postgres: null
 networks:
   dokploy-network:
     external: true
