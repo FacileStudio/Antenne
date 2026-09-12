@@ -9,6 +9,7 @@ const PROVIDER_ICONS: Record<string, string> = {
 	'uptime-kuma': 'solar:heart-pulse-bold-duotone',
 	docuseal: 'solar:document-bold-duotone',
 	dokploy: 'solar:server-bold-duotone',
+	generic: 'solar:plug-circle-bold-duotone',
 	git: 'solar:code-bold-duotone',
 	vikunja: 'solar:checklist-bold-duotone',
 	ardoise: 'solar:bill-list-bold-duotone',

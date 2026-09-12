@@ -12,7 +12,8 @@ export type WebhookProviderType =
 	| 'vision'
 	| 'plume'
 	| 'nuage'
-	| 'filet';
+	| 'filet'
+	| 'generic';
 
 export type ProviderType = WebhookProviderType | 'imap' | 'website' | 'rss';
 
@@ -66,6 +67,7 @@ export const providerTypes: ProviderType[] = [
 	'docuseal',
 	'filet',
 	'dokploy',
+	'generic',
 	'git',
 	'nuage',
 	'opus',
@@ -84,6 +86,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 	sonde: 'Sonde',
 	docuseal: 'DocuSeal',
 	dokploy: 'Dokploy',
+	generic: 'Generic',
 	git: 'Git',
 	vikunja: 'Vikunja',
 	ardoise: 'Ardoise',
@@ -106,6 +109,7 @@ const WEBHOOK_SECRET_HEADERS: Record<WebhookProviderType, string> = {
 	'uptime-kuma': 'x-webhook-secret',
 	docuseal: 'x-docuseal-secret',
 	dokploy: 'x-dokploy-secret',
+	generic: 'x-generic-signature-256',
 	git: 'x-hub-signature-256',
 	vikunja: 'x-vikunja-signature',
 	ardoise: 'x-ardoise-signature-256',
