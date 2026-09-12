@@ -23,6 +23,7 @@ const (
 	ProviderWebsite    ProviderType = "website"
 	ProviderRSS        ProviderType = "rss"
 	ProviderJournal    ProviderType = "journal"
+	ProviderGeneric    ProviderType = "generic"
 )
 
 func WebhookProviderTypes() []ProviderType {
@@ -30,7 +31,7 @@ func WebhookProviderTypes() []ProviderType {
 		ProviderSonde, ProviderUptimeKuma, ProviderDocuSeal, ProviderDokploy, ProviderGit,
 		ProviderVikunja, ProviderArdoise, ProviderSablier, ProviderPerception,
 		ProviderOpus, ProviderVision, ProviderPlume, ProviderNuage, ProviderFilet,
-		ProviderJournal,
+		ProviderJournal, ProviderGeneric,
 	}
 }
 
@@ -162,6 +163,8 @@ func ProviderLabel(providerType ProviderType) string {
 		return "filet"
 	case ProviderJournal:
 		return "Journal"
+	case ProviderGeneric:
+		return "Generic"
 	case ProviderSonde:
 		return "Sonde"
 	case ProviderUptimeKuma:
@@ -207,6 +210,8 @@ func WebhookDefaultSecretHeader(providerType ProviderType) string {
 		return "x-filet-signature-256"
 	case ProviderJournal:
 		return "x-journal-signature-256"
+	case ProviderGeneric:
+		return "x-generic-signature-256"
 	case ProviderDokploy:
 		return "x-dokploy-secret"
 	}

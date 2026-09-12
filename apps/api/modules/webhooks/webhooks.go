@@ -86,6 +86,7 @@ var registry = map[settings.ProviderType]Definition{
 	settings.ProviderNuage:      nuage,
 	settings.ProviderFilet:      filet,
 	settings.ProviderJournal:    journal,
+	settings.ProviderGeneric:    generic,
 }
 
 // Authenticate applies the provider's own check, or the default header
