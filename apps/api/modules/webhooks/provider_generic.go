@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
@@ -50,7 +51,7 @@ func genericResult(payload genericPayload) Result {
 func genericMessage(payload genericPayload) string {
 	parts := []string{genericHeading(payload)}
 	if payload.Message != "" {
-		parts = append(parts, escape(payload.Message))
+		parts = append(parts, strings.ReplaceAll(escape(payload.Message), "\n", "<br/>"))
 	}
 	parts = append(parts, genericDataLines(payload.Data)...)
 	return join(parts)

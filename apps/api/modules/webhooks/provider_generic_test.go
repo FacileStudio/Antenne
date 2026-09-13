@@ -62,6 +62,13 @@ func TestGenericHandle(t *testing.T) {
 			contains:  []string{"deploy: staging"},
 		},
 		{
+			name:       "newlines in the message become line breaks",
+			body:       `{"title":"moulaga","message":"daemon started\nrisk 2.0%\nmax open 5"}`,
+			eventType:  "generic.event",
+			eventTitle: "moulaga",
+			contains:   []string{"daemon started<br/>risk 2.0%<br/>max open 5"},
+		},
+		{
 			name:       "everything is escaped",
 			body:       `{"source":"<cron>","title":"<script>alert(1)</script>","message":"<img src=x>","data":{"q":"<a href>"}}`,
 			eventType:  "generic.event",
