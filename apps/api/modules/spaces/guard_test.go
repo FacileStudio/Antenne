@@ -17,7 +17,7 @@ func TestAStrangerIsRefusedEveryRouteOnASpace(t *testing.T) {
 	id := newSpace(t, owner, "Private")
 
 	for _, attempt := range refusedProbes(id) {
-		recorder := call(t, user("stranger@example.test"), attempt.method, attempt.path, attempt.body)
+		recorder := call(t, user("stranger@example.test"), attempt.method, attempt.path, "")
 		if recorder.Code != http.StatusForbidden {
 			t.Errorf("%s %s: a stranger got %d, want 403 (%s)", attempt.method, attempt.path, recorder.Code, recorder.Body)
 		}
@@ -31,7 +31,7 @@ func TestAnInstanceAdminIsRefusedTheSameRoutes(t *testing.T) {
 	id := newSpace(t, owner, "Private")
 
 	for _, attempt := range refusedProbes(id) {
-		recorder := call(t, admin("root@example.test"), attempt.method, attempt.path, attempt.body)
+		recorder := call(t, admin("root@example.test"), attempt.method, attempt.path, "")
 		if recorder.Code != http.StatusForbidden {
 			t.Errorf("%s %s: an admin got %d, want 403 (%s)", attempt.method, attempt.path, recorder.Code, recorder.Body)
 		}
@@ -61,75 +61,24 @@ func TestTheListOnlyShowsSpacesTheCallerIsIn(t *testing.T) {
 	}
 }
 
-// TestCreateSeedsTheCallerAsOwner pins that ownership comes from the session,
-// and that a body still naming an owner is refused outright rather than
-// silently ignored.
-func TestCreateSeedsTheCallerAsOwner(t *testing.T) {
+// TestNoRouteWritesASpace pins that Registre is the only place a space
+// changes: every write the dashboard used to make is no longer served.
+func TestNoRouteWritesASpace(t *testing.T) {
 	owner := user("owner4@example.test")
+	id := newSpace(t, owner, "Owned")
 
-	smuggled := call(t, owner, http.MethodPost, "/spaces",
-		`{"name":"Seeded","ownerUserId":"attacker@example.test"}`)
-	if smuggled.Code != http.StatusBadRequest {
-		t.Fatalf("a body naming an owner was accepted: %d %s", smuggled.Code, smuggled.Body)
-	}
-
-	id := newSpaceWithBody(t, owner, `{"name":"Seeded"}`)
-	recorder := call(t, owner, http.MethodGet, "/spaces/"+id+"/members", "")
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("the creator cannot read their own members: %d %s", recorder.Code, recorder.Body)
-	}
-	body := recorder.Body.String()
-	if !strings.Contains(body, "owner4@example.test") || strings.Contains(body, "attacker@example.test") {
-		t.Fatalf("ownership was taken from the body: %s", body)
-	}
-}
-
-// TestAMemberMayReadButNotWrite covers the middle role: reads pass, every
-// mutation is refused.
-func TestAMemberMayReadButNotWrite(t *testing.T) {
-	owner := user("owner5@example.test")
-	member := user("member5@example.test")
-	id := newSpace(t, owner, "Shared")
-	addMember(t, owner, id, member.Email, RoleMember)
-
-	if recorder := call(t, member, http.MethodGet, "/spaces/"+id, ""); recorder.Code != http.StatusOK {
-		t.Fatalf("a member cannot read the space: %d %s", recorder.Code, recorder.Body)
-	}
-	writes := []probe{
-		{http.MethodPut, "/spaces/" + id, `{"name":"Renamed"}`},
-		{http.MethodDelete, "/spaces/" + id, ""},
-		{http.MethodPost, "/spaces/" + id + "/members", `{"userId":"x@example.test","role":"member"}`},
-	}
-	for _, write := range writes {
-		recorder := call(t, member, write.method, write.path, write.body)
-		if recorder.Code != http.StatusForbidden {
-			t.Errorf("%s %s: a member got %d, want 403", write.method, write.path, recorder.Code)
+	for _, attempt := range []probe{
+		{http.MethodPost, "/spaces"},
+		{http.MethodPut, "/spaces/" + id},
+		{http.MethodDelete, "/spaces/" + id},
+		{http.MethodPost, "/spaces/" + id + "/members"},
+		{http.MethodPut, "/spaces/" + id + "/members/" + owner.Email},
+		{http.MethodDelete, "/spaces/" + id + "/members/" + owner.Email},
+	} {
+		recorder := call(t, owner, attempt.method, attempt.path, `{"name":"x","userId":"x@example.test","role":"owner"}`)
+		if recorder.Code < 400 {
+			t.Errorf("%s %s: the owner got %d, want it refused", attempt.method, attempt.path, recorder.Code)
 		}
-	}
-}
-
-// TestAnAdminMayNotTouchOwnership keeps role escalation off the admin role: an
-// admin staffs a space but cannot mint or unseat an owner.
-func TestAnAdminMayNotTouchOwnership(t *testing.T) {
-	owner := user("owner6@example.test")
-	spaceAdmin := user("admin6@example.test")
-	id := newSpace(t, owner, "Staffed")
-	addMember(t, owner, id, spaceAdmin.Email, RoleAdmin)
-
-	granting := call(t, spaceAdmin, http.MethodPost, "/spaces/"+id+"/members",
-		`{"userId":"new@example.test","role":"owner"}`)
-	if granting.Code != http.StatusForbidden {
-		t.Errorf("an admin granted ownership: %d %s", granting.Code, granting.Body)
-	}
-
-	removing := call(t, spaceAdmin, http.MethodDelete, "/spaces/"+id+"/members/"+owner.Email, "")
-	if removing.Code != http.StatusForbidden {
-		t.Errorf("an admin removed the owner: %d %s", removing.Code, removing.Body)
-	}
-
-	demoting := call(t, spaceAdmin, http.MethodPut, "/spaces/"+id+"/members/"+owner.Email, `{"role":"member"}`)
-	if demoting.Code != http.StatusForbidden {
-		t.Errorf("an admin demoted the owner: %d %s", demoting.Code, demoting.Body)
 	}
 }
 
@@ -141,7 +90,7 @@ func TestTheResponsesCarryTheCallersOwnRole(t *testing.T) {
 	owner := user("owner8@example.test")
 	member := user("member8@example.test")
 	id := newSpace(t, owner, "Roled")
-	addMember(t, owner, id, member.Email, RoleMember)
+	addMember(t, id, member.Email, RoleMember)
 
 	for _, want := range []struct {
 		caller authcontext.Identity
@@ -192,27 +141,4 @@ func roleFromList(t *testing.T, caller authcontext.Identity, id string) Role {
 	}
 	t.Fatalf("%s cannot see space %s in their own list: %s", caller.Email, id, recorder.Body)
 	return ""
-}
-
-// TestTheLastOwnerCannotStepDown keeps a space from becoming unadministrable,
-// which nothing in the API could then repair.
-func TestTheLastOwnerCannotStepDown(t *testing.T) {
-	owner := user("owner7@example.test")
-	id := newSpace(t, owner, "Sole")
-
-	demoting := call(t, owner, http.MethodPut, "/spaces/"+id+"/members/"+owner.Email, `{"role":"admin"}`)
-	if demoting.Code != http.StatusPreconditionFailed {
-		t.Errorf("the last owner demoted themselves: %d %s", demoting.Code, demoting.Body)
-	}
-
-	removing := call(t, owner, http.MethodDelete, "/spaces/"+id+"/members/"+owner.Email, "")
-	if removing.Code != http.StatusPreconditionFailed {
-		t.Errorf("the last owner removed themselves: %d %s", removing.Code, removing.Body)
-	}
-
-	addMember(t, owner, id, "second@example.test", RoleOwner)
-	stepping := call(t, owner, http.MethodDelete, "/spaces/"+id+"/members/"+owner.Email, "")
-	if stepping.Code != http.StatusOK {
-		t.Errorf("an owner with a co-owner could not leave: %d %s", stepping.Code, stepping.Body)
-	}
 }

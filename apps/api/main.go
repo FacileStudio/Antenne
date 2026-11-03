@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Journal/sdk/journal"
+	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
@@ -182,7 +183,11 @@ func run() int {
 
 	eventLog := events.NewService(db, appLogger)
 	sender := delivery.NewSender(appLogger)
-	spaceService := spaces.NewService(db)
+	spaceService := spaces.NewService(db, directory.Client{
+		Issuer:       cfg.Porte.Issuer,
+		ClientID:     cfg.Porte.ClientID,
+		ClientSecret: cfg.Porte.ClientSecret,
+	}, appLogger)
 
 	current := store.Get()
 	application := app.New(appLogger, store, eventLog, sender, settings.RuntimeStatus{
@@ -245,6 +250,7 @@ func run() int {
 	defer application.Stop()
 
 	go maintenance(ctx, appLogger, authService, eventLog, busServer)
+	go spaceService.Run(ctx)
 
 	application.AnnounceStartup(ctx)
 

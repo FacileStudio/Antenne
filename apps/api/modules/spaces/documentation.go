@@ -2,70 +2,42 @@ package spaces
 
 import "github.com/FacileStudio/tronc/apiref"
 
-type SpaceRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-}
-
-type SpaceResponse struct {
-	Space SpaceView `json:"space"`
-}
-
+// SpaceListResponse documents GET /api/spaces.
 type SpaceListResponse struct {
-	Spaces []SpaceView `json:"spaces"`
+	Spaces    []SpaceView `json:"spaces"`
+	ManageURL string      `json:"manageUrl"`
 }
 
+// SpaceDetailResponse documents GET /api/spaces/{id}.
 type SpaceDetailResponse struct {
 	Space   SpaceView `json:"space"`
 	Members []Member  `json:"members"`
 }
 
-type MemberRequest struct {
-	UserID string `json:"userId"`
-	Role   string `json:"role,omitempty"`
-}
-
-type MemberResponse struct {
-	Member Member `json:"member"`
-}
-
+// MemberListResponse documents GET /api/spaces/{id}/members.
 type MemberListResponse struct {
 	Members []Member `json:"members"`
 }
 
-type OkResponse struct {
-	Ok bool `json:"ok"`
-}
-
+// Documentation is the spaces module's entry in the API reference.
 func Documentation() apiref.Module {
 	return apiref.Module{
 		Name:        "Spaces",
-		Description: "Teams and their members. Providers and delivery targets are instance-wide; spaces group people. Every route is membership-scoped, with no instance-admin bypass.",
-		Routes:      append(spaceRoutes(), append(memberRoutes(), membershipRoutes()...)...),
+		Description: "Teams and their members, owned by Registre and read-only here: Antenne applies Registre's snapshot, and every change is made at manageUrl. Every route is membership-scoped, with no instance-admin bypass.",
+		Routes:      append(readRoutes(), syncRoute()),
 	}
 }
 
-func spaceRoutes() []apiref.Route {
+// readRoutes are the three membership-scoped reads.
+func readRoutes() []apiref.Route {
 	return []apiref.Route{
 		{
 			Method:       "GET",
 			Path:         "/api/spaces",
 			Summary:      "List spaces",
-			Description:  "Only the spaces the caller is a member of. Each carries the caller's own role in it.",
+			Description:  "Only the spaces the caller is a member of. Each carries the caller's own role in it and its Registre page.",
 			Auth:         "session",
 			ResponseBody: SpaceListResponse{},
-		},
-		{
-			Method:       "POST",
-			Path:         "/api/spaces",
-			Summary:      "Create a space",
-			Description:  "The caller becomes the space's owner.",
-			Auth:         "session",
-			RequestBody:  SpaceRequest{},
-			ResponseBody: SpaceResponse{},
-			Errors: []apiref.Error{
-				{Status: 400, Code: "invalid_argument", Description: "name is required"},
-			},
 		},
 		{
 			Method:       "GET",
@@ -80,36 +52,6 @@ func spaceRoutes() []apiref.Route {
 			},
 		},
 		{
-			Method:       "PUT",
-			Path:         "/api/spaces/{id}",
-			Summary:      "Update a space",
-			Description:  "An absent field is left alone.",
-			Auth:         "session",
-			PathParams:   []apiref.Field{{Name: "id", Type: "string", Description: "the space id"}},
-			RequestBody:  SpaceRequest{},
-			ResponseBody: SpaceResponse{},
-			Errors: []apiref.Error{
-				{Status: 403, Code: "permission_denied", Description: "owner or admin only"},
-			},
-		},
-		{
-			Method:       "DELETE",
-			Path:         "/api/spaces/{id}",
-			Summary:      "Delete a space",
-			Description:  "Its memberships go with it.",
-			Auth:         "session",
-			PathParams:   []apiref.Field{{Name: "id", Type: "string", Description: "the space id"}},
-			ResponseBody: OkResponse{},
-			Errors: []apiref.Error{
-				{Status: 403, Code: "permission_denied", Description: "owner only"},
-			},
-		},
-	}
-}
-
-func memberRoutes() []apiref.Route {
-	return []apiref.Route{
-		{
 			Method:       "GET",
 			Path:         "/api/spaces/{id}/members",
 			Summary:      "List members",
@@ -120,59 +62,20 @@ func memberRoutes() []apiref.Route {
 				{Status: 403, Code: "permission_denied", Description: "the caller is not a member of this space"},
 			},
 		},
-		{
-			Method:       "POST",
-			Path:         "/api/spaces/{id}/members",
-			Summary:      "Add a member",
-			Description:  "Adding someone already in the space returns that membership unchanged rather than erroring. An unknown role falls back to member.",
-			Auth:         "session",
-			PathParams:   []apiref.Field{{Name: "id", Type: "string", Description: "the space id"}},
-			RequestBody:  MemberRequest{},
-			ResponseBody: MemberResponse{},
-			Errors: []apiref.Error{
-				{Status: 400, Code: "invalid_argument", Description: "userId is required"},
-				{Status: 403, Code: "permission_denied", Description: "owner or admin only; only an owner may grant ownership"},
-			},
-		},
 	}
 }
 
-func membershipRoutes() []apiref.Route {
-	return []apiref.Route{
-		{
-			Method:      "PUT",
-			Path:        "/api/spaces/{id}/members/{userId}",
-			Summary:     "Change a member's role",
-			Description: "userId is percent-decoded server-side, so a client may send encodeURIComponent(email).",
-			Auth:        "session",
-			PathParams: []apiref.Field{
-				{Name: "id", Type: "string", Description: "the space id"},
-				{Name: "userId", Type: "string", Description: "the member's identifier, percent-encoded"},
-			},
-			RequestBody:  MemberRequest{},
-			ResponseBody: MemberResponse{},
-			Errors: []apiref.Error{
-				{Status: 400, Code: "invalid_argument", Description: "role must be owner, admin or member"},
-				{Status: 403, Code: "permission_denied", Description: "owner only"},
-				{Status: 404, Code: "not_found", Description: "no such membership"},
-				{Status: 412, Code: "failed_precondition", Description: "a space must keep at least one owner"},
-			},
-		},
-		{
-			Method:  "DELETE",
-			Path:    "/api/spaces/{id}/members/{userId}",
-			Summary: "Remove a member",
-			Auth:    "session",
-			PathParams: []apiref.Field{
-				{Name: "id", Type: "string", Description: "the space id"},
-				{Name: "userId", Type: "string", Description: "the member's identifier, percent-encoded"},
-			},
-			ResponseBody: OkResponse{},
-			Errors: []apiref.Error{
-				{Status: 403, Code: "permission_denied", Description: "owner or admin only; only an owner may remove an owner"},
-				{Status: 404, Code: "not_found", Description: "no such membership"},
-				{Status: 412, Code: "failed_precondition", Description: "a space must keep at least one owner"},
-			},
+// syncRoute is the nudge Registre posts after any change.
+func syncRoute() apiref.Route {
+	return apiref.Route{
+		Method:      "POST",
+		Path:        "/api/registre/sync",
+		Summary:     "Registre nudge",
+		Description: "Registre posts here after any change to a space. The body is ignored and the caller is not trusted: Antenne only schedules an authenticated pull of the snapshot two seconds later.",
+		Auth:        "none",
+		Status:      202,
+		Errors: []apiref.Error{
+			{Status: 404, Code: "not_found", Description: "single sign-on is not configured"},
 		},
 	}
 }

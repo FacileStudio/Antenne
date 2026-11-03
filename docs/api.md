@@ -112,13 +112,14 @@ The log keeps the most recent 5000 entries; older ones are pruned hourly.
 
 | Route | Notes |
 |---|---|
-| `GET /api/spaces` · `POST /api/spaces` | list, create |
-| `GET`/`PUT`/`DELETE /api/spaces/{id}` | one space; `GET` includes its members |
-| `GET`/`POST /api/spaces/{id}/members` | list, add |
-| `PUT`/`DELETE /api/spaces/{id}/members/{userId}` | update the role, remove |
+| `GET /api/spaces` | list, with `manageUrl`, Registre's spaces page |
+| `GET /api/spaces/{id}` | one space with its members |
+| `GET /api/spaces/{id}/members` | list |
+| `POST /api/registre/sync` | Registre's nudge: anonymous, answers 202 and pulls the snapshot |
 
-Roles are `owner`, `admin`, `member`. Adding an existing member returns that membership
-unchanged rather than erroring.
+Registre owns spaces. Antenne applies Registre's snapshot at boot, every five minutes and
+two seconds after a nudge, so creating, renaming and staffing a space happen at `manageUrl`.
+Roles are `owner`, `admin`, `member`.
 
 `{userId}` is percent-decoded server-side, so a client sending `encodeURIComponent(email)`
 matches a stored address. chi routes on the raw path and would otherwise never match.

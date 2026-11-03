@@ -1,27 +1,31 @@
 // Package spaces holds Antenne's teams and their members.
 //
 // `space` is the suite-wide name for a team, so the shape here matches Agenda,
-// Ardoise and Mycelium rather than inventing a fourth one.
+// Ardoise and Mycelium rather than inventing a fourth one. Registre owns every
+// shared space: Antenne applies the snapshot Registre serves and only reads
+// spaces through its own API, so creating, renaming and staffing a space all
+// happen in Registre.
 package spaces
 
 import (
 	"errors"
+	"log/slog"
 	"time"
 
+	"github.com/FacileStudio/porte/directory"
 	"gorm.io/gorm"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/avatar"
-	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
 // Role is a member's privilege inside one space.
 type Role string
 
-// Space roles, most privileged first.
+// Space roles, most privileged first. They are Registre's three, unchanged.
 const (
-	RoleOwner  Role = "owner"
-	RoleAdmin  Role = "admin"
-	RoleMember Role = "member"
+	RoleOwner  Role = directory.RoleOwner
+	RoleAdmin  Role = directory.RoleAdmin
+	RoleMember Role = directory.RoleMember
 )
 
 // IsValid reports whether the role is one of the three.
@@ -29,27 +33,30 @@ func (r Role) IsValid() bool {
 	return r == RoleOwner || r == RoleAdmin || r == RoleMember
 }
 
-// Space is a team.
+// Space is a team. RegistreSpaceID links it to the Registre space it mirrors;
+// nil means it was never linked.
 type Space struct {
-	ID          string    `gorm:"primaryKey" json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID              string    `gorm:"primaryKey" json:"id"`
+	Name            string    `json:"name"`
+	Description     string    `json:"description"`
+	RegistreSpaceID *string   `gorm:"column:registre_space_id" json:"registreSpaceId"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 // TableName pins the spaces table name.
 func (Space) TableName() string { return "spaces" }
 
-// SpaceView is a space as one of its members sees it: the space itself plus
-// that member's own role, so a caller can tell what it may do here without a
-// second round trip to the member list.
+// SpaceView is a space as one of its members sees it: the space itself, that
+// member's own role, and where the space is managed in Registre.
 type SpaceView struct {
 	Space
-	Role Role `json:"role"`
+	Role      Role   `json:"role"`
+	ManageURL string `gorm:"-" json:"manageUrl,omitempty"`
 }
 
-// Member is one person's membership of one space.
+// Member is one person's membership of one space. UserID is the member's
+// email address, the key every membership in Antenne is held under.
 type Member struct {
 	SpaceID   string    `gorm:"primaryKey;column:space_id" json:"spaceId"`
 	UserID    string    `gorm:"primaryKey;column:user_id" json:"userId"`
@@ -64,13 +71,35 @@ func (Member) TableName() string { return "space_members" }
 // ErrNotFound is returned when a space or a membership does not exist.
 var ErrNotFound = errors.New("spaces: not found")
 
-// Service is the spaces store.
+// Service is the spaces store and the Registre directory sync. A zero
+// Client.Issuer leaves the sync off and the spaces read-only as they are.
 type Service struct {
-	db *gorm.DB
+	db     *gorm.DB
+	issuer string
+	logger *slog.Logger
+	client directory.Client
+	syncer *directory.Syncer
+	retry  time.Duration
 }
 
-// NewService builds the service.
-func NewService(db *gorm.DB) *Service { return &Service{db: db} }
+// NewService builds the service. client is Antenne's own OIDC client against
+// Registre; with an empty Issuer there is nothing to sync from.
+func NewService(db *gorm.DB, client directory.Client, logger *slog.Logger) *Service {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	s := &Service{
+		db:     db,
+		issuer: client.Issuer,
+		logger: logger,
+		client: client,
+		retry:  importRetry,
+	}
+	if client.Issuer != "" {
+		s.syncer = &directory.Syncer{Client: client, Apply: s.Apply, Logger: logger}
+	}
+	return s
+}
 
 // members is the one query a membership is read through, so every member a
 // response carries has the picture of the user its identifier names.
@@ -91,28 +120,10 @@ func (s *Service) ListForMember(userID string) ([]SpaceView, error) {
 		Joins("JOIN space_members ON space_members.space_id = spaces.id AND space_members.user_id = ?", userID).
 		Order("spaces.created_at asc").
 		Find(&views).Error
+	for i := range views {
+		views[i] = s.view(views[i].Space, views[i].Role)
+	}
 	return views, err
-}
-
-// MemberRole returns userID's role in a space, or ErrNotFound when there is no
-// such membership.
-func (s *Service) MemberRole(spaceID, userID string) (Role, error) {
-	var member Member
-	err := s.db.Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", ErrNotFound
-	}
-	if err != nil {
-		return "", err
-	}
-	return member.Role, nil
-}
-
-// CountOwners returns how many owners a space has.
-func (s *Service) CountOwners(spaceID string) (int64, error) {
-	var count int64
-	err := s.db.Model(&Member{}).Where("space_id = ? AND role = ?", spaceID, RoleOwner).Count(&count).Error
-	return count, err
 }
 
 // Get returns one space.
@@ -127,121 +138,9 @@ func (s *Service) Get(id string) (Space, error) {
 	return space, nil
 }
 
-// Create adds a space, optionally seeding its owner.
-func (s *Service) Create(name, description, ownerUserID string) (Space, error) {
-	space := Space{ID: settings.NewID(), Name: name, Description: description}
-
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&space).Error; err != nil {
-			return err
-		}
-		if ownerUserID == "" {
-			return nil
-		}
-		return tx.Create(&Member{
-			SpaceID:  space.ID,
-			UserID:   ownerUserID,
-			Role:     RoleOwner,
-			JoinedAt: time.Now(),
-		}).Error
-	})
-	if err != nil {
-		return Space{}, err
-	}
-
-	return s.Get(space.ID)
-}
-
-// Update renames or re-describes a space. A nil field is left alone.
-func (s *Service) Update(id string, name, description *string) (Space, error) {
-	space, err := s.Get(id)
-	if err != nil {
-		return Space{}, err
-	}
-
-	updates := map[string]any{"updated_at": time.Now()}
-	if name != nil {
-		updates["name"] = *name
-	}
-	if description != nil {
-		updates["description"] = *description
-	}
-	if err := s.db.Model(&space).Updates(updates).Error; err != nil {
-		return Space{}, err
-	}
-	return s.Get(id)
-}
-
-// Delete removes a space and, by cascade, its memberships.
-func (s *Service) Delete(id string) error {
-	result := s.db.Where("id = ?", id).Delete(&Space{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
 // Members lists a space's members, oldest first.
 func (s *Service) Members(spaceID string) ([]Member, error) {
 	members := []Member{}
 	err := s.members().Where("space_id = ?", spaceID).Order("joined_at asc").Find(&members).Error
 	return members, err
-}
-
-// AddMember adds a member, returning the existing membership unchanged if there
-// already is one — adding someone twice is not an error worth surfacing.
-func (s *Service) AddMember(spaceID, userID string, role Role) (Member, error) {
-	if _, err := s.Get(spaceID); err != nil {
-		return Member{}, err
-	}
-
-	var existing Member
-	err := s.members().Where("space_id = ? AND user_id = ?", spaceID, userID).First(&existing).Error
-	if err == nil {
-		return existing, nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return Member{}, err
-	}
-
-	member := Member{SpaceID: spaceID, UserID: userID, Role: role, JoinedAt: time.Now()}
-	if err := s.db.Create(&member).Error; err != nil {
-		return Member{}, err
-	}
-	err = s.members().Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error
-	return member, err
-}
-
-// UpdateMemberRole changes one member's role.
-func (s *Service) UpdateMemberRole(spaceID, userID string, role Role) (Member, error) {
-	result := s.db.Model(&Member{}).
-		Where("space_id = ? AND user_id = ?", spaceID, userID).
-		Update("role", role)
-	if result.Error != nil {
-		return Member{}, result.Error
-	}
-	if result.RowsAffected == 0 {
-		return Member{}, ErrNotFound
-	}
-
-	var member Member
-	if err := s.members().Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error; err != nil {
-		return Member{}, err
-	}
-	return member, nil
-}
-
-// RemoveMember drops one membership.
-func (s *Service) RemoveMember(spaceID, userID string) error {
-	result := s.db.Where("space_id = ? AND user_id = ?", spaceID, userID).Delete(&Member{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return ErrNotFound
-	}
-	return nil
 }

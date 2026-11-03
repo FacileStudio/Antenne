@@ -19,7 +19,7 @@ func TestMembersCarryTheirUsersPicture(t *testing.T) {
 		t.Fatalf("seeding the user: %v", err)
 	}
 	t.Cleanup(func() { testDB.Exec("DELETE FROM users WHERE email = 'pictured@example.test'") })
-	addMember(t, owner, id, "Pictured@Example.test", RoleMember)
+	addMember(t, id, "Pictured@Example.test", RoleMember)
 
 	recorder := call(t, owner, http.MethodGet, "/spaces/"+id+"/members", "")
 	var payload struct {

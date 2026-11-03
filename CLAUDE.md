@@ -66,7 +66,7 @@ apps/
       providers/            The pollers Antenne drives: website, IMAP, RSS
       webhooks/             The intake registry and one file per provider
       bus/                  The Antenne Pool: router.go, the WebSocket server and its queue
-      spaces/               Teams and members
+      spaces/               Teams and members, mirrored from Registre through porte/directory
   client/                   SvelteKit dashboard, built to apps/client/build
 ```
 

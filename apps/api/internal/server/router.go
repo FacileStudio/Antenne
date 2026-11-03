@@ -97,6 +97,7 @@ func BuildRouter(
 		}
 
 		busServer.RegisterRoutes(protected)
+		spaceService.RegisterSync(protected)
 
 		protected.Group(func(sessioned chi.Router) {
 			sessioned.Use(auth.RequireAuth(sessions, authService))

@@ -3,9 +3,12 @@ package spaces
 import (
 	"errors"
 	"net/http"
+	"net/url"
 
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
+	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
 )
@@ -23,13 +26,13 @@ func callerKey(r *http.Request) string {
 }
 
 // guard resolves the caller's role in the space named by the request and
-// refuses anyone the allowed roles do not cover.
+// refuses anyone who is not a member of it.
 //
 // There is no instance-admin bypass, on purpose: an Antenne administrator who
-// was never invited to a space may not read it, rename it or delete it. A
-// stranger and an administrator get the same 403 whether or not the space
-// exists, so probing an id tells the caller nothing.
-func (s *Service) guard(w http.ResponseWriter, r *http.Request, allowed ...Role) (string, Role, bool) {
+// was never invited to a space may not read it. A stranger and an
+// administrator get the same 403 whether or not the space exists, so probing
+// an id tells the caller nothing.
+func (s *Service) guard(w http.ResponseWriter, r *http.Request) (string, Role, bool) {
 	spaceID := param(r, "id")
 
 	key := callerKey(r)
@@ -47,42 +50,38 @@ func (s *Service) guard(w http.ResponseWriter, r *http.Request, allowed ...Role)
 		httpjson.WriteError(w, err)
 		return "", "", false
 	}
-	if !covers(role, allowed) {
-		httpjson.WriteError(w, apierrors.Forbidden("this role may not perform that action"))
-		return "", "", false
-	}
 	return spaceID, role, true
 }
 
-func covers(role Role, allowed []Role) bool {
-	for _, candidate := range allowed {
-		if role == candidate {
-			return true
-		}
+// MemberRole returns userID's role in a space, or ErrNotFound when there is no
+// such membership.
+func (s *Service) MemberRole(spaceID, userID string) (Role, error) {
+	var member Member
+	err := s.db.Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", ErrNotFound
 	}
-	return false
+	if err != nil {
+		return "", err
+	}
+	return member.Role, nil
 }
 
-// guardOwnerChange refuses the two ways a role change can leave a space without
-// an owner or hand ownership out sideways: an admin touching an owner, and the
-// last owner stepping down.
-func (s *Service) guardOwnerChange(w http.ResponseWriter, spaceID string, callerRole, target, next Role) bool {
-	if callerRole != RoleOwner && (target == RoleOwner || next == RoleOwner) {
-		httpjson.WriteError(w, apierrors.Forbidden("only an owner may grant or remove ownership"))
-		return false
-	}
-	if target != RoleOwner || next == RoleOwner {
-		return true
-	}
-
-	owners, err := s.CountOwners(spaceID)
+// param reads a path parameter and undoes the percent-encoding chi leaves in
+// place. chi routes on RawPath whenever the request carries any escaping.
+func param(r *http.Request, key string) string {
+	raw := chi.URLParam(r, key)
+	decoded, err := url.PathUnescape(raw)
 	if err != nil {
-		httpjson.WriteError(w, err)
-		return false
+		return raw
 	}
-	if owners <= 1 {
-		httpjson.WriteError(w, apierrors.Failed("a space must keep at least one owner"))
-		return false
+	return decoded
+}
+
+func writeSpaceError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrNotFound) {
+		httpjson.WriteError(w, apierrors.NotFound("space not found"))
+		return
 	}
-	return true
+	httpjson.WriteError(w, err)
 }

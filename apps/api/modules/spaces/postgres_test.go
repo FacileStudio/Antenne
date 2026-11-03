@@ -2,7 +2,6 @@ package spaces
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/tronc/migrate"
 	"github.com/go-chi/chi/v5"
 	"gorm.io/driver/postgres"
@@ -126,7 +126,7 @@ func call(t *testing.T, identity authcontext.Identity, method, path, body string
 			next.ServeHTTP(w, r.WithContext(authcontext.With(r.Context(), identity)))
 		})
 	})
-	NewService(testDB).RegisterRoutes(router)
+	NewService(testDB, directory.Client{}, nil).RegisterRoutes(router)
 
 	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
@@ -135,36 +135,25 @@ func call(t *testing.T, identity authcontext.Identity, method, path, body string
 	return recorder
 }
 
-// newSpace creates a space through the API, so the owner is seeded the way a
-// real caller would seed it.
+// newSpace seeds a space owned by owner, the way a Registre snapshot leaves one.
 func newSpace(t *testing.T, owner authcontext.Identity, name string) string {
 	t.Helper()
-	return newSpaceWithBody(t, owner, `{"name":"`+name+`"}`)
+	if testDB == nil {
+		t.Skip(skipReason)
+	}
+	id := fmt.Sprintf("space-%d", time.Now().UnixNano())
+	if err := testDB.Exec(`INSERT INTO spaces (id, name) VALUES (?, ?)`, id, name).Error; err != nil {
+		t.Fatalf("seeding the space: %v", err)
+	}
+	t.Cleanup(func() { testDB.Exec("DELETE FROM spaces WHERE id = ?", id) })
+	addMember(t, id, owner.Email, RoleOwner)
+	return id
 }
 
-func newSpaceWithBody(t *testing.T, owner authcontext.Identity, body string) string {
+func addMember(t *testing.T, spaceID, email string, role Role) {
 	t.Helper()
-	recorder := call(t, owner, http.MethodPost, "/spaces", body)
-	if recorder.Code != http.StatusCreated {
-		t.Fatalf("creating a space: got %d, body %s", recorder.Code, recorder.Body)
-	}
-
-	var payload struct {
-		Space Space `json:"space"`
-	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("decoding the created space: %v", err)
-	}
-	t.Cleanup(func() { testDB.Exec("DELETE FROM spaces WHERE id = ?", payload.Space.ID) })
-	return payload.Space.ID
-}
-
-func addMember(t *testing.T, actor authcontext.Identity, spaceID, email string, role Role) {
-	t.Helper()
-	body := `{"userId":"` + email + `","role":"` + string(role) + `"}`
-	recorder := call(t, actor, http.MethodPost, "/spaces/"+spaceID+"/members", body)
-	if recorder.Code != http.StatusCreated {
-		t.Fatalf("adding %s as %s: got %d, body %s", email, role, recorder.Code, recorder.Body)
+	if err := testDB.Exec(`INSERT INTO space_members (space_id, user_id, role) VALUES (?, ?, ?)`, spaceID, email, role).Error; err != nil {
+		t.Fatalf("adding %s as %s: %v", email, role, err)
 	}
 }
 
@@ -172,19 +161,13 @@ func addMember(t *testing.T, actor authcontext.Identity, spaceID, email string, 
 type probe struct {
 	method string
 	path   string
-	body   string
 }
 
 // refusedProbes is every route that takes a space id, so a new route added
 // without a guard shows up here as a missing line rather than as a silent hole.
 func refusedProbes(id string) []probe {
 	return []probe{
-		{http.MethodGet, "/spaces/" + id, ""},
-		{http.MethodPut, "/spaces/" + id, `{"name":"Renamed"}`},
-		{http.MethodDelete, "/spaces/" + id, ""},
-		{http.MethodGet, "/spaces/" + id + "/members", ""},
-		{http.MethodPost, "/spaces/" + id + "/members", `{"userId":"intruder@example.test","role":"owner"}`},
-		{http.MethodPut, "/spaces/" + id + "/members/owner@example.test", `{"role":"member"}`},
-		{http.MethodDelete, "/spaces/" + id + "/members/owner@example.test", ""},
+		{http.MethodGet, "/spaces/" + id},
+		{http.MethodGet, "/spaces/" + id + "/members"},
 	}
 }

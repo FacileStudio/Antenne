@@ -15,6 +15,7 @@ require (
 )
 
 require (
+	github.com/FacileStudio/porte/directory v0.1.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.20.0 // indirect
 	github.com/emersion/go-message v0.18.2 // indirect
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect

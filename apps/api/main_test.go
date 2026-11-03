@@ -68,6 +68,7 @@ func TestRegistryIsComplete(t *testing.T) {
 		"/api/auth/oidc/callback",
 		"/api/auth/backchannel-logout",
 		"/api/auth/sync-profile",
+		"/api/registre/sync",
 		"/api/test-alert",
 		"/api/delivery-health/{targetId}/check",
 		"/api/events/stream",
@@ -91,7 +92,7 @@ func TestTheReferenceRendersEveryModule(t *testing.T) {
 	for _, expected := range []string{
 		"/api/settings",
 		"/api/events",
-		"/api/spaces/{id}/members/{userId}",
+		"/api/spaces/{id}/members",
 		"/webhook/{provider}",
 		"/antenne/ws",
 	} {
