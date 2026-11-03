@@ -33,7 +33,7 @@
 </script>
 
 <div class="flex flex-col gap-10">
-	<Button variant="ghost" size="sm" icon={icons.space} href="/spaces" class="w-fit">
+	<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/spaces" class="w-fit">
 		Back to spaces
 	</Button>
 
