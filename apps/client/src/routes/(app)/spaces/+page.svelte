@@ -10,7 +10,7 @@
 
 {#snippet manage()}
 	{#if spaces.manageUrl}
-		<Button href={spaces.manageUrl} iconRight={icons.arrow} variant="outline">
+		<Button href={spaces.manageUrl} icon={icons.space} iconRight={icons.arrow} variant="outline">
 			Manage in Registre
 		</Button>
 	{/if}
@@ -36,7 +36,7 @@
 			</div>
 		{:else if spaces.spaces.length === 0}
 			<EmptyState
-				icon={icons.usersGroup}
+				icon={icons.space}
 				title="No space yet"
 				description="Create a space or join one in Registre and it shows up here."
 			>
@@ -50,7 +50,7 @@
 							<span
 								class="flex size-9 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted transition-colors group-hover:bg-fc-accent group-hover:text-fc-accent-fg"
 							>
-								<iconify-icon icon={icons.usersGroup} width="18" height="18" class="block"
+								<iconify-icon icon={icons.space} width="18" height="18" class="block"
 								></iconify-icon>
 							</span>
 							<span class="truncate text-fc-sm font-semibold text-fc-fg">{space.name}</span>

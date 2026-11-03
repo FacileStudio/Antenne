@@ -33,7 +33,7 @@
 </script>
 
 <div class="flex flex-col gap-10">
-	<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/spaces" class="w-fit">
+	<Button variant="ghost" size="sm" icon={icons.space} href="/spaces" class="w-fit">
 		Back to spaces
 	</Button>
 
@@ -43,7 +43,7 @@
 		</div>
 	{:else if !space}
 		<EmptyState
-			icon={icons.warning}
+			icon={icons.space}
 			title="This space no longer exists"
 			description="It was removed, or the id in the URL never matched one."
 		>
@@ -64,7 +64,7 @@
 			</div>
 
 			{#if space.manageUrl}
-				<Button href={space.manageUrl} iconRight={icons.arrow} variant="outline">
+				<Button href={space.manageUrl} icon={icons.space} iconRight={icons.arrow} variant="outline">
 					Manage in Registre
 				</Button>
 			{/if}

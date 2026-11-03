@@ -40,7 +40,7 @@
 		{ href: '/providers', label: 'Providers', icon: icons.plug },
 		{ href: '/delivery', label: 'Delivery', icon: icons.mail, match: ['/delivery', '/targets'] },
 		{ href: '/activity', label: 'Activity', icon: icons.dashboard },
-		{ href: '/spaces', label: 'Spaces', icon: icons.usersGroup }
+		{ href: '/spaces', label: 'Spaces', icon: icons.space }
 	];
 
 	function isActive(href: string, match?: string[]): boolean {
