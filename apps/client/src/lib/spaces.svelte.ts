@@ -6,6 +6,7 @@ const STORAGE_KEY = 'antenne-current-space-id';
 
 class SpacesStore {
 	spaces = $state<Space[]>([]);
+	manageUrl = $state('');
 	currentId = $state<string | null>(null);
 	loading = $state(false);
 	loaded = $state(false);
@@ -21,6 +22,7 @@ class SpacesStore {
 		try {
 			const payload = await api.spaces();
 			this.spaces = payload.spaces;
+			this.manageUrl = payload.manageUrl;
 
 			const restored = browser ? localStorage.getItem(STORAGE_KEY) : null;
 			if (restored && this.spaces.some((space) => space.id === restored)) {
@@ -40,32 +42,6 @@ class SpacesStore {
 	select(id: string) {
 		this.currentId = id;
 		if (browser) localStorage.setItem(STORAGE_KEY, id);
-	}
-
-	async create(name: string, description: string) {
-		const payload = await api.createSpace(name, description);
-		this.spaces = [...this.spaces, payload.space];
-		this.select(payload.space.id);
-		return payload.space;
-	}
-
-	async update(id: string, updates: { name?: string; description?: string }) {
-		const payload = await api.updateSpace(id, updates);
-		this.spaces = this.spaces.map((space) => (space.id === id ? payload.space : space));
-		return payload.space;
-	}
-
-	async remove(id: string) {
-		await api.deleteSpace(id);
-		this.spaces = this.spaces.filter((space) => space.id !== id);
-		if (this.currentId === id) {
-			const next = this.spaces[0]?.id ?? null;
-			this.currentId = next;
-			if (browser) {
-				if (next) localStorage.setItem(STORAGE_KEY, next);
-				else localStorage.removeItem(STORAGE_KEY);
-			}
-		}
 	}
 }
 

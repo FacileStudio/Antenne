@@ -10,8 +10,7 @@ import type {
 	AuthConfigPayload,
 	SettingsPayload,
 	Space,
-	SpaceMember,
-	SpaceRole
+	SpaceMember
 } from './types';
 
 /**
@@ -220,37 +219,7 @@ export const api = {
 
 	busStats: () => request<BusStats>('/antenne/stats'),
 
-	spaces: () => request<{ spaces: Space[] }>('/spaces'),
+	spaces: () => request<{ spaces: Space[]; manageUrl: string }>('/spaces'),
 	space: (id: string) =>
-		request<{ space: Space; members: SpaceMember[] }>(`/spaces/${encodeURIComponent(id)}`),
-	createSpace: (name: string, description: string) =>
-		request<{ space: Space }>('/spaces', {
-			method: 'POST',
-			body: JSON.stringify({ name, description })
-		}),
-	updateSpace: (id: string, updates: { name?: string; description?: string }) =>
-		request<{ space: Space }>(`/spaces/${encodeURIComponent(id)}`, {
-			method: 'PUT',
-			body: JSON.stringify(updates)
-		}),
-	deleteSpace: (id: string) =>
-		request<{ ok: boolean }>(`/spaces/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-
-	members: (spaceId: string) =>
-		request<{ members: SpaceMember[] }>(`/spaces/${encodeURIComponent(spaceId)}/members`),
-	addMember: (spaceId: string, userId: string, role: SpaceRole) =>
-		request<{ member: SpaceMember }>(`/spaces/${encodeURIComponent(spaceId)}/members`, {
-			method: 'POST',
-			body: JSON.stringify({ userId, role })
-		}),
-	updateMember: (spaceId: string, userId: string, role: SpaceRole) =>
-		request<{ member: SpaceMember }>(
-			`/spaces/${encodeURIComponent(spaceId)}/members/${encodeURIComponent(userId)}`,
-			{ method: 'PUT', body: JSON.stringify({ role }) }
-		),
-	removeMember: (spaceId: string, userId: string) =>
-		request<{ ok: boolean }>(
-			`/spaces/${encodeURIComponent(spaceId)}/members/${encodeURIComponent(userId)}`,
-			{ method: 'DELETE' }
-		)
+		request<{ space: Space; members: SpaceMember[] }>(`/spaces/${encodeURIComponent(id)}`)
 };

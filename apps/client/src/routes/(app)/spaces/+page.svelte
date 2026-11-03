@@ -1,41 +1,20 @@
 <script lang="ts">
-	import { Button, Card, Drawer, EmptyState, Field, Input, Spinner, Textarea, icons, toast } from '@facile/muse';
+	import { Button, Card, EmptyState, Spinner, icons } from '@facile/muse';
 	import { spaces } from '$lib/spaces.svelte';
 	import { formatDateTime } from '$lib/utils';
-
-	let drawerOpen = $state(false);
-	let name = $state('');
-	let description = $state('');
-	let submitting = $state(false);
 
 	$effect(() => {
 		void spaces.load();
 	});
-
-	function openCreate() {
-		name = '';
-		description = '';
-		drawerOpen = true;
-	}
-
-	async function create() {
-		if (!name.trim()) {
-			toast.danger('A space needs a name.');
-			return;
-		}
-
-		submitting = true;
-		try {
-			const space = await spaces.create(name.trim(), description.trim());
-			toast.success(`Created ${space.name}.`);
-			drawerOpen = false;
-		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'Failed to create the space');
-		} finally {
-			submitting = false;
-		}
-	}
 </script>
+
+{#snippet manage()}
+	{#if spaces.manageUrl}
+		<Button href={spaces.manageUrl} iconRight={icons.arrow} variant="outline">
+			Manage in Registre
+		</Button>
+	{/if}
+{/snippet}
 
 <div class="flex flex-col gap-10">
 	<section class="flex flex-col gap-4">
@@ -43,11 +22,12 @@
 			<div class="flex flex-col gap-2">
 				<h1 class="text-fc-2xl font-semibold text-fc-fg">Spaces</h1>
 				<p class="text-fc-sm text-fc-fg-muted">
-					Spaces group members. Antenne's providers and delivery targets stay instance-wide.
+					Spaces and their members come from Registre, the same in every Facile app. Antenne's
+					providers and delivery targets stay instance-wide.
 				</p>
 			</div>
 
-			<Button icon={icons.plus} onclick={openCreate}>New space</Button>
+			{@render manage()}
 		</div>
 
 		{#if spaces.loading && !spaces.loaded}
@@ -58,17 +38,15 @@
 			<EmptyState
 				icon={icons.usersGroup}
 				title="No space yet"
-				description="Spaces group members; Antenne's providers and targets are instance-wide."
+				description="Create a space or join one in Registre and it shows up here."
 			>
-				<Button icon={icons.plus} onclick={openCreate}>New space</Button>
+				{@render manage()}
 			</EmptyState>
 		{:else}
 			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 				{#each spaces.spaces as space (space.id)}
 					<Card href={`/spaces/${space.id}`} class="flex flex-col gap-4">
 						<div class="flex items-center gap-3">
-							<!-- The tile inverts on hover instead of tinting, so it stays legible once the
-							     card itself steps up to fc-surface. -->
 							<span
 								class="flex size-9 shrink-0 items-center justify-center rounded-fc-md bg-fc-surface text-fc-fg-muted transition-colors group-hover:bg-fc-accent group-hover:text-fc-accent-fg"
 							>
@@ -90,24 +68,3 @@
 		{/if}
 	</section>
 </div>
-
-<Drawer bind:open={drawerOpen} title="New space" description="Spaces group members." showClose>
-	<div class="flex flex-col gap-4">
-		<Field label="Name">
-			<Input bind:value={name} placeholder="Studio" />
-		</Field>
-
-		<Field label="Description" helper="Optional — what this space is for.">
-			<Textarea bind:value={description} rows={3} placeholder="What this space is for" />
-		</Field>
-	</div>
-
-	{#snippet footer()}
-		<div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
-			<Button variant="ghost" size="lg" onclick={() => (drawerOpen = false)}>Cancel</Button>
-			<Button size="lg" onclick={create} disabled={submitting}>
-				{submitting ? 'Creating…' : 'Create space'}
-			</Button>
-		</div>
-	{/snippet}
-</Drawer>
