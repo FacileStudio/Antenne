@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Badge, Button, Card, EmptyState, icons } from '@facile/muse';
+	import { Avatar, Badge, Button, Card, EmptyState, icons } from '@facile/muse';
 	import { sourceIcon } from '$lib/icons';
 	import type { EventEntry } from '$lib/types';
 	import { formatRelative, plainText } from '$lib/utils';
@@ -34,6 +34,12 @@
 		return sourceLabel(entry.source);
 	}
 
+	/** Who caused the event, by name or else by address, or '' when the source did not say. */
+	function actorOf(entry: EventEntry): string {
+		const actor = entry.envelope?.actor;
+		return actor?.name?.trim() || actor?.email?.trim() || '';
+	}
+
 	function previewFor(entry: EventEntry): string {
 		const message = plainText(entry.message);
 		if (!message) return '';
@@ -58,6 +64,7 @@
 	<Card class="overflow-hidden p-0">
 		<div class="divide-y divide-fc-border">
 			{#each events as entry (entry.id)}
+				{@const actor = actorOf(entry)}
 				<article class="flex items-start gap-3 p-4 transition-colors hover:bg-fc-surface">
 					<span class="mt-0.5 rounded-fc-sm bg-fc-surface p-1.5 text-fc-fg-muted">
 						<iconify-icon icon={sourceIcon(entry.source)} width="14" height="14" class="block"
@@ -79,6 +86,12 @@
 							<Badge>{sourceLabel(entry.source)}</Badge>
 							{#if entry.providerName && entry.providerName !== 'Antenne' && entry.providerName !== 'system'}
 								<Badge tone="info">{entry.providerName}</Badge>
+							{/if}
+							{#if actor}
+								<span class="flex min-w-0 items-center gap-1.5 text-fc-xs text-fc-fg-muted">
+									<Avatar src={entry.actorAvatarUrl || undefined} name={actor} size="sm" class="h-5 w-5" />
+									<span class="truncate">{actor}</span>
+								</span>
 							{/if}
 						</div>
 

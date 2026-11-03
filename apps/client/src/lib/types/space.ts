@@ -13,6 +13,7 @@ export interface Space {
 export interface SpaceMember {
 	spaceId: string;
 	userId: string;
+	avatarUrl?: string;
 	role: SpaceRole;
 	joinedAt: string;
 }

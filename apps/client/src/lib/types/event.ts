@@ -11,8 +11,9 @@ export interface EventEntry {
 	providerType: string;
 	event: string;
 	message: string | null;
-	envelope?: unknown;
+	envelope?: { actor?: { name?: string | null; email?: string | null } | null };
 	deliveries: DeliveryAttempt[];
+	actorAvatarUrl?: string;
 }
 
 export interface EventStats {

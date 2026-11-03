@@ -78,6 +78,7 @@ class DashboardStore {
 	email = $state('');
 	name = $state('');
 	role = $state('');
+	avatarUrl = $state('');
 
 	loading = $state(true);
 	saving = $state(false);
@@ -101,6 +102,7 @@ class DashboardStore {
 			this.email = session.email;
 			this.name = session.name ?? session.username;
 			this.role = session.role ?? '';
+			this.avatarUrl = session.avatarUrl ?? '';
 			this.loaded = true;
 		} catch (error) {
 			if (isUnauthenticated(error)) {

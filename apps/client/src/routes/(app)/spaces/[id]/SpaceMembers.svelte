@@ -135,7 +135,7 @@
 			{#each members as member (member.userId)}
 				<div class="flex flex-wrap items-center justify-between gap-4 p-5">
 					<div class="flex min-w-0 items-center gap-3">
-						<Avatar name={member.userId} size="sm" />
+						<Avatar src={member.avatarUrl || undefined} name={member.userId} size="sm" />
 						<div class="flex min-w-0 flex-col gap-1">
 							<div class="flex min-w-0 items-center gap-2">
 								<span class="truncate text-fc-sm font-medium text-fc-fg">{member.userId}</span>
