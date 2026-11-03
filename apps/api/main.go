@@ -167,6 +167,11 @@ func run() int {
 		appLogger.Info("single sign-on enabled",
 			slog.String("issuer", cfg.Porte.Issuer),
 			slog.Bool("sso_only", cfg.Porte.SSOOnly))
+		if filled, err := userStore.BackfillPictures(ctx, cfg.Porte.Issuer); err != nil {
+			appLogger.Warn("pictures not backfilled", slog.Any("error", err))
+		} else {
+			appLogger.Info("pictures backfilled", slog.Int64("users", filled))
+		}
 	}
 
 	store, err := settings.NewStore(db, appLogger, settings.Defaults(cfg.Port, cfg.Timeout))

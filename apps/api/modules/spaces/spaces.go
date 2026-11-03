@@ -10,6 +10,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/FacileStudio/Antenne/apps/api/internal/avatar"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
@@ -50,10 +51,11 @@ type SpaceView struct {
 
 // Member is one person's membership of one space.
 type Member struct {
-	SpaceID  string    `gorm:"primaryKey;column:space_id" json:"spaceId"`
-	UserID   string    `gorm:"primaryKey;column:user_id" json:"userId"`
-	Role     Role      `json:"role"`
-	JoinedAt time.Time `gorm:"column:joined_at" json:"joinedAt"`
+	SpaceID   string    `gorm:"primaryKey;column:space_id" json:"spaceId"`
+	UserID    string    `gorm:"primaryKey;column:user_id" json:"userId"`
+	Role      Role      `json:"role"`
+	JoinedAt  time.Time `gorm:"column:joined_at" json:"joinedAt"`
+	AvatarURL string    `gorm:"column:avatar_url;->" json:"avatarUrl"`
 }
 
 // TableName pins the space_members table name.
@@ -69,6 +71,12 @@ type Service struct {
 
 // NewService builds the service.
 func NewService(db *gorm.DB) *Service { return &Service{db: db} }
+
+// members is the one query a membership is read through, so every member a
+// response carries has the picture of the user its identifier names.
+func (s *Service) members() *gorm.DB {
+	return s.db.Model(&Member{}).Select("space_members.*, " + avatar.ByEmail("space_members.user_id") + " AS avatar_url")
+}
 
 // ListForMember returns the spaces userID belongs to, oldest first, each
 // carrying userID's role in it. The role rides on the join that already scopes
@@ -179,7 +187,7 @@ func (s *Service) Delete(id string) error {
 // Members lists a space's members, oldest first.
 func (s *Service) Members(spaceID string) ([]Member, error) {
 	members := []Member{}
-	err := s.db.Where("space_id = ?", spaceID).Order("joined_at asc").Find(&members).Error
+	err := s.members().Where("space_id = ?", spaceID).Order("joined_at asc").Find(&members).Error
 	return members, err
 }
 
@@ -191,7 +199,7 @@ func (s *Service) AddMember(spaceID, userID string, role Role) (Member, error) {
 	}
 
 	var existing Member
-	err := s.db.Where("space_id = ? AND user_id = ?", spaceID, userID).First(&existing).Error
+	err := s.members().Where("space_id = ? AND user_id = ?", spaceID, userID).First(&existing).Error
 	if err == nil {
 		return existing, nil
 	}
@@ -203,7 +211,8 @@ func (s *Service) AddMember(spaceID, userID string, role Role) (Member, error) {
 	if err := s.db.Create(&member).Error; err != nil {
 		return Member{}, err
 	}
-	return member, nil
+	err = s.members().Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error
+	return member, err
 }
 
 // UpdateMemberRole changes one member's role.
@@ -219,7 +228,7 @@ func (s *Service) UpdateMemberRole(spaceID, userID string, role Role) (Member, e
 	}
 
 	var member Member
-	if err := s.db.Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error; err != nil {
+	if err := s.members().Where("space_id = ? AND user_id = ?", spaceID, userID).First(&member).Error; err != nil {
 		return Member{}, err
 	}
 	return member, nil

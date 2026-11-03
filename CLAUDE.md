@@ -53,6 +53,7 @@ apps/
       env/                  Config; embeds troncenv.Core
       database/             The GORM handle
       authcontext/          Identity on the request context — the auth seam
+      avatar/               The picture claim filter and the one SQL expression every person surface reads
       ratelimit/            Fixed-window counter for login attempts
       envelope/             The Antenne event envelope, its HMAC signing and its text rendering
       app/                  The alert pipeline: dedup, envelope, log, route, deliver, retry

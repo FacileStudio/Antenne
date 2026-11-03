@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/FacileStudio/Antenne/apps/api/internal/avatar"
 )
 
 // List returns a filtered page of the log, newest first, with the total that
@@ -38,7 +40,8 @@ func (s *Service) List(query Query) ([]Entry, int64, error) {
 	}
 
 	var stored []row
-	if err := base.Order("occurred_at desc, id desc").
+	actorAvatar := avatar.ByEmail("events.envelope->'actor'->>'email'") + " AS actor_avatar_url"
+	if err := base.Select("events.*, " + actorAvatar).Order("occurred_at desc, id desc").
 		Limit(limit).Offset(query.Offset).Find(&stored).Error; err != nil {
 		return nil, 0, err
 	}

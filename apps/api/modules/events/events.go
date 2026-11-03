@@ -32,6 +32,7 @@ type row struct {
 	Envelope     []byte `gorm:"type:jsonb"`
 	Deliveries   []byte `gorm:"type:jsonb"`
 	SearchText   string `gorm:"column:search_text"`
+	ActorAvatar  string `gorm:"column:actor_avatar_url;->"`
 }
 
 func (row) TableName() string { return "events" }
@@ -48,6 +49,9 @@ type Entry struct {
 	Message      *string            `json:"message"`
 	Envelope     *envelope.Envelope `json:"envelope,omitempty"`
 	Deliveries   []delivery.Attempt `json:"deliveries"`
+	// ActorAvatarURL is the picture of the user of this instance whose address
+	// is the envelope actor's, and empty for anyone else.
+	ActorAvatarURL string `json:"actorAvatarUrl,omitempty"`
 }
 
 // Stats summarize a slice of the log.

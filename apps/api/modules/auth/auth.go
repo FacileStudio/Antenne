@@ -22,6 +22,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Antenne/apps/api/internal/avatar"
 	"github.com/FacileStudio/porte"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/session"
@@ -47,12 +48,13 @@ const bootstrapDomain = "antenne.local"
 // nothing can verify any more. It is dropped in a later migration rather than
 // in the one that stopped reading it, so a rollback still has somewhere to land.
 type User struct {
-	ID        int64  `gorm:"primaryKey"`
-	Email     string `gorm:"uniqueIndex"`
-	Name      string
-	Role      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         int64  `gorm:"primaryKey"`
+	Email      string `gorm:"uniqueIndex"`
+	Name       string
+	Role       string
+	PictureURL string `gorm:"column:picture_url"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // TableName pins the table so a future GORM naming change cannot rename it.
@@ -93,6 +95,7 @@ func (s *Store) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64,
 		return 0, apierrors.Invalid("the identity provider returned no usable email")
 	}
 	name := claims.DisplayName()
+	picture := avatar.PhotoURL(claims.Picture)
 
 	var userID int64
 	txErr := s.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -110,7 +113,7 @@ func (s *Store) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64,
 		}
 		if linked != 0 {
 			userID = linked
-			return refreshProfile(tx, linked, email, name)
+			return refreshProfile(tx, linked, email, name, picture)
 		}
 
 		var existing User
@@ -128,12 +131,12 @@ func (s *Store) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64,
 				return apierrors.Conflict("an account with this email already exists and the identity provider did not verify the address")
 			}
 			userID = existing.ID
-			return refreshProfile(tx, existing.ID, email, name)
+			return refreshProfile(tx, existing.ID, email, name, picture)
 		case !stderrors.Is(err, gorm.ErrRecordNotFound):
 			return apierrors.Internal("failed to look up the account", err)
 		}
 
-		user := User{Email: email, Name: name, Role: string(authcontext.RoleAdmin)}
+		user := User{Email: email, Name: name, Role: string(authcontext.RoleAdmin), PictureURL: picture}
 		if err := tx.Create(&user).Error; err != nil {
 			return apierrors.Internal("failed to create the account", err)
 		}
@@ -150,8 +153,12 @@ func (s *Store) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64,
 // what makes the identity provider the source of truth for both. An empty value
 // never overwrites one the user already has: a provider that stops sending a
 // claim should not blank the dashboard.
-func refreshProfile(tx *gorm.DB, userID int64, email, name string) error {
-	updates := map[string]any{"email": email}
+//
+// The picture is the exception and is always written: the provider sends one
+// for every user it has a picture for, so a missing or non-https claim means
+// there is none and the dashboard should draw the initial instead.
+func refreshProfile(tx *gorm.DB, userID int64, email, name, picture string) error {
+	updates := map[string]any{"email": email, "picture_url": picture}
 	if name != "" {
 		updates["name"] = name
 	}
@@ -349,10 +356,11 @@ func (s *Service) IdentityForUser(ctx context.Context, userID int64) (authcontex
 		return authcontext.Identity{}, apierrors.Internal("failed to load the account", err)
 	}
 	return authcontext.Identity{
-		UserID: user.ID,
-		Email:  user.Email,
-		Name:   user.Name,
-		Role:   authcontext.Role(user.Role),
+		UserID:    user.ID,
+		Email:     user.Email,
+		Name:      user.Name,
+		Role:      authcontext.Role(user.Role),
+		AvatarURL: user.PictureURL,
 	}, nil
 }
 

@@ -34,11 +34,12 @@ const (
 // bigint foreign keys already in this schema. The conversion that used to sit
 // between them is gone rather than moved.
 type Identity struct {
-	UserID   int64
-	Email    string
-	Name     string
-	Role     Role
-	ClientIP string
+	UserID    int64
+	Email     string
+	Name      string
+	Role      Role
+	AvatarURL string
+	ClientIP  string
 }
 
 // IsAuthenticated reports whether a caller was identified.

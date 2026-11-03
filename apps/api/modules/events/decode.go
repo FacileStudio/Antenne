@@ -11,14 +11,15 @@ import (
 
 func decode(stored row) Entry {
 	entry := Entry{
-		ID:           stored.ID,
-		Timestamp:    stored.OccurredAt.UTC().Format(time.RFC3339Nano),
-		Source:       stored.Source,
-		ProviderID:   stored.ProviderID,
-		ProviderName: stored.ProviderName,
-		ProviderType: stored.ProviderType,
-		Event:        stored.Event,
-		Message:      stored.Message,
+		ID:             stored.ID,
+		Timestamp:      stored.OccurredAt.UTC().Format(time.RFC3339Nano),
+		Source:         stored.Source,
+		ProviderID:     stored.ProviderID,
+		ProviderName:   stored.ProviderName,
+		ProviderType:   stored.ProviderType,
+		Event:          stored.Event,
+		Message:        stored.Message,
+		ActorAvatarURL: stored.ActorAvatar,
 	}
 	entry.Deliveries = decodeDeliveries(stored.Deliveries)
 	if len(stored.Envelope) > 0 {
