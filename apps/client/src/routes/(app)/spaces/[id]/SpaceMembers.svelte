@@ -27,7 +27,7 @@
 			description="Invite someone in Registre and they show up here."
 		/>
 	{:else}
-		<Card class="flex flex-col divide-y divide-fc-border p-0">
+		<Card class="flex flex-col gap-1 p-0">
 			{#each members as member (member.userId)}
 				<div class="flex min-w-0 items-center gap-3 p-5">
 					<Avatar src={member.avatarUrl || undefined} name={member.userId} size="sm" />

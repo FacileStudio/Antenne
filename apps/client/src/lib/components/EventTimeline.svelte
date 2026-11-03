@@ -59,10 +59,10 @@
 		description="Every alert Antenne receives, and every delivery it attempts, lands here."
 	/>
 {:else}
-	<!-- `p-0` because the rows carry the padding: a divider has to reach both edges of the
-	     card, and a divider inset by `p-5` reads as a stray line. -->
+	<!-- `p-0` because the rows carry the padding: rows reach both edges of the
+	     card so the hover tone spans it. -->
 	<Card class="overflow-hidden p-0">
-		<div class="divide-y divide-fc-border">
+		<div class="flex flex-col gap-1">
 			{#each events as entry (entry.id)}
 				{@const actor = actorOf(entry)}
 				<article class="flex items-start gap-3 p-4 transition-colors hover:bg-fc-surface">

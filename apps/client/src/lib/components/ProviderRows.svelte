@@ -21,7 +21,7 @@
 </script>
 
 <Card class="p-0">
-	<ul class="divide-y divide-fc-border">
+	<ul class="flex flex-col gap-1">
 		{#each entries as { provider, index } (provider.id)}
 			<li
 				class={cn(
