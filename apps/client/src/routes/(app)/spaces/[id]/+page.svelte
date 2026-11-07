@@ -3,6 +3,7 @@
 	import { Button, EmptyState, Spinner, icons, toast } from '@facile/muse';
 	import SpaceMembers from './SpaceMembers.svelte';
 	import { api } from '$lib/backend';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { Space, SpaceMember } from '$lib/types';
 	import { formatDateTime } from '$lib/utils';
 
@@ -20,7 +21,7 @@
 			space = payload.space;
 			members = payload.members;
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'Failed to load the space');
+			toast.danger(error instanceof Error ? error.message : t('spaces.loadFailed'));
 		} finally {
 			loading = false;
 		}
@@ -34,7 +35,7 @@
 
 <div class="flex flex-col gap-10">
 	<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/spaces" class="w-fit">
-		Back to spaces
+		{t('spaces.back')}
 	</Button>
 
 	{#if loading}
@@ -44,19 +45,20 @@
 	{:else if !space}
 		<EmptyState
 			icon={icons.space}
-			title="This space no longer exists"
-			description="It was removed, or the id in the URL never matched one."
+			title={t('spaces.goneTitle')}
+			description={t('spaces.goneText')}
 		>
-			<Button href="/spaces">Back to spaces</Button>
+			<Button href="/spaces">{t('spaces.back')}</Button>
 		</EmptyState>
 	{:else}
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div class="flex flex-col gap-2">
 				<h1 class="text-fc-2xl font-semibold text-fc-fg">{space.name}</h1>
 				<p class="text-fc-sm text-fc-fg-muted">
-					{members.length}
-					{members.length === 1 ? 'member' : 'members'} · created
-					{formatDateTime(space.createdAt)}
+					{t('spaces.summary', {
+						members: t('spaces.memberCount', { count: members.length }),
+						date: formatDateTime(space.createdAt)
+					})}
 				</p>
 				{#if space.description}
 					<p class="max-w-2xl text-fc-sm text-fc-fg-muted">{space.description}</p>
@@ -65,7 +67,7 @@
 
 			{#if space.manageUrl}
 				<Button href={space.manageUrl} icon={icons.space} iconRight={icons.arrow} variant="outline">
-					Manage in Registre
+					{t('spaces.manage')}
 				</Button>
 			{/if}
 		</div>

@@ -16,6 +16,7 @@
 	import ViewToggle from './ViewToggle.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { tagToneMap } from '$lib/tags';
 	import {
 		createProvider,
@@ -106,9 +107,9 @@
 		testing = true;
 		try {
 			await api.testProvider(editing.id);
-			toast.success(`Connection OK for ${editing.name}.`);
+			toast.success(t('providers.connectionOk', { name: editing.name }));
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'The connection test failed');
+			toast.danger(error instanceof Error ? error.message : t('providers.connectionFailed'));
 		} finally {
 			testing = false;
 		}
@@ -117,7 +118,7 @@
 
 <div class="flex flex-col gap-4">
 	<div class="flex flex-wrap items-end gap-4">
-		<Field label="New provider type" class="w-56">
+		<Field label={t('providers.newType')} class="w-56">
 			<Select bind:value={nextType}>
 				{#each providerTypes as type (type)}
 					<option value={type}>{providerLabel(type)}</option>
@@ -125,7 +126,7 @@
 			</Select>
 		</Field>
 
-		<Button size="lg" icon={icons.plus} onclick={add}>Add provider</Button>
+		<Button size="lg" icon={icons.plus} onclick={add}>{t('providers.add')}</Button>
 
 		{#if providers.length > 0}
 			<div class="ml-auto">
@@ -136,7 +137,7 @@
 
 	{#if dashboard.availableTags.length > 0}
 		<div class="flex flex-wrap items-center gap-2">
-			<span class="text-fc-sm text-fc-fg-muted">Filter by tag</span>
+			<span class="text-fc-sm text-fc-fg-muted">{t('common.filterByTag')}</span>
 			{#each dashboard.availableTags as tag (tag)}
 				<TagPill
 					{tag}
@@ -147,7 +148,7 @@
 				/>
 			{/each}
 			{#if selectedTags.length > 0}
-				<Button variant="ghost" size="sm" onclick={() => (selectedTags = [])}>Clear</Button>
+				<Button variant="ghost" size="sm" onclick={() => (selectedTags = [])}>{t('common.clear')}</Button>
 			{/if}
 		</div>
 	{/if}
@@ -155,18 +156,18 @@
 	{#if providers.length === 0}
 		<EmptyState
 			icon={icons.plug}
-			title="No provider configured yet"
-			description="A provider is a source Antenne watches or listens to — a website, an inbox, a feed or an incoming webhook."
+			title={t('providers.emptyTitle')}
+			description={t('providers.emptyText')}
 		>
-			<Button icon={icons.plus} onclick={add}>Add provider</Button>
+			<Button icon={icons.plus} onclick={add}>{t('providers.add')}</Button>
 		</EmptyState>
 	{:else if visible.length === 0}
 		<EmptyState
 			icon={icons.filter}
-			title="No provider matches the current tag filter"
-			description="Every selected tag has to be on the provider for it to show up here."
+			title={t('providers.noMatchTitle')}
+			description={t('providers.noMatchText')}
 		>
-			<Button variant="outline" onclick={() => (selectedTags = [])}>Clear the filter</Button>
+			<Button variant="outline" onclick={() => (selectedTags = [])}>{t('providers.clearFilter')}</Button>
 		</EmptyState>
 	{:else if view === 'card'}
 		<ProviderCards
@@ -190,7 +191,7 @@
 <Drawer
 	bind:open={drawerOpen}
 	showClose
-	title={editing ? `Edit ${editing.name}` : 'Edit provider'}
+	title={editing ? t('providers.editTitle', { name: editing.name }) : t('providers.editFallback')}
 	description={editing ? providerLabel(editing.type) : undefined}
 >
 	{#if editing}
@@ -200,11 +201,11 @@
 	{#snippet footer()}
 		{#if editing?.type === 'imap'}
 			<Button variant="outline" icon={icons.plug} onclick={testConnection} disabled={testing}>
-				{testing ? 'Testing…' : 'Test connection'}
+				{testing ? t('common.testing') : t('providers.testConnection')}
 			</Button>
 		{/if}
 		<Button icon={icons.check} onclick={commit} disabled={dashboard.saving}>
-			{dashboard.saving ? 'Saving…' : 'Save'}
+			{dashboard.saving ? t('common.saving') : t('common.save')}
 		</Button>
 	{/snippet}
 </Drawer>
@@ -212,11 +213,11 @@
 <ConfirmModal
 	bind:open={confirmOpen}
 	tone="danger"
-	title="Delete this provider?"
+	title={t('providers.deleteTitle')}
 	description={doomed
-		? `${doomed.name} stops being watched and every delivery target routing on it — by id or by tag — loses that source. Events already in the log are kept.`
+		? t('providers.deleteText', { name: doomed.name })
 		: ''}
-	confirmLabel="Delete"
+	confirmLabel={t('common.delete')}
 	onConfirm={remove}
 	onCancel={() => (pendingRemoval = -1)}
 />

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button, Card, EmptyState, Spinner, icons } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 	import { spaces } from '$lib/spaces.svelte';
 	import { formatDateTime } from '$lib/utils';
 
@@ -11,7 +12,7 @@
 {#snippet manage()}
 	{#if spaces.manageUrl}
 		<Button href={spaces.manageUrl} icon={icons.space} iconRight={icons.arrow} variant="outline">
-			Manage in Registre
+			{t('spaces.manage')}
 		</Button>
 	{/if}
 {/snippet}
@@ -20,10 +21,9 @@
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div class="flex flex-col gap-2">
-				<h1 class="text-fc-2xl font-semibold text-fc-fg">Spaces</h1>
+				<h1 class="text-fc-2xl font-semibold text-fc-fg">{t('spaces.title')}</h1>
 				<p class="text-fc-sm text-fc-fg-muted">
-					Spaces and their members come from Registre, the same in every Facile app. Antenne's
-					providers and delivery targets stay instance-wide.
+					{t('spaces.text')}
 				</p>
 			</div>
 
@@ -37,8 +37,8 @@
 		{:else if spaces.spaces.length === 0}
 			<EmptyState
 				icon={icons.space}
-				title="No space yet"
-				description="Create a space or join one in Registre and it shows up here."
+				title={t('spaces.emptyTitle')}
+				description={t('spaces.emptyText')}
 			>
 				{@render manage()}
 			</EmptyState>
@@ -60,7 +60,7 @@
 							{#if space.description}
 								<p class="line-clamp-2 text-fc-sm text-fc-fg-muted">{space.description}</p>
 							{/if}
-							<p class="text-fc-xs text-fc-fg-muted">Created {formatDateTime(space.createdAt)}</p>
+							<p class="text-fc-xs text-fc-fg-muted">{t('spaces.created', { date: formatDateTime(space.createdAt) })}</p>
 						</div>
 					</Card>
 				{/each}

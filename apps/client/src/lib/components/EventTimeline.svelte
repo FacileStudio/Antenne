@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Avatar, Badge, Button, Card, EmptyState, icons } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 	import { sourceIcon } from '$lib/icons';
 	import type { EventEntry } from '$lib/types';
 	import { formatRelative, plainText } from '$lib/utils';
@@ -9,17 +10,17 @@
 		onreplay = undefined
 	}: { events: EventEntry[]; onreplay?: (eventId: string) => void } = $props();
 
-	const SOURCE_LABELS: Record<string, string> = {
-		website: 'Website',
-		webhook: 'Webhook',
-		imap: 'Inbox',
-		rss: 'RSS',
-		test: 'Test',
-		system: 'System'
-	};
+	const SOURCE_KEYS = {
+		website: 'source.website',
+		webhook: 'source.webhook',
+		imap: 'source.imap',
+		rss: 'source.rss',
+		test: 'source.test',
+		system: 'source.system'
+	} as const;
 
 	function sourceLabel(source: string): string {
-		return SOURCE_LABELS[source] ?? 'System';
+		return t(SOURCE_KEYS[source as keyof typeof SOURCE_KEYS] ?? 'source.system');
 	}
 
 	function titleFor(entry: EventEntry): string {
@@ -55,8 +56,8 @@
 {#if events.length === 0}
 	<EmptyState
 		icon="solar:inbox-linear"
-		title="No events recorded yet"
-		description="Every alert Antenne receives, and every delivery it attempts, lands here."
+		title={t('events.emptyTitle')}
+		description={t('events.emptyText')}
 	/>
 {:else}
 	<!-- `p-0` because the rows carry the padding: rows reach both edges of the
@@ -128,10 +129,10 @@
 								size="sm"
 								icon={icons.refresh}
 								class="-ml-3.5 w-fit"
-								title="Send this event again"
+								title={t('events.replayHelp')}
 								onclick={() => onreplay?.(entry.id)}
 							>
-								Replay
+								{t('events.replay')}
 							</Button>
 						{/if}
 					</div>

@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { Button, Input, icons } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 
 	/** An ordered list of free-text values: Matrix room ids, SMTP recipients. */
 	let {
 		value = $bindable<string[]>([]),
 		placeholder = '',
-		addLabel = 'Add',
+		addLabel = undefined,
 		type = 'text'
 	}: {
 		value?: string[];
@@ -42,12 +43,12 @@
 				variant="ghost-danger"
 				icon={icons.remove}
 				onclick={() => remove(index)}
-				aria-label="Remove this entry"
+				aria-label={t('list.remove')}
 			/>
 		</div>
 	{/each}
 
 	<Button variant="outline" size="sm" icon={icons.plus} onclick={add} class="w-fit">
-		{addLabel}
+		{addLabel ?? t('list.add')}
 	</Button>
 </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Switch } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { Provider } from '$lib/types';
 
 	/**
@@ -20,7 +21,7 @@
 </script>
 
 <Switch
-	label={`Enable ${provider.name}`}
+	label={t('common.enable', { name: provider.name })}
 	class="[&>span:last-child]:sr-only"
 	bind:checked={() => provider.enabled, (enabled) => void onToggle(index, enabled)}
 />

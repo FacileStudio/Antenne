@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { OptionCards } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 
 	/**
 	 * Kept as a component rather than inlining `OptionCards`: the delivery list uses the same
@@ -7,15 +8,15 @@
 	 */
 	let { value = $bindable<'list' | 'card'>('card') }: { value?: 'list' | 'card' } = $props();
 
-	const options = [
-		{ value: 'list', label: 'List', icon: 'solar:list-linear' },
-		{ value: 'card', label: 'Cards', icon: 'solar:widget-linear' }
-	];
+	const options = $derived([
+		{ value: 'list', label: t('common.list'), icon: 'solar:list-linear' },
+		{ value: 'card', label: t('common.cards'), icon: 'solar:widget-linear' }
+	]);
 </script>
 
 <OptionCards
 	{options}
 	{value}
-	label="View mode"
+	label={t('common.viewMode')}
 	onSelect={(next) => (value = next as 'list' | 'card')}
 />

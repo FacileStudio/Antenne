@@ -1,9 +1,11 @@
-/** Renders an ISO timestamp as a short absolute date. */
+import { locale, t } from './i18n/index.svelte';
+
+/** Renders an ISO timestamp as a short absolute date in the session locale. */
 export function formatDateTime(iso: string | null | undefined): string {
 	if (!iso) return '—';
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return iso;
-	return date.toLocaleString(undefined, {
+	return date.toLocaleString(locale(), {
 		month: 'short',
 		day: 'numeric',
 		hour: '2-digit',
@@ -17,9 +19,9 @@ export function formatRelative(iso: string): string {
 	if (Number.isNaN(date.getTime())) return iso;
 
 	const elapsed = Date.now() - date.getTime();
-	if (elapsed < 60_000) return 'just now';
-	if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)}m ago`;
-	if (elapsed < 86_400_000) return `${Math.floor(elapsed / 3_600_000)}h ago`;
+	if (elapsed < 60_000) return t('common.justNow');
+	if (elapsed < 3_600_000) return t('common.minutesAgo', { count: Math.floor(elapsed / 60_000) });
+	if (elapsed < 86_400_000) return t('common.hoursAgo', { count: Math.floor(elapsed / 3_600_000) });
 	return formatDateTime(iso);
 }
 

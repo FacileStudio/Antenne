@@ -1,3 +1,4 @@
+import { locale } from './i18n/index.svelte';
 import type { EventEntry } from './types';
 
 export type HourBucket = { key: string; label: string; total: number; errors: number };
@@ -17,7 +18,7 @@ export function hourlyBuckets(events: EventEntry[], hours = 24): HourBucket[] {
 		at.setHours(now.getHours() - (hours - 1 - index));
 		return {
 			key: at.toISOString().slice(0, 13),
-			label: at.toLocaleTimeString([], { hour: '2-digit' }),
+			label: at.toLocaleTimeString(locale(), { hour: '2-digit' }),
 			total: 0,
 			errors: 0
 		};

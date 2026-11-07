@@ -1,25 +1,23 @@
 <script lang="ts">
 	import { Alert } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 	import { formatRelative } from '$lib/utils';
 	import type { StandingAlert } from '$lib/types';
 
 	let { standingAlerts }: { standingAlerts: StandingAlert[] } = $props();
 </script>
 
-<Alert tone="danger" title="Nothing can be delivered right now">
+<Alert tone="danger" title={t('outage.title')}>
 	<p>
-		Every enabled target is down, so Antenne cannot raise an alert through any channel it has —
-		including the one that would tell you about this. Until one target recovers, this page is
-		the only place a failure will appear.
+		{t('outage.text')}
 	</p>
 	{#if standingAlerts.length > 0}
 		<p class="mt-2">
-			{standingAlerts.length}
-			{standingAlerts.length === 1 ? 'notice' : 'notices'} could not be carried anywhere:
+			{t('outage.notices', { count: standingAlerts.length })}
 		</p>
 		<ul class="mt-1 list-disc pl-5">
 			{#each standingAlerts as alert (alert.targetId)}
-				<li>{alert.title} — since {formatRelative(alert.since)}</li>
+				<li>{t('outage.since', { title: alert.title, when: formatRelative(alert.since) })}</li>
 			{/each}
 		</ul>
 	{/if}

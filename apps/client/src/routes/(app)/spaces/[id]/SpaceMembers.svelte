@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Avatar, Badge, Card, EmptyState, icons } from '@facile/muse';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { SpaceMember } from '$lib/types';
 	import { formatDateTime } from '$lib/utils';
 
@@ -14,17 +15,17 @@
 
 <section class="flex flex-col gap-4">
 	<div class="flex flex-col gap-1">
-		<h2 class="text-fc-lg font-semibold text-fc-fg">Members</h2>
+		<h2 class="text-fc-lg font-semibold text-fc-fg">{t('spaces.members')}</h2>
 		<p class="text-fc-sm text-fc-fg-muted">
-			Who belongs to this space, and at what level. Invites and roles are managed in Registre.
+			{t('spaces.membersText')}
 		</p>
 	</div>
 
 	{#if members.length === 0}
 		<EmptyState
 			icon={icons.userCircle}
-			title="No member yet"
-			description="Invite someone in Registre and they show up here."
+			title={t('spaces.noMember')}
+			description={t('spaces.noMemberText')}
 		/>
 	{:else}
 		<Card class="flex flex-col gap-1 p-0">
@@ -34,10 +35,10 @@
 					<div class="flex min-w-0 flex-col gap-1">
 						<div class="flex min-w-0 items-center gap-2">
 							<span class="truncate text-fc-sm font-medium text-fc-fg">{member.userId}</span>
-							<Badge tone={roleTones[member.role]}>{member.role}</Badge>
+							<Badge tone={roleTones[member.role]}>{t(`role.${member.role}`)}</Badge>
 						</div>
 						<span class="text-fc-xs text-fc-fg-muted">
-							Joined {formatDateTime(member.joinedAt)}
+							{t('spaces.joined', { date: formatDateTime(member.joinedAt) })}
 						</span>
 					</div>
 				</div>

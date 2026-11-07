@@ -2,6 +2,7 @@
 	import { Checkbox, Field, Input, SecretField, Switch, cn } from '@facile/muse';
 	import StringListInput from './StringListInput.svelte';
 	import TagInput from './TagInput.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import {
 		providerLabel,
 		SYSTEM_PROVIDER_ID,
@@ -22,7 +23,7 @@
 	} = $props();
 
 	const options = $derived([
-		{ id: SYSTEM_PROVIDER_ID, name: 'Antenne system', typeLabel: 'System' },
+		{ id: SYSTEM_PROVIDER_ID, name: t('target.system'), typeLabel: t('target.systemType') },
 		...providers.map((provider) => ({
 			id: provider.id,
 			name: provider.name || providerLabel(provider.type),
@@ -38,16 +39,16 @@
 </script>
 
 <div class="flex flex-col gap-4">
-	<Switch label="Enabled" bind:checked={target.enabled} />
+	<Switch label={t('common.enabled')} bind:checked={target.enabled} />
 
-	<Field label="Name">
+	<Field label={t('provider.name')}>
 		<Input bind:value={target.name} />
 	</Field>
 
 	<!-- A checkbox group is a fieldset, not a Field: Field emits a <label for> that only a
 	     single control can answer, and here there are as many controls as there are providers. -->
 	<fieldset class="flex flex-col gap-1.5">
-		<legend class="mb-1.5 text-fc-sm text-fc-fg">Providers</legend>
+		<legend class="mb-1.5 text-fc-sm text-fc-fg">{t('target.providers')}</legend>
 
 		<div class="flex flex-col gap-2">
 			{#each options as option (option.id)}
@@ -77,20 +78,19 @@
 		</div>
 
 		<span class="text-fc-xs text-fc-fg-muted">
-			Routing is opt-in with no fallthrough: a target with nothing selected here and no tag below
-			receives nothing. Antenne's own events need “Antenne system”.
+			{t('target.routingHelp')}
 		</span>
 	</fieldset>
 
 	<Field
-		label="Provider tags"
-		helper="A provider carrying any of these tags reaches this target, even without being selected above."
+		label={t('target.providerTags')}
+		helper={t('target.providerTagsHelp')}
 	>
 		<TagInput bind:value={target.providerTags} suggestions={availableTags} {tones} />
 	</Field>
 
 	{#if target.type === 'matrix'}
-		<Field label="Homeserver" helper="Change it only if this target uses another homeserver.">
+		<Field label={t('target.homeserver')} helper={t('target.homeserverHelp')}>
 			<Input
 				type="url"
 				bind:value={target.homeserver}
@@ -102,13 +102,13 @@
 		<SecretField
 			editable
 			copyable={false}
-			label="Access token"
-			helper="Optional when a password login is configured. Used until the homeserver rejects it."
+			label={t('target.accessToken')}
+			helper={t('target.accessTokenHelp')}
 			placeholder="syt_xxx"
 			bind:value={target.accessToken}
 		/>
 
-		<Field label="User ID" helper="With a password, lets Antenne log back in on its own.">
+		<Field label={t('target.userId')} helper={t('target.userIdHelp')}>
 			<Input
 				bind:value={target.userId}
 				placeholder="@antenne:matrix.example.com"
@@ -116,11 +116,11 @@
 			/>
 		</Field>
 
-		<SecretField editable copyable={false} label="Password" bind:value={target.password as string} />
+		<SecretField editable copyable={false} label={t('target.password')} bind:value={target.password as string} />
 
 		<Field
-			label="Device ID"
-			helper="Optional. Keep it stable so the homeserver reissues for one device."
+			label={t('target.deviceId')}
+			helper={t('target.deviceIdHelp')}
 		>
 			<Input
 				bind:value={target.deviceId as string}
@@ -132,51 +132,51 @@
 		<SecretField
 			editable
 			copyable={false}
-			label="Refresh token"
-			helper="Optional. Used when the access token expires."
+			label={t('target.refreshToken')}
+			helper={t('target.refreshTokenHelp')}
 			placeholder="syr_xxx"
 			bind:value={target.refreshToken as string}
 		/>
 
-		<Field label="Room IDs" helper="At least one, or this target has nowhere to post.">
+		<Field label={t('target.roomIds')} helper={t('target.roomIdsHelp')}>
 			<StringListInput
 				bind:value={target.roomIds}
 				placeholder="!room:matrix.example.com"
-				addLabel="Add room"
+				addLabel={t('target.addRoom')}
 			/>
 		</Field>
 	{:else if target.type === 'discord'}
 		<SecretField
 			editable
 			copyable={false}
-			label="Webhook URL"
-			helper="Required. The URL itself is the credential."
+			label={t('target.webhookUrl')}
+			helper={t('target.webhookUrlHelp')}
 			placeholder="https://discord.com/api/webhooks/…"
 			bind:value={target.webhookUrl}
 		/>
 	{:else if target.type === 'smtp'}
-		<Field label="Host">
+		<Field label={t('target.host')}>
 			<Input bind:value={target.host} placeholder="smtp.example.com" required class="font-fc-mono" />
 		</Field>
 
-		<Field label="Port">
+		<Field label={t('target.port')}>
 			<Input type="number" min="1" step="1" bind:value={target.port} required />
 		</Field>
 
 		<div class="flex flex-col gap-1">
-			<Switch label="Implicit TLS" bind:checked={target.secure} />
+			<Switch label={t('target.implicitTls')} bind:checked={target.secure} />
 			<p class="text-fc-xs text-fc-fg-muted">
-				Off connects in the clear and upgrades with STARTTLS when offered.
+				{t('target.implicitTlsHelp')}
 			</p>
 		</div>
 
-		<Field label="Username">
+		<Field label={t('target.username')}>
 			<Input bind:value={target.username} autocomplete="off" />
 		</Field>
 
-		<SecretField editable copyable={false} label="Password" bind:value={target.password as string} />
+		<SecretField editable copyable={false} label={t('target.password')} bind:value={target.password as string} />
 
-		<Field label="From address">
+		<Field label={t('target.fromAddress')}>
 			<Input
 				type="email"
 				bind:value={target.fromAddress}
@@ -186,20 +186,20 @@
 			/>
 		</Field>
 
-		<Field label="To addresses" helper="At least one recipient.">
+		<Field label={t('target.toAddresses')} helper={t('target.toAddressesHelp')}>
 			<StringListInput
 				bind:value={target.toAddresses}
 				type="email"
 				placeholder="ops@example.com"
-				addLabel="Add recipient"
+				addLabel={t('target.addRecipient')}
 			/>
 		</Field>
 
-		<Field label="Subject prefix">
+		<Field label={t('target.subjectPrefix')}>
 			<Input bind:value={target.subjectPrefix} placeholder="[Antenne]" />
 		</Field>
 	{:else if target.type === 'ntfy'}
-		<Field label="Server URL">
+		<Field label={t('target.serverUrl')}>
 			<Input
 				type="url"
 				bind:value={target.serverUrl}
@@ -209,53 +209,53 @@
 			/>
 		</Field>
 
-		<Field label="Topic">
+		<Field label={t('target.topic')}>
 			<Input bind:value={target.topic} placeholder="my-alerts" required class="font-fc-mono" />
 		</Field>
 
 		<SecretField
 			editable
 			copyable={false}
-			label="Access token"
+			label={t('target.accessToken')}
 			bind:value={target.accessToken as string}
 		/>
 
-		<Field label="Priority" helper="1 to 5. ntfy's default is 3.">
+		<Field label={t('target.priority')} helper={t('target.priorityHelp')}>
 			<Input type="number" min="1" max="5" step="1" bind:value={target.priority as number} />
 		</Field>
 
-		<Field label="Notification tags" helper="ntfy renders these as emoji.">
+		<Field label={t('target.notificationTags')} helper={t('target.notificationTagsHelp')}>
 			<TagInput bind:value={target.tags} placeholder="rotating_light" />
 		</Field>
 
-		<Field label="Click URL">
+		<Field label={t('target.clickUrl')}>
 			<Input type="url" bind:value={target.clickUrl as string} class="font-fc-mono" />
 		</Field>
 	{:else if target.type === 'perception'}
-		<Field label="URL">
+		<Field label={t('target.url')}>
 			<Input type="url" bind:value={target.url} required class="font-fc-mono" />
 		</Field>
 
-		<Field label="Workspace">
+		<Field label={t('target.workspace')}>
 			<Input bind:value={target.workspace} required class="font-fc-mono" />
 		</Field>
 
 		<SecretField
 			editable
 			copyable={false}
-			label="Signing secret"
-			helper="Required — Perception rejects unsigned events."
+			label={t('target.signingSecret')}
+			helper={t('target.signingSecretRequired')}
 			bind:value={target.secretValue as string}
 		/>
 
 		<div class="flex flex-col gap-1">
-			<Switch label="Include the raw payload" bind:checked={target.includeRawPayload} />
+			<Switch label={t('target.rawPayload')} bind:checked={target.includeRawPayload} />
 			<p class="text-fc-xs text-fc-fg-muted">
-				Off strips the third-party body and says so in the envelope.
+				{t('target.rawPayloadHelp')}
 			</p>
 		</div>
 	{:else}
-		<Field label="URL">
+		<Field label={t('target.url')}>
 			<Input
 				type="url"
 				bind:value={target.url}
@@ -268,15 +268,15 @@
 		<SecretField
 			editable
 			copyable={false}
-			label="Signing secret"
-			helper="Signs timestamp.eventId.body as x-antenne-signature-256. Empty sends unsigned."
+			label={t('target.signingSecret')}
+			helper={t('target.signingSecretHelp')}
 			bind:value={target.secretValue as string}
 		/>
 
 		<div class="flex flex-col gap-1">
-			<Switch label="Include the raw payload" bind:checked={target.includeRawPayload} />
+			<Switch label={t('target.rawPayload')} bind:checked={target.includeRawPayload} />
 			<p class="text-fc-xs text-fc-fg-muted">
-				Off strips the third-party body and says so in the envelope.
+				{t('target.rawPayloadHelp')}
 			</p>
 		</div>
 	{/if}

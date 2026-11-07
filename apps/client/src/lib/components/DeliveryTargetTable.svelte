@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Badge, Button, Switch, Table, cn, icons } from '@facile/muse';
 	import TargetHealthRow from './TargetHealthRow.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { deliveryIcon } from '$lib/icons';
 	import {
 		isSilent,
@@ -34,11 +35,11 @@
 <Table>
 	<thead>
 		<tr>
-			<th scope="col">Target</th>
-			<th scope="col">Type</th>
-			<th scope="col">Routing</th>
-			<th scope="col">Health</th>
-			<th scope="col"><span class="sr-only">Actions</span></th>
+			<th scope="col">{t('delivery.colTarget')}</th>
+			<th scope="col">{t('delivery.colType')}</th>
+			<th scope="col">{t('delivery.colRouting')}</th>
+			<th scope="col">{t('delivery.colHealth')}</th>
+			<th scope="col"><span class="sr-only">{t('delivery.colActions')}</span></th>
 		</tr>
 	</thead>
 	<tbody>
@@ -64,11 +65,7 @@
 				<td class="text-fc-fg-muted">{targetLabel(target.type)}</td>
 				<td>
 					{#if isSilent(target)}
-						<Badge
-							tone="warning"
-							title="Attach a provider or a tag, or this target receives nothing."
-							>No source attached</Badge
-						>
+						<Badge tone="warning" title={t('delivery.silentHelp')}>{t('delivery.silent')}</Badge>
 					{:else}
 						<span class="text-fc-fg-muted">{routingSummary(target)}</span>
 					{/if}
@@ -84,23 +81,23 @@
 				<td>
 					<div class="flex items-center justify-end gap-1">
 						<Button variant="ghost" size="sm" icon={icons.edit} onclick={() => onOpen(index)}>
-							Edit
+							{t('common.edit')}
 						</Button>
 						<Button
 							variant="ghost"
 							size="sm"
 							icon={icons.dashboard}
 							href={`/targets/${target.id}`}
-							title="Activity"
-							aria-label={`Activity for ${target.name}`}
+							title={t('delivery.activity')}
+							aria-label={t('common.activityFor', { name: target.name })}
 						/>
 						<Button
 							variant="ghost-danger"
 							size="sm"
 							icon={icons.remove}
 							onclick={() => onRemove(target)}
-							title="Delete"
-							aria-label={`Delete ${target.name}`}
+							title={t('common.delete')}
+							aria-label={t('common.deleteName', { name: target.name })}
 						/>
 					</div>
 				</td>

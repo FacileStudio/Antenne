@@ -1,5 +1,6 @@
 import { toast } from '@facile/muse';
 import { api, ApiError, isUnauthenticated, redirectToLogin } from './backend';
+import { setSessionLocale, t } from './i18n/index.svelte';
 import type { AppSettings, DeliveryTarget, Provider, RuntimeStatus } from './types';
 
 function emptySettings(): AppSettings {
@@ -74,6 +75,7 @@ class DashboardStore {
 	runtime = $state<RuntimeStatus | null>(null);
 	matrixConfigured = $state(false);
 	passwordRequired = $state(false);
+	locale = $state('');
 	username = $state('');
 	email = $state('');
 	name = $state('');
@@ -98,6 +100,8 @@ class DashboardStore {
 			this.runtime = payload.runtime;
 			this.matrixConfigured = payload.matrixConfigured;
 			this.passwordRequired = session.passwordRequired;
+			this.locale = session.locale ?? '';
+			setSessionLocale(this.locale || null);
 			this.username = session.username;
 			this.email = session.email;
 			this.name = session.name ?? session.username;
@@ -109,7 +113,7 @@ class DashboardStore {
 				await redirectToLogin();
 				return;
 			}
-			toast.danger(describe(error, 'Failed to load settings'));
+			toast.danger(describe(error, t('dashboard.loadFailed')));
 		} finally {
 			this.loading = false;
 		}
@@ -122,13 +126,13 @@ class DashboardStore {
 			this.settings = withPool(payload.settings);
 			this.runtime = payload.runtime;
 			this.matrixConfigured = payload.matrixConfigured;
-			if (!options.silent) toast.success('Settings saved. Runtime reloaded.');
+			if (!options.silent) toast.success(t('dashboard.saved'));
 		} catch (error) {
 			if (isUnauthenticated(error)) {
 				await redirectToLogin();
 				return;
 			}
-			toast.danger(describe(error, 'Failed to save settings'));
+			toast.danger(describe(error, t('dashboard.saveFailed')));
 		} finally {
 			this.saving = false;
 		}
@@ -158,9 +162,9 @@ class DashboardStore {
 		this.testing = true;
 		try {
 			await api.testAlert();
-			toast.success('Test alert sent.');
+			toast.success(t('dashboard.testSent'));
 		} catch (error) {
-			toast.danger(describe(error, 'Failed to send the test alert'));
+			toast.danger(describe(error, t('dashboard.testFailed')));
 		} finally {
 			this.testing = false;
 		}
@@ -207,13 +211,13 @@ class DashboardStore {
 		try {
 			parsed = JSON.parse(await file.text()) as AppSettings;
 		} catch {
-			toast.danger('That file is not valid JSON.');
+			toast.danger(t('dashboard.badJson'));
 			return;
 		}
 
 		this.settings = parsed;
 		await this.save({ silent: true });
-		toast.success('Config imported and saved.');
+		toast.success(t('dashboard.imported'));
 	}
 }
 

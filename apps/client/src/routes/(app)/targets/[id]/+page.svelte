@@ -6,6 +6,7 @@
 	import DeliveryEditorDrawer from '$lib/components/DeliveryEditorDrawer.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { deliveryIcon } from '$lib/icons';
 	import { hydrateDeliveryTarget, targetLabel, type EventEntry, type EventStats, type DeliveryTarget } from '$lib/types';
 	import { tagToneMap } from '$lib/tags';
@@ -31,7 +32,7 @@
 			events = payload.events;
 			stats = payload.stats;
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'Failed to load the delivery log');
+			toast.danger(error instanceof Error ? error.message : t('targets.loadFailed'));
 		} finally {
 			loading = false;
 		}
@@ -58,7 +59,7 @@
 			await dashboard.save();
 			closeEdit();
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'Failed to save changes');
+			toast.danger(error instanceof Error ? error.message : t('providers.saveFailed'));
 		}
 	}
 
@@ -96,25 +97,25 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/delivery" class="-ml-3.5 w-fit">
-				Back to delivery
+				{t('targets.back')}
 			</Button>
 			{#if target}
 				<div class="flex items-center gap-3">
 					<Switch
-						label="Enabled"
+						label={t('common.enabled')}
 						bind:checked={() => target.enabled, (enabled) => toggleEnabled(enabled)}
 					/>
 					<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
-						Edit target
+						{t('targets.editTarget')}
 					</Button>
 					<Button
 						variant="ghost-danger"
 						size="sm"
 						icon={icons.remove}
 						onclick={askDelete}
-						aria-label={`Delete ${target.name}`}
+						aria-label={t('common.deleteName', { name: target.name })}
 					>
-						Delete
+						{t('common.delete')}
 					</Button>
 				</div>
 			{/if}
@@ -132,30 +133,29 @@
 					<h1 class="text-fc-2xl font-semibold text-fc-fg">{target.name}</h1>
 					<Badge>{targetLabel(target.type)}</Badge>
 				</div>
-				<p class="text-fc-sm text-fc-fg-muted">Everything Antenne has tried to deliver here.</p>
+				<p class="text-fc-sm text-fc-fg-muted">{t('targets.history')}</p>
 			</div>
 		{:else}
-			<Alert tone="warning" title="This delivery target no longer exists">
-				It was deleted, or the link points at an id this Antenne never had. The log below is empty
-				for the same reason.
+			<Alert tone="warning" title={t('targets.goneTitle')}>
+				{t('targets.goneText')}
 			</Alert>
 		{/if}
 	</div>
 
 	<div class="grid gap-4 sm:grid-cols-3">
-		<StatCard label="Events" value={stats?.totalEvents ?? 0} />
-		<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0} />
-		<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0} />
+		<StatCard label={t('providers.events')} value={stats?.totalEvents ?? 0} />
+		<StatCard label={t('providers.delivered')} value={stats?.deliverySuccessCount ?? 0} />
+		<StatCard label={t('providers.failed')} value={stats?.deliveryErrorCount ?? 0} />
 	</div>
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-start justify-between gap-3">
 			<div class="flex flex-col gap-1">
-				<h2 class="text-fc-lg font-semibold text-fc-fg">Delivery log</h2>
-				<p class="text-fc-sm text-fc-fg-muted">The last 100 events routed to this target.</p>
+				<h2 class="text-fc-lg font-semibold text-fc-fg">{t('targets.log')}</h2>
+				<p class="text-fc-sm text-fc-fg-muted">{t('targets.logText')}</p>
 			</div>
 			<Button variant="ghost" size="sm" icon={icons.refresh} onclick={refresh} disabled={loading}>
-				{loading ? 'Refreshing…' : 'Refresh'}
+				{loading ? t('activity.refreshing') : t('activity.refresh')}
 			</Button>
 		</div>
 
@@ -166,8 +166,8 @@
 		{:else if events.length === 0}
 			<EmptyState
 				icon={icons.history}
-				title="Nothing delivered yet"
-				description="Events routed to this target show up here, successful or not."
+				title={t('targets.emptyTitle')}
+				description={t('targets.emptyText')}
 			/>
 		{:else}
 			<EventTimeline {events} />
@@ -188,9 +188,9 @@
 <ConfirmModal
 	bind:open={confirmOpen}
 	tone="danger"
-	title="Delete this delivery target?"
-	description={target ? `${target.name} stops receiving alerts immediately.` : ''}
-	confirmLabel="Delete"
+	title={t('delivery.deleteTitle')}
+	description={target ? t('targets.deleteText', { name: target.name }) : ''}
+	confirmLabel={t('common.delete')}
 	onConfirm={removeTarget}
 	onCancel={() => (confirmOpen = false)}
 />
