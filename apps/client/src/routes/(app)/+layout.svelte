@@ -9,11 +9,14 @@
 		SpaceSwitcher,
 		Spinner,
 		Topbar,
-		icons
+		icons,
+		type Locale,
+		type Theme
 	} from '@facile/muse';
 	import { dashboard } from '$lib/dashboard.svelte';
-	import { t } from '$lib/i18n/index.svelte';
+	import { locale, rememberLocale, t } from '$lib/i18n/index.svelte';
 	import { spaces } from '$lib/spaces.svelte';
+	import { setTheme, theme } from '$lib/theme.svelte';
 	import { ANTENNE_ICON, ANTENNE_MARK } from '$lib/components/AntenneLogo.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -33,10 +36,6 @@
 	let collapsed = $state(false);
 	let scroller: HTMLElement | null = $state(null);
 
-	/*
-	 * No Settings row: settings is reached from the user card at the bottom of the rail and
-	 * from the avatar in MobileNav. See CHARTE §14.
-	 */
 	const links = $derived([
 		{ href: '/providers', label: t('nav.providers'), icon: icons.plug },
 		{ href: '/delivery', label: t('nav.delivery'), icon: icons.mail, match: ['/delivery', '/targets'] },
@@ -69,7 +68,17 @@
 
 	const user = $derived({
 		name: dashboard.name?.trim() || dashboard.username?.trim() || dashboard.email || t('common.user'),
+		email: dashboard.email || undefined,
 		avatar: dashboard.avatarUrl || undefined
+	});
+	const userMenu = $derived({
+		subscription: { plan: 'Gratuit', href: 'https://sso.facile.studio/spaces' },
+		helpHref: 'https://github.com/FacileStudio/Antenne/tree/main/docs',
+		onSignOut: () => dashboard.logout(),
+		locale: locale(),
+		onLocaleChange: (next: Locale) => rememberLocale(next),
+		theme: theme.mode,
+		onThemeChange: (next: Theme) => setTheme(next)
 	});
 	const switcherSpaces = $derived(spaces.spaces.map((space) => ({ id: space.id, name: space.name })));
 
@@ -98,6 +107,7 @@
 			{user}
 			userHref="/settings"
 			userActive={onSettings}
+			{userMenu}
 			class="h-full"
 		/>
 	</div>
@@ -135,5 +145,5 @@
 		</div>
 	</main>
 
-	<MobileNav items={navPages} {user} profileHref="/settings" profileActive={onSettings} />
+	<MobileNav items={navPages} {user} profileHref="/settings" profileActive={onSettings} {userMenu} />
 </div>

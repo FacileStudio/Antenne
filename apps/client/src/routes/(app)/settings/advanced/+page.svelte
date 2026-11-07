@@ -2,6 +2,7 @@
 	import {
 		Button,
 		ConfirmModal,
+		DangerZone,
 		Input,
 		SettingsRow,
 		SettingsSection,
@@ -104,45 +105,29 @@
 		</SettingsRow>
 	</SettingsSection>
 
-	<!-- Danger zone last, and never a tab of its own: CHARTE §14. Import lives here rather than
-	     beside Export because it is not the inverse of a download — it replaces the live
-	     document and saves it on the spot. -->
-	<SettingsSection
-		title={t('advanced.danger')}
-		description={t('advanced.dangerText')}
-	>
-		<SettingsRow
-			label={t('advanced.import')}
-			description={t('advanced.importText')}
-			for="import-config"
-			stacked
+	<DangerZone title={t('advanced.danger')} description={t('advanced.dangerText')}>
+		<div class="flex min-w-0 flex-1 flex-col gap-1">
+			<label for="import-config" class="text-fc-sm font-medium text-fc-fg">{t('advanced.import')}</label>
+			<p class="text-fc-sm text-fc-fg-muted">{t('advanced.importText')}</p>
+		</div>
+		<input
+			bind:this={importInput}
+			id="import-config"
+			type="file"
+			accept=".json,application/json"
+			disabled={dashboard.saving}
+			onchange={pickImport}
+			class="sr-only"
+		/>
+		<Button
+			variant="danger"
+			icon={icons.upload}
+			disabled={dashboard.saving}
+			onclick={() => importInput?.click()}
 		>
-			<div class="flex w-full flex-wrap items-center gap-3">
-				<!--
-					sr-only, never hidden: display:none takes the input out of the tab order and
-					leaves the control mouse-only. The button is the pointer affordance; keyboard
-					and screen-reader users reach the input itself.
-				-->
-				<input
-					bind:this={importInput}
-					id="import-config"
-					type="file"
-					accept=".json,application/json"
-					disabled={dashboard.saving}
-					onchange={pickImport}
-					class="sr-only"
-				/>
-				<Button
-					variant="danger"
-					icon={icons.upload}
-					disabled={dashboard.saving}
-					onclick={() => importInput?.click()}
-				>
-					{t('advanced.chooseFile')}
-				</Button>
-			</div>
-		</SettingsRow>
-	</SettingsSection>
+			{t('advanced.chooseFile')}
+		</Button>
+	</DangerZone>
 </div>
 
 <ConfirmModal
