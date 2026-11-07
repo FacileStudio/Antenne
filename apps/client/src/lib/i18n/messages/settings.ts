@@ -26,11 +26,11 @@ export const settings = {
 		'Perfil',
 		'Profil'
 	] as Row,
-	'settings.appearance': [
-		'Appearance',
-		'Apparence',
-		'Apariencia',
-		'Darstellung'
+	'settings.preferences': [
+		'Preferences',
+		'Préférences',
+		'Preferencias',
+		'Präferenzen'
 	] as Row,
 	'settings.bus': [
 		'Bus',
@@ -49,120 +49,6 @@ export const settings = {
 		'Avancé',
 		'Avanzado',
 		'Erweitert'
-	] as Row,
-	'profile.account': [
-		'Account',
-		'Compte',
-		'Cuenta',
-		'Konto'
-	] as Row,
-	'profile.accountText': [
-		'The identity this browser is signed in with.',
-		'L’identité avec laquelle ce navigateur est connecté.',
-		'La identidad con la que este navegador ha iniciado sesión.',
-		'Die Identität, mit der dieser Browser angemeldet ist.'
-	] as Row,
-	'profile.signedInAs': [
-		'Signed in as',
-		'Connecté en tant que',
-		'Sesión iniciada como',
-		'Angemeldet als'
-	] as Row,
-	'profile.role': [
-		'Role',
-		'Rôle',
-		'Rol',
-		'Rolle'
-	] as Row,
-	'profile.authentication': [
-		'Authentication',
-		'Authentification',
-		'Autenticación',
-		'Authentifizierung'
-	] as Row,
-	'profile.authenticationText': [
-		'Antenne signs people in through Registre only.',
-		'Antenne ne connecte les personnes que par Registre.',
-		'Antenne solo inicia sesión a través de Registre.',
-		'Antenne meldet Personen ausschließlich über Registre an.'
-	] as Row,
-	'profile.sso': [
-		'Signed in with Facile',
-		'Connecté avec Facile',
-		'Sesión iniciada con Facile',
-		'Mit Facile angemeldet'
-	] as Row,
-	'profile.instance': [
-		'Instance',
-		'Instance',
-		'Instancia',
-		'Instanz'
-	] as Row,
-	'profile.session': [
-		'Session',
-		'Session',
-		'Sesión',
-		'Sitzung'
-	] as Row,
-	'profile.sessionText': [
-		'This browser’s session on this instance.',
-		'La session de ce navigateur sur cette instance.',
-		'La sesión de este navegador en esta instancia.',
-		'Die Sitzung dieses Browsers auf dieser Instanz.'
-	] as Row,
-	'profile.logout': [
-		'Log out',
-		'Se déconnecter',
-		'Cerrar sesión',
-		'Abmelden'
-	] as Row,
-	'profile.logoutText': [
-		'Ends the session and returns to the login screen. Unsaved settings drafts are discarded.',
-		'Termine la session et revient à l’écran de connexion. Les brouillons non enregistrés sont perdus.',
-		'Termina la sesión y vuelve a la pantalla de inicio de sesión. Se descartan los borradores sin guardar.',
-		'Beendet die Sitzung und kehrt zur Anmeldung zurück. Nicht gespeicherte Entwürfe gehen verloren.'
-	] as Row,
-	'appearance.theme': [
-		'Theme',
-		'Thème',
-		'Tema',
-		'Design'
-	] as Row,
-	'appearance.themeText': [
-		'Applied to this browser only. Antenne stores nothing about it server-side.',
-		'Appliqué à ce navigateur uniquement. Antenne ne stocke rien côté serveur.',
-		'Se aplica solo a este navegador. Antenne no guarda nada en el servidor.',
-		'Gilt nur für diesen Browser. Antenne speichert serverseitig nichts dazu.'
-	] as Row,
-	'appearance.scheme': [
-		'Colour scheme',
-		'Palette de couleurs',
-		'Esquema de color',
-		'Farbschema'
-	] as Row,
-	'appearance.schemeText': [
-		'System follows the operating system’s preference.',
-		'Système suit la préférence du système d’exploitation.',
-		'Sistema sigue la preferencia del sistema operativo.',
-		'System folgt der Einstellung des Betriebssystems.'
-	] as Row,
-	'appearance.system': [
-		'System',
-		'Système',
-		'Sistema',
-		'System'
-	] as Row,
-	'appearance.light': [
-		'Light',
-		'Clair',
-		'Claro',
-		'Hell'
-	] as Row,
-	'appearance.dark': [
-		'Dark',
-		'Sombre',
-		'Oscuro',
-		'Dunkel'
 	] as Row,
 	'sysevents.title': [
 		'System events',

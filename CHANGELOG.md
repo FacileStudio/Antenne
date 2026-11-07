@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- The sidebar user card opens the shared muse user menu (account, settings, subscription, language, theme, help, sign out). The cog link and the in-settings sign-out are gone.
+- Settings use muse `SettingsLayout` with Profile, Preferences, Bus, Events and Advanced. Profile is read-only and links to Facile; language and theme live in Preferences; the configuration import sits in a `DangerZone`. `/settings/appearance` redirects to `/settings/preferences`.
+- `@facile/muse` v0.13.0 to v0.14.2.
+
 ## [1.2.1] - 2026-11-07
 
 ### Changed
