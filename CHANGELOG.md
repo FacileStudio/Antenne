@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-07
+
 ### Changed
 
 - Sign-in goes through Registre only. With `OIDC_ISSUER` set porte mounts no password or
