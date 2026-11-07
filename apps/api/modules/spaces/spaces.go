@@ -80,7 +80,12 @@ type Service struct {
 	client directory.Client
 	syncer *directory.Syncer
 	retry  time.Duration
+
+	deletions *Deletions
 }
+
+// AttachDeletions sets the GDPR deletion receiver the push route serves.
+func (s *Service) AttachDeletions(deletions *Deletions) { s.deletions = deletions }
 
 // NewService builds the service. client is Antenne's own OIDC client against
 // Registre; with an empty Issuer there is nothing to sync from.

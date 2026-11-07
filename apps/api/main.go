@@ -66,6 +66,7 @@ func run() int {
 		bootLogger.Error("config", slog.Any("error", err))
 		return 1
 	}
+	cfg.Version = version
 
 	appLogger := logger.New(logger.Config{
 		Level: cfg.LogLevel,
@@ -124,6 +125,7 @@ func run() int {
 	authService := auth.NewService(db, appLogger, auth.Config{
 		AdminUsername:     cfg.AdminUsername,
 		AdminPassword:     cfg.AdminPassword,
+		Issuer:            cfg.Porte.Issuer,
 		JournalBrowserURL: cfg.JournalBrowserURL,
 		JournalBrowserKey: cfg.JournalBrowserKey,
 	}, userStore, identityStore.Identities(), sessions)
@@ -145,10 +147,7 @@ func run() int {
 		return 1
 	}
 
-	// Registration stays closed. The only local account is the bootstrap one
-	// and it is seeded from the environment, so an open sign-up form on the
-	// suite's event bus would be a way in that nobody asked for.
-	passwords, err := local.New(local.Config{AllowRegistration: false}, local.Deps{
+	passwords, err := local.New(local.Config{}, local.Deps{
 		Users:      userStore,
 		Identities: identityStore.Identities(),
 		Sessions:   sessions,
@@ -165,9 +164,7 @@ func run() int {
 		return 1
 	}
 	if oidcKit.Enabled() {
-		appLogger.Info("single sign-on enabled",
-			slog.String("issuer", cfg.Porte.Issuer),
-			slog.Bool("sso_only", cfg.Porte.SSOOnly))
+		appLogger.Info("single sign-on enabled", slog.String("issuer", cfg.Porte.Issuer))
 		if filled, err := userStore.BackfillPictures(ctx, cfg.Porte.Issuer); err != nil {
 			appLogger.Warn("pictures not backfilled", slog.Any("error", err))
 		} else {
@@ -182,12 +179,15 @@ func run() int {
 	}
 
 	eventLog := events.NewService(db, appLogger)
-	sender := delivery.NewSender(appLogger)
-	spaceService := spaces.NewService(db, directory.Client{
+	directoryClient := directory.Client{
 		Issuer:       cfg.Porte.Issuer,
 		ClientID:     cfg.Porte.ClientID,
 		ClientSecret: cfg.Porte.ClientSecret,
-	}, appLogger)
+	}
+	sender := delivery.NewSender(appLogger)
+	spaceService := spaces.NewService(db, directoryClient, appLogger)
+	deletions := spaces.NewDeletions(db, directoryClient, identityStore.EraseIdentity, appLogger)
+	spaceService.AttachDeletions(deletions)
 
 	current := store.Get()
 	application := app.New(appLogger, store, eventLog, sender, settings.RuntimeStatus{
@@ -240,7 +240,7 @@ func run() int {
 
 	router := server.BuildRouter(cfg, appLogger, sqlDB, application, authService, sessions, oidcKit, passwords, spaceService, busServer)
 	// /dashboard is a legacy redirect, not API surface.
-	if missing := apiref.Undocumented(router, server.RefConfig(), "/dashboard"); len(missing) > 0 {
+	if missing := apiref.Undocumented(router, server.RefConfig(), "/dashboard", "/version"); len(missing) > 0 {
 		appLogger.Warn("routes are missing from the API reference", slog.Any("routes", missing))
 	}
 
@@ -251,6 +251,9 @@ func run() int {
 
 	go maintenance(ctx, appLogger, authService, eventLog, busServer)
 	go spaceService.Run(ctx)
+	if cfg.Porte.Enabled() {
+		go deletions.Run(ctx)
+	}
 
 	application.AnnounceStartup(ctx)
 

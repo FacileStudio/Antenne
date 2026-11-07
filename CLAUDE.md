@@ -172,7 +172,6 @@ what porte has no opinion about: what a user is, and who bootstraps the instance
 | `PUBLIC_URL` | The https origin Antenne is reached on; porte reads the cookie's `Secure` flag and `__Host-` prefix off it | **required in production** |
 | `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | Single sign-on against Authentik. Unset disables SSO | — |
 | `OIDC_REDIRECT_URL` / `OIDC_SUCCESS_URL` | Default to `PUBLIC_URL` + `/api/auth/oidc/callback` and `PUBLIC_URL` + `/` | derived |
-| `SSO_ONLY` | Suppresses the password route entirely | `false` |
 | `ANTENNE_SECRET` | Shared secret pool clients register with. The dashboard value wins | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set | — |

@@ -39,6 +39,7 @@ type Identity struct {
 	Name      string
 	Role      Role
 	AvatarURL string
+	Locale    string
 	ClientIP  string
 }
 

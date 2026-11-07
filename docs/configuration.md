@@ -21,7 +21,6 @@ Read once at startup. Every error `env.Load` returns is a reason not to boot.
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | The Authentik provider's credentials | — |
 | `OIDC_REDIRECT_URL` | Callback registered on the provider | `PUBLIC_URL` + `/api/auth/oidc/callback` |
 | `OIDC_SUCCESS_URL` | Where the browser lands after a successful login | `PUBLIC_URL` + `/` |
-| `SSO_ONLY` | Suppresses the password route entirely — it is not registered rather than rejected | `false` |
 | `ANTENNE_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set for anything to ship | — |

@@ -62,6 +62,9 @@ func BuildRouter(
 	// Mounted at both the root and /api: an external monitor that only reaches
 	// one of the two must not read the SPA shell as a green check.
 	health.Mount(router, health.DB(sqlDB))
+	router.Get("/version", func(w http.ResponseWriter, _ *http.Request) {
+		httpjson.WriteJSON(w, http.StatusOK, map[string]string{"version": cfg.Version})
+	})
 
 	// The reference stays at the root, unauthenticated, next to the routes it
 	// documents. It describes the public contract — the webhook intake and the
@@ -90,14 +93,16 @@ func BuildRouter(
 		sessions.Mount(protected)
 		oidcKit.Mount(protected)
 
-		// Under SSO_ONLY the password route is not registered rather than
-		// rejected, so there is no endpoint left to probe for an account.
-		if authService.PasswordRequired() && !cfg.Porte.SSOOnly {
+		// With an issuer configured the password route is not registered
+		// rather than rejected, so there is no endpoint left to probe for an
+		// account.
+		if authService.PasswordRequired() {
 			passwords.Mount(protected.With(auth.ThrottleLogins()))
 		}
 
 		busServer.RegisterRoutes(protected)
 		spaceService.RegisterSync(protected)
+		spaceService.RegisterDeletions(protected)
 
 		protected.Group(func(sessioned chi.Router) {
 			sessioned.Use(auth.RequireAuth(sessions, authService))

@@ -53,6 +53,7 @@ type User struct {
 	Name       string
 	Role       string
 	PictureURL string `gorm:"column:picture_url"`
+	Locale     string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
@@ -80,6 +81,15 @@ var (
 	_ porte.PasswordUserStore = (*Store)(nil)
 )
 
+// profile is what the provider asserts about a person and the dashboard stores.
+type profile struct {
+	email    string
+	name     string
+	picture  string
+	locale   string
+	verified bool
+}
+
 // UpsertFromOIDC matches on (provider, subject) first and creates the account
 // when nothing is found.
 //
@@ -87,61 +97,27 @@ var (
 // has one tier: the dashboard holds the provider credentials, the delivery
 // secrets and the pool secret, and there is no view of it that is safe for
 // someone who should not have all three. Who may reach it at all is therefore
-// Authentik's decision, expressed as a policy binding on the application —
-// not something this callback can soften.
+// the issuer's decision, expressed as an access policy on the application, not
+// something this callback can soften.
+//
+// The email fallback follows porte/pg's linking rules: it links only on an
+// address the provider verified, and it refuses an account that already holds
+// another subject of the same issuer, so a recycled address is never handed
+// over.
 func (s *Store) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64, error) {
-	email := strings.ToLower(strings.TrimSpace(claims.Email))
-	if _, err := mail.ParseAddress(email); err != nil {
-		return 0, apierrors.Invalid("the identity provider returned no usable email")
+	person, err := profileFrom(claims)
+	if err != nil {
+		return 0, err
 	}
-	name := claims.DisplayName()
-	picture := avatar.PhotoURL(claims.Picture)
 
 	var userID int64
 	txErr := s.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", int64(registrationLockKey)).Error; err != nil {
 			return apierrors.Internal("failed to acquire the registration lock", err)
 		}
-
-		var linked int64
-		err := tx.Raw(
-			`SELECT user_id FROM porte_identities WHERE provider = ? AND subject = ?`,
-			claims.Provider, claims.Subject,
-		).Scan(&linked).Error
-		if err != nil {
-			return apierrors.Internal("failed to resolve the identity", err)
-		}
-		if linked != 0 {
-			userID = linked
-			return refreshProfile(tx, linked, email, name, picture)
-		}
-
-		var existing User
-		err = tx.Where("email = ?", email).First(&existing).Error
-		switch {
-		case err == nil:
-			// Matching an existing account on the address alone is an
-			// account takeover primitive wherever a provider lets a
-			// user claim an address without proving it. Authentik's
-			// built-in email mapping returns email_verified false and
-			// hardcodes it, so on this IdP the branch never opens —
-			// which is correct, and is why the bootstrap account is
-			// seeded from the environment rather than adopted here.
-			if !claims.EmailVerified {
-				return apierrors.Conflict("an account with this email already exists and the identity provider did not verify the address")
-			}
-			userID = existing.ID
-			return refreshProfile(tx, existing.ID, email, name, picture)
-		case !stderrors.Is(err, gorm.ErrRecordNotFound):
-			return apierrors.Internal("failed to look up the account", err)
-		}
-
-		user := User{Email: email, Name: name, Role: string(authcontext.RoleAdmin), PictureURL: picture}
-		if err := tx.Create(&user).Error; err != nil {
-			return apierrors.Internal("failed to create the account", err)
-		}
-		userID = user.ID
-		return nil
+		id, err := resolveUser(tx, claims, person)
+		userID = id
+		return err
 	})
 	if txErr != nil {
 		return 0, txErr
@@ -149,18 +125,110 @@ func (s *Store) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64,
 	return userID, nil
 }
 
-// refreshProfile keeps the name and the address the provider asserts, which is
-// what makes the identity provider the source of truth for both. An empty value
-// never overwrites one the user already has: a provider that stops sending a
-// claim should not blank the dashboard.
+// profileFrom normalises the claims, refusing an address that cannot be one.
+func profileFrom(claims porte.Claims) (profile, error) {
+	email := strings.ToLower(strings.TrimSpace(claims.Email))
+	if _, err := mail.ParseAddress(email); err != nil {
+		return profile{}, apierrors.Invalid("the identity provider returned no usable email")
+	}
+	return profile{
+		email:    email,
+		name:     claims.DisplayName(),
+		picture:  avatar.PhotoURL(claims.Picture),
+		locale:   claims.Locale,
+		verified: claims.EmailVerified,
+	}, nil
+}
+
+// resolveUser finds the account the claims belong to, or creates it.
+func resolveUser(tx *gorm.DB, claims porte.Claims, person profile) (int64, error) {
+	var linked int64
+	err := tx.Raw(
+		`SELECT user_id FROM porte_identities WHERE provider = ? AND subject = ?`,
+		claims.Provider, claims.Subject,
+	).Scan(&linked).Error
+	if err != nil {
+		return 0, apierrors.Internal("failed to resolve the identity", err)
+	}
+	if linked != 0 {
+		return linked, refreshProfile(tx, linked, person)
+	}
+
+	var existing User
+	err = tx.Where("email = ?", person.email).First(&existing).Error
+	switch {
+	case err == nil:
+		if err := mayLink(tx, existing.ID, claims); err != nil {
+			return 0, err
+		}
+		return existing.ID, refreshProfile(tx, existing.ID, person)
+	case !stderrors.Is(err, gorm.ErrRecordNotFound):
+		return 0, apierrors.Internal("failed to look up the account", err)
+	}
+
+	user := User{
+		Email: person.email, Name: person.name, Role: string(authcontext.RoleAdmin),
+		PictureURL: person.picture, Locale: localeOrDefault(person.locale),
+	}
+	if err := tx.Create(&user).Error; err != nil {
+		return 0, apierrors.Internal("failed to create the account", err)
+	}
+	return user.ID, nil
+}
+
+// mayLink decides whether a sign-in may attach to the account that already
+// holds its address.
+//
+// Matching on the address alone is an account takeover primitive wherever a
+// provider lets a user claim an address without proving it, so the provider
+// must say it verified the address. An account that already holds a different
+// subject of the same issuer belongs to someone else: the address was
+// recycled, and linking would hand that person's data over.
+func mayLink(tx *gorm.DB, userID int64, claims porte.Claims) error {
+	if !claims.EmailVerified {
+		return apierrors.Conflict("an account with this email already exists and the identity provider did not verify the address")
+	}
+	var other int64
+	err := tx.Raw(
+		`SELECT count(*) FROM porte_identities WHERE user_id = ? AND provider = ? AND subject <> ?`,
+		userID, claims.Provider, claims.Subject,
+	).Scan(&other).Error
+	if err != nil {
+		return apierrors.Internal("failed to check the account's identities", err)
+	}
+	if other > 0 {
+		return apierrors.Conflict("this account is already linked to another identity from the same provider")
+	}
+	return nil
+}
+
+// localeOrDefault gives a new account the default language when the provider
+// sent no locale claim.
+func localeOrDefault(locale string) string {
+	if locale == "" {
+		return porte.DefaultLocale
+	}
+	return locale
+}
+
+// refreshProfile keeps the name, the language and, when the provider verified
+// it, the address the provider asserts, which is what makes the identity provider the source of truth for
+// them. An empty value never overwrites one the user already has: a provider
+// that stops sending a claim should not blank the dashboard.
 //
 // The picture is the exception and is always written: the provider sends one
 // for every user it has a picture for, so a missing or non-https claim means
 // there is none and the dashboard should draw the initial instead.
-func refreshProfile(tx *gorm.DB, userID int64, email, name, picture string) error {
-	updates := map[string]any{"email": email, "picture_url": picture}
-	if name != "" {
-		updates["name"] = name
+func refreshProfile(tx *gorm.DB, userID int64, person profile) error {
+	updates := map[string]any{"picture_url": person.picture}
+	if person.verified {
+		updates["email"] = person.email
+	}
+	if person.name != "" {
+		updates["name"] = person.name
+	}
+	if person.locale != "" {
+		updates["locale"] = person.locale
 	}
 	if err := tx.Model(&User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
 		return apierrors.Internal("failed to update the account", err)
@@ -228,6 +296,11 @@ type Config struct {
 	AdminUsername string
 	AdminPassword string
 
+	// Issuer is the OIDC issuer. With one configured, sign-in goes through it
+	// alone: porte mounts no password route, so the bootstrap account is not
+	// seeded and the dashboard draws no password form.
+	Issuer string
+
 	// JournalBrowserURL and JournalBrowserKey are relayed to the dashboard
 	// through ConfigExtra. They are not auth's business, but /auth/config is the
 	// one endpoint the client already calls before it renders anything, and the
@@ -252,8 +325,9 @@ func NewService(orm *gorm.DB, log *slog.Logger, cfg Config, store *Store, identi
 	return &Service{orm: orm, log: log, cfg: cfg, store: store, identities: identities, sessions: sessions}
 }
 
-// PasswordRequired reports whether the bootstrap password login is configured.
-func (s *Service) PasswordRequired() bool { return s.cfg.AdminPassword != "" }
+// PasswordRequired reports whether the bootstrap password login is in use. It
+// never is once an OIDC issuer is configured.
+func (s *Service) PasswordRequired() bool { return s.cfg.AdminPassword != "" && s.cfg.Issuer == "" }
 
 // Username is the login label the dashboard shows.
 func (s *Service) Username() string { return s.cfg.AdminUsername }
@@ -361,6 +435,7 @@ func (s *Service) IdentityForUser(ctx context.Context, userID int64) (authcontex
 		Name:      user.Name,
 		Role:      authcontext.Role(user.Role),
 		AvatarURL: user.PictureURL,
+		Locale:    user.Locale,
 	}, nil
 }
 

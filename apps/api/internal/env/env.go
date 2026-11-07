@@ -36,7 +36,10 @@ type Config struct {
 	AdminPassword string
 	PoolSecret    string
 	ClientDir     string
-	Timeout       int
+
+	// Version is the release tag baked in at build time, served at GET /version.
+	Version string
+	Timeout int
 
 	// PublicURL is the origin Antenne is reached on. It exists because porte
 	// derives the Secure attribute and the __Host- cookie prefix from its own
@@ -48,9 +51,9 @@ type Config struct {
 	// SSO happens to be switched on.
 	PublicURL string
 
-	// Porte is the suite's auth contract: OIDC_ISSUER enables single sign-on,
-	// SSO_ONLY makes it the only way in. Both may be unset, in which case the
-	// bootstrap password below is the only credential.
+	// Porte is the suite's auth contract: OIDC_ISSUER enables single sign-on
+	// and, once set, is the only way in. Unset, the bootstrap password is the
+	// only credential.
 	Porte porte.Config
 
 	// JournalBrowserURL and JournalBrowserKey are the dashboard's half of
@@ -173,11 +176,6 @@ func loadHeartbeatInterval() (time.Duration, error) {
 // belongs to because two of porte's URLs default off PublicURL, so this can only
 // run once the rest of the configuration exists.
 func loadPorte(c Config) (porte.Config, error) {
-	ssoOnly, err := troncenv.Bool("SSO_ONLY", false)
-	if err != nil {
-		return porte.Config{}, err
-	}
-
 	cfg := porte.Config{
 		Issuer:       troncenv.String("OIDC_ISSUER", ""),
 		ClientID:     troncenv.String("OIDC_CLIENT_ID", ""),
@@ -187,7 +185,6 @@ func loadPorte(c Config) (porte.Config, error) {
 		FailureURL:   troncenv.String("OIDC_FAILURE_URL", ""),
 		ClaimsScope:  troncenv.String("OIDC_CLAIMS_SCOPE", ""),
 		CLIAudience:  troncenv.String("OIDC_CLI_AUDIENCE", ""),
-		SSOOnly:      ssoOnly,
 	}
 	if err := cfg.Validate(); err != nil {
 		return porte.Config{}, err
@@ -237,9 +234,6 @@ func corsOrigins() []string {
 func (c Config) validate() error {
 	if c.AdminPassword == "" && !c.Porte.Enabled() {
 		return fmt.Errorf("env: set ANTENNE_ADMIN_PASSWORD or OIDC_ISSUER — with neither there is no way to sign in, and Antenne no longer serves an open dashboard")
-	}
-	if c.Porte.SSOOnly && !c.Porte.Enabled() {
-		return fmt.Errorf("env: SSO_ONLY=true with no OIDC_ISSUER leaves no way to sign in")
 	}
 	if c.IsProduction() && !strings.HasPrefix(strings.ToLower(c.PublicURL), "https://") {
 		// porte reads the Secure attribute and the __Host- cookie prefix off

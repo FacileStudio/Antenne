@@ -30,7 +30,7 @@ func passwordRoutes() []apiref.Route {
 			Method:       "POST",
 			Path:         "/api/auth/login",
 			Summary:      "Sign in with the bootstrap password",
-			Description:  "Exchanges the admin address and password for a session: the cookie is set and the bearer token is returned, so one call serves the dashboard and the CLI. Not registered at all under SSO_ONLY, nor when no admin password is configured. Refused attempts are throttled per client address: five within ten minutes blocks that address for ten minutes.",
+			Description:  "Exchanges the admin address and password for a session: the cookie is set and the bearer token is returned, so one call serves the dashboard and the CLI. Not registered at all once OIDC_ISSUER is set, nor when no admin password is configured. Refused attempts are throttled per client address: five within ten minutes blocks that address for ten minutes.",
 			Auth:         "none",
 			RequestBody:  porte.CredentialsRequest{},
 			ResponseBody: porte.ExchangeResponse{},
