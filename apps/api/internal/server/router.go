@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/FacileStudio/tronc/apiref"
@@ -53,6 +54,7 @@ func BuildRouter(
 		CDNProxies:     cfg.CDNProxies,
 		CDNHeader:      cfg.CDNHeader,
 		Logger:         log,
+		Security:       securityConfig(cfg, log),
 		CORS: middleware.CORSConfig{
 			AllowedOrigins:   cfg.CORSAllowedOrigins,
 			AllowCredentials: true,
@@ -132,4 +134,34 @@ func BuildRouter(
 	}
 
 	return router
+}
+
+// securityConfig extends tronc's default headers with what the dashboard loads.
+// The built client carries two inline scripts, allowed by hash. iconify-icon
+// fetches any glyph muse does not bundle from the Iconify API, and the Journal
+// browser SDK reports to its own origin. The policy is still report-only in
+// tronc v0.17, so a miss shows in the console and breaks nothing.
+func securityConfig(cfg env.Config, log *slog.Logger) middleware.SecurityConfig {
+	connect := []string{"https://api.iconify.design", "https://api.simplesvg.com", "https://api.unisvg.com"}
+	if journal := origin(cfg.JournalBrowserURL); journal != "" {
+		connect = append(connect, journal)
+	}
+	sources := map[string][]string{"connect-src": connect}
+	if spa.Available(cfg.ClientDir) {
+		hashes, err := spa.InlineScriptHashes(cfg.ClientDir)
+		if err != nil {
+			log.Warn("inline script hashes unavailable, the CSP will report the dashboard's scripts", slog.Any("error", err))
+		}
+		sources["script-src"] = hashes
+	}
+	return middleware.SecurityConfig{CSPSources: sources}
+}
+
+// origin returns the scheme and host of a URL, or "" when it is not an https one.
+func origin(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return ""
+	}
+	return "https://" + parsed.Host
 }
