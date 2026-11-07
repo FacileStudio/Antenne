@@ -205,6 +205,7 @@
 			<Select
 				value={source}
 				class="w-44 flex-none"
+				aria-label={t('activity.filterSource')}
 				onchange={(event) => {
 					source = event.currentTarget.value;
 					fetchEvents();
