@@ -21,6 +21,7 @@ type SessionResponse struct {
 	Name             string `json:"name,omitempty"`
 	Role             string `json:"role,omitempty"`
 	AvatarURL        string `json:"avatarUrl,omitempty"`
+	Locale           string `json:"locale,omitempty"`
 }
 
 // RegisterRoutes mounts the routes porte does not own.
@@ -79,6 +80,7 @@ func (s *Service) handleSession(w http.ResponseWriter, r *http.Request) {
 		Name:             identity.Name,
 		Role:             string(identity.Role),
 		AvatarURL:        identity.AvatarURL,
+		Locale:           identity.Locale,
 	})
 }
 

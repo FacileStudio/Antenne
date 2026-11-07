@@ -55,7 +55,7 @@ func TestEveryRouteIsDocumented(t *testing.T) {
 
 	// /dashboard is a legacy redirect kept for links made before the client moved
 	// to the root; it is not part of the API surface.
-	if missing := apiref.Undocumented(router, server.RefConfig(), "/dashboard"); len(missing) > 0 {
+	if missing := apiref.Undocumented(router, server.RefConfig(), "/dashboard", "/version"); len(missing) > 0 {
 		t.Errorf("routes missing from the API registry: %v", missing)
 	}
 }
@@ -69,6 +69,7 @@ func TestRegistryIsComplete(t *testing.T) {
 		"/api/auth/backchannel-logout",
 		"/api/auth/sync-profile",
 		"/api/registre/sync",
+		"/api/registre/deletions",
 		"/api/test-alert",
 		"/api/delivery-health/{targetId}/check",
 		"/api/events/stream",

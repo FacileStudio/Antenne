@@ -55,7 +55,7 @@ test that authenticates with a token does not exercise this rule at all.
 therefore cookie-only, permanently — and being a GET, the CSRF rule does not reach it.
 
 Refused logins are throttled per client address: five within ten minutes blocks that address
-for ten minutes. Under `SSO_ONLY` the password route is not registered at all, rather than
+for ten minutes. With `OIDC_ISSUER` set the password route is not registered at all, rather than
 rejected, so there is no endpoint left to probe.
 
 ## Settings

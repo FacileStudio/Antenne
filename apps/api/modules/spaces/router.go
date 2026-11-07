@@ -28,6 +28,22 @@ func (s *Service) RegisterSync(router chi.Router) {
 	router.Post(strings.TrimPrefix(directory.SyncPath, "/api"), s.handleSync)
 }
 
+// RegisterDeletions mounts Registre's signed user.deleted push on
+// directory.DeletionsPath, relative to the /api router it is given. It sits
+// outside every session and CSRF guard because Registre posts it with no
+// cookie: the receiver authenticates the token itself.
+func (s *Service) RegisterDeletions(router chi.Router) {
+	router.Post(strings.TrimPrefix(directory.DeletionsPath, "/api"), s.handleDeletions)
+}
+
+func (s *Service) handleDeletions(w http.ResponseWriter, r *http.Request) {
+	if s.deletions == nil {
+		httpjson.WriteError(w, apierrors.NotFound("single sign-on is not configured"))
+		return
+	}
+	s.deletions.Handler().ServeHTTP(w, r)
+}
+
 func (s *Service) handleSync(w http.ResponseWriter, r *http.Request) {
 	if s.syncer == nil {
 		httpjson.WriteError(w, apierrors.NotFound("single sign-on is not configured"))

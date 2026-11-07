@@ -24,7 +24,7 @@ func Documentation() apiref.Module {
 	return apiref.Module{
 		Name:        "Spaces",
 		Description: "Teams and their members, owned by Registre and read-only here: Antenne applies Registre's snapshot, and every change is made at manageUrl. Every route is membership-scoped, with no instance-admin bypass.",
-		Routes:      append(readRoutes(), syncRoute()),
+		Routes:      append(readRoutes(), syncRoute(), deletionsRoute()),
 	}
 }
 
@@ -61,6 +61,22 @@ func readRoutes() []apiref.Route {
 			Errors: []apiref.Error{
 				{Status: 403, Code: "permission_denied", Description: "the caller is not a member of this space"},
 			},
+		},
+	}
+}
+
+// deletionsRoute is the signed notice Registre posts when it erases a person.
+func deletionsRoute() apiref.Route {
+	return apiref.Route{
+		Method:      "POST",
+		Path:        "/api/registre/deletions",
+		Summary:     "Registre deletion notice",
+		Description: "Registre posts a signed user.deleted security event here when a person is erased. Antenne verifies the token against the issuer's keys, erases that person's account and space memberships, and answers 202. The same notices are also polled from Registre, so a missed push is caught up.",
+		Auth:        "none",
+		Status:      202,
+		Errors: []apiref.Error{
+			{Status: 400, Code: "invalid_argument", Description: "the token is malformed, expired or not signed by the issuer"},
+			{Status: 404, Code: "not_found", Description: "single sign-on is not configured"},
 		},
 	}
 }
