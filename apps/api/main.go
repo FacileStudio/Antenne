@@ -18,7 +18,6 @@ import (
 	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
-	portepg "github.com/FacileStudio/porte/pg"
 	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/apiref"
 	"github.com/FacileStudio/tronc/healthcheck"
@@ -110,7 +109,12 @@ func run() int {
 	// One manager over one session table. Both kits issue through it, so a
 	// password login and a federated one are the same row, the same cookie and
 	// the same logout.
-	identityStore := portepg.New(sqlDB)
+	identityStore, err := newPorteStore(sqlDB)
+	if err != nil {
+		appLogger.Error("porte token key", slog.Any("error", err))
+		return 1
+	}
+	resealInBackground(ctx, identityStore, appLogger)
 	userStore := auth.NewStore(db)
 
 	sessions, err := session.New(cfg.Porte, session.Deps{
