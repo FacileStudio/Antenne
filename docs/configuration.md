@@ -15,9 +15,9 @@ Read once at startup. Every error `env.Load` returns is a reason not to boot.
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | `info` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins. `ALLOWED_ORIGINS`, `DOMAINS`, `DOMAIN`, `CORS_ORIGINS`, `TRUSTED_ORIGINS` and `CLIENT_ORIGIN` remain accepted fallbacks | unset denies every cross-origin caller |
 | `ANTENNE_ADMIN_USERNAME` | Login label, and the local part of the bootstrap account's email | `admin` |
-| `ANTENNE_ADMIN_PASSWORD` | The bootstrap password login. Required unless `OIDC_ISSUER` is set — with neither, Antenne refuses to boot | — |
+| `ANTENNE_ADMIN_PASSWORD` | Bootstrap password for local development. Ignored once `OIDC_ISSUER` is set, and with neither Antenne refuses to boot | — |
 | `PUBLIC_URL` | The https origin Antenne is reached on. porte derives the cookie's `Secure` flag and `__Host-` prefix from it | **required in production** |
-| `OIDC_ISSUER` | Enables single sign-on against Authentik. Trailing slash included | unset disables SSO |
+| `OIDC_ISSUER` | Registre, the only way in once set. Trailing slash included | unset disables SSO |
 | `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | The Authentik provider's credentials | — |
 | `OIDC_REDIRECT_URL` | Callback registered on the provider | `PUBLIC_URL` + `/api/auth/oidc/callback` |
 | `OIDC_SUCCESS_URL` | Where the browser lands after a successful login | `PUBLIC_URL` + `/` |

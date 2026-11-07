@@ -67,8 +67,9 @@ curl -fsSL https://get.facile.studio | bash
 facile install antenne
 ```
 
-Antenne authenticates a whole instance with one password rather than a
-per-user account, so `facile login antenne` asks for that password.
+People sign in with Facile (Registre). `facile login antenne` uses the same account
+through the device or loopback flow, and the CLI keeps working with the API tokens it
+receives.
 
 ## Configuration
 
@@ -76,9 +77,9 @@ per-user account, so `facile login antenne` asks for that password.
 |---|---|
 | `DATABASE_URL` | Postgres connection string. Required |
 | `PORT` | HTTP port for the API, dashboard, health check, webhooks and pool. Default `9090` |
-| `ANTENNE_ADMIN_PASSWORD` | When set, the dashboard and its API require login. Required in production |
+| `ANTENNE_ADMIN_PASSWORD` | Bootstrap password for local development without an issuer. Ignored once `OIDC_ISSUER` is set |
 | `PUBLIC_URL` | The https origin Antenne is reached on. Required in production |
-| `OIDC_ISSUER` | Enables single sign-on against Authentik. Unset runs on the password alone |
+| `OIDC_ISSUER` | Registre. Once set, sign-in goes through it only and no password route is mounted |
 | `ANTENNE_SECRET` | Shared secret apps present when registering with the pool |
 | `HEARTBEAT_URL` | Dead man's switch. Empty disables it. See below |
 | `HEARTBEAT_INTERVAL` | How often to ping it. Default `5m`, rejected under `1m` |
