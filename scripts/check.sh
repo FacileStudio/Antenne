@@ -69,6 +69,7 @@ for dir in $GO_MODULES; do
 
     "$GO" vet ./... || s=1
     "$GO" test ./... || s=1
+    "$GO" test -count=1 -run TestVersionIsTheReleaseVersion -ldflags "-X github.com/FacileStudio/Antenne/apps/api.version=$(sh ../../scripts/version.sh ../../CHANGELOG.md)" . || s=1
 
     # Postgres is the only database in this suite, tests included. A test on
     # SQLite builds a different schema from the GORM struct tags and then

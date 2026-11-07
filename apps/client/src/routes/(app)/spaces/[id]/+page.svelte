@@ -66,7 +66,7 @@
 			</div>
 
 			{#if space.manageUrl}
-				<Button href={space.manageUrl} icon={icons.space} iconRight={icons.arrow} variant="outline">
+				<Button href={space.manageUrl} icon={icons.space} iconRight={icons.arrow} variant="secondary">
 					{t('spaces.manage')}
 				</Button>
 			{/if}

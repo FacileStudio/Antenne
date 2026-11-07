@@ -115,7 +115,7 @@
 
 	<SettingsSection title={t('bus.connection')} description={t('bus.connectionText')}>
 		{#snippet actions()}
-			<Button variant="outline" size="sm" icon={icons.refresh} onclick={retry}>{t('activity.refresh')}</Button>
+			<Button variant="secondary" size="sm" icon={icons.refresh} onclick={retry}>{t('activity.refresh')}</Button>
 		{/snippet}
 
 		<SettingsRow label={t('bus.state')}>

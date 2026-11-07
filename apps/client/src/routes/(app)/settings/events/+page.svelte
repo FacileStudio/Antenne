@@ -24,7 +24,7 @@
 	>
 		{#snippet actions()}
 			<Button
-				variant="outline"
+				variant="secondary"
 				size="sm"
 				icon={icons.bolt}
 				onclick={() => dashboard.sendTestAlert()}

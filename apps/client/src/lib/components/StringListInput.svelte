@@ -48,7 +48,7 @@
 		</div>
 	{/each}
 
-	<Button variant="outline" size="sm" icon={icons.plus} onclick={add} class="w-fit">
+	<Button variant="secondary" size="sm" icon={icons.plus} onclick={add} class="w-fit">
 		{addLabel ?? t('list.add')}
 	</Button>
 </div>

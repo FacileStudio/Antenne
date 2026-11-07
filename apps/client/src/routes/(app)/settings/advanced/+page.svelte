@@ -99,7 +99,7 @@
 			label={t('advanced.export')}
 			description={t('advanced.exportText')}
 		>
-			<Button variant="outline" icon={icons.download} onclick={() => dashboard.exportConfig()}>
+			<Button variant="secondary" icon={icons.download} onclick={() => dashboard.exportConfig()}>
 				{t('advanced.exportButton')}
 			</Button>
 		</SettingsRow>

@@ -71,7 +71,7 @@
 
 				<div class="mt-auto flex items-center">
 					<Button
-						variant="outline"
+						variant="secondary"
 						size="sm"
 						icon={icons.edit}
 						onclick={(e) => {

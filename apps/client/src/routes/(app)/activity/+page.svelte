@@ -155,7 +155,7 @@
 				{stats?.lastEventAt ? formatDateTime(stats.lastEventAt) : t('activity.noEventsYet')}
 			</Badge>
 			<Button
-				variant="outline"
+				variant="secondary"
 				icon={icons.refresh}
 				onclick={() => fetchEvents()}
 				disabled={loading}
@@ -227,7 +227,7 @@
 
 		{#if hasMore}
 			<Button
-				variant="outline"
+				variant="secondary"
 				class="w-full"
 				disabled={loadingMore}
 				onclick={() => fetchEvents({ append: true })}
