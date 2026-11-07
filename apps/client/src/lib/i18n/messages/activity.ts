@@ -104,6 +104,12 @@ export const activity = {
 		'Todas las fuentes',
 		'Alle Quellen'
 	] as Row,
+	'activity.filterSource': [
+		'Filter by source',
+		'Filtrer par source',
+		'Filtrar por fuente',
+		'Nach Quelle filtern'
+	] as Row,
 	'source.webhook': [
 		'Webhook',
 		'Webhook',

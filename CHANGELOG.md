@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Libraries: porte v0.12.0 to v0.12.1 (GDPR erasure no longer fails on a schema without
+  `porte_magic_links`), `@facile/muse` v0.12.1 to v0.13.0 (borderless controls with the light
+  `fc-field` fill, `Select` as a custom combobox, badges that never wrap).
+- The activity source filter has an accessible name ("Filter by source"), because muse's
+  `Select` is now a button that a screen reader announces by its label.
+
 ## [1.2.0] - 2026-11-07
 
 ### Changed
