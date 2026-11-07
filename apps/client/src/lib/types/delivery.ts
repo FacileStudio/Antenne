@@ -1,3 +1,4 @@
+import { t } from '../i18n/index.svelte';
 export type DeliveryTargetType = 'matrix' | 'discord' | 'webhook' | 'smtp' | 'ntfy' | 'perception';
 
 export interface TargetBase {
@@ -107,9 +108,9 @@ export function isSilent(target: DeliveryTarget): boolean {
 }
 
 export function routingSummary(target: DeliveryTarget): string {
-	const providerCount = `${target.providerIds.length} ${target.providerIds.length === 1 ? 'provider' : 'providers'}`;
+	const providerCount = t('delivery.routingProviders', { count: target.providerIds.length });
 	if (target.providerTags.length === 0) return providerCount;
-	return `${providerCount} · ${target.providerTags.length} ${target.providerTags.length === 1 ? 'tag' : 'tags'}`;
+	return `${providerCount} · ${t('delivery.routingTags', { count: target.providerTags.length })}`;
 }
 
 function matrixDeviceId(): string {

@@ -1,3 +1,4 @@
+import { t } from '../i18n/index.svelte';
 export type WebhookProviderType =
 	| 'sonde'
 	| 'uptime-kuma'
@@ -101,6 +102,8 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 export function providerLabel(type: ProviderType): string {
+	if (type === 'website') return t('provider.typeWebsite');
+	if (type === 'generic') return t('provider.typeGeneric');
 	return PROVIDER_LABELS[type] ?? type;
 }
 

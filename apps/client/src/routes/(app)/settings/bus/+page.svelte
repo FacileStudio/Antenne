@@ -13,6 +13,7 @@
 	} from '@facile/muse';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { appIcon } from '$lib/icons';
 	import type { BusStats } from '$lib/types';
 	import { formatRelative } from '$lib/utils';
@@ -26,7 +27,7 @@
 	let lastSeen = $state<string | null>(null);
 
 	const secretSource = $derived(
-		dashboard.settings.bus.secret ? 'Set from the dashboard' : 'Falling back to ANTENNE_SECRET or "pool"'
+		dashboard.settings.bus.secret ? t('bus.secretDashboard') : t('bus.secretFallback')
 	);
 
 	/*
@@ -36,17 +37,16 @@
 	 */
 	const status = $derived.by(() => {
 		if (failures >= GIVE_UP) {
-			return { tone: 'danger', label: `Unreachable — gave up after ${failures} attempts`, pulse: false } as const;
+			return { tone: 'danger', label: t('bus.unreachable', { count: failures }), pulse: false } as const;
 		}
 		if (failures > 0) {
-			return { tone: 'warning', label: `Reconnecting — attempt ${failures} of ${GIVE_UP}`, pulse: true } as const;
+			return { tone: 'warning', label: t('bus.reconnecting', { count: failures, max: GIVE_UP }), pulse: true } as const;
 		}
-		if (!stats) return { tone: 'info', label: 'Connecting…', pulse: true } as const;
+		if (!stats) return { tone: 'info', label: t('bus.connecting'), pulse: true } as const;
 		if (stats.connections === 0) {
-			return { tone: 'neutral', label: 'Listening — no app connected', pulse: false } as const;
+			return { tone: 'neutral', label: t('bus.listening'), pulse: false } as const;
 		}
-		const plural = stats.connections === 1 ? '' : 's';
-		return { tone: 'success', label: `Connected — ${stats.connections} live socket${plural}`, pulse: false } as const;
+		return { tone: 'success', label: t('bus.connected', { count: stats.connections }), pulse: false } as const;
 	});
 
 	async function loadStats() {
@@ -59,7 +59,7 @@
 			// The panel is informational and polls on a ten-second timer; a failure belongs in
 			// the status line, never in a toast that reappears forever.
 			failures += 1;
-			lastError = error instanceof Error ? error.message : 'The stats endpoint did not answer.';
+			lastError = error instanceof Error ? error.message : t('bus.statsFailed');
 		}
 	}
 
@@ -80,11 +80,11 @@
 
 <div class="flex flex-col gap-10">
 	<SettingsSection
-		title="Registration"
-		description="The shared secret a pool client presents at /pool/register."
+		title={t('bus.registration')}
+		description={t('bus.registrationText')}
 	>
 		<SettingsRow
-			label="Registration secret"
+			label={t('bus.secret')}
 			description={secretSource}
 			for="bus-secret"
 			stacked
@@ -100,59 +100,59 @@
 		</SettingsRow>
 
 		<SettingsRow
-			label="Log pool events to Activity"
-			description="Connections, disconnections and relayed events appear in the activity feed."
+			label={t('bus.logEvents')}
+			description={t('bus.logEventsText')}
 		>
 			<!-- Switch only renders the label it is handed, so the accessible name has to come
 			     through aria-label; the visible one is the row's. -->
 			<Switch
-				aria-label="Log pool events to Activity"
+				aria-label={t('bus.logEvents')}
 				bind:checked={dashboard.settings.bus.logActivity}
 				onchange={() => dashboard.autoSave(0)}
 			/>
 		</SettingsRow>
 	</SettingsSection>
 
-	<SettingsSection title="Connection" description="What the pool reports right now.">
+	<SettingsSection title={t('bus.connection')} description={t('bus.connectionText')}>
 		{#snippet actions()}
-			<Button variant="outline" size="sm" icon={icons.refresh} onclick={retry}>Refresh</Button>
+			<Button variant="outline" size="sm" icon={icons.refresh} onclick={retry}>{t('activity.refresh')}</Button>
 		{/snippet}
 
-		<SettingsRow label="State">
+		<SettingsRow label={t('bus.state')}>
 			<StatusDot tone={status.tone} label={status.label} pulse={status.pulse} />
 		</SettingsRow>
 
-		<SettingsRow label="Epoch" description="Restarts mint a new one; clients resync when it changes.">
+		<SettingsRow label={t('bus.epoch')} description={t('bus.epochText')}>
 			<span class="truncate font-fc-mono text-fc-sm text-fc-fg" title={stats?.epoch}>
 				{stats ? stats.epoch : '—'}
 			</span>
 		</SettingsRow>
 
-		<SettingsRow label="Live connections">
+		<SettingsRow label={t('bus.liveConnections')}>
 			<span class="text-fc-sm font-medium text-fc-fg tabular-nums">{stats?.connections ?? '—'}</span>
 		</SettingsRow>
 
-		<SettingsRow label="Last successful poll">
+		<SettingsRow label={t('bus.lastPoll')}>
 			<span class="text-fc-sm text-fc-fg">{lastSeen ? formatRelative(lastSeen) : '—'}</span>
 		</SettingsRow>
 
 		{#if lastError}
-			<SettingsRow label="Last error">
+			<SettingsRow label={t('bus.lastError')}>
 				<span class="font-fc-mono text-fc-sm text-fc-danger">{lastError}</span>
 			</SettingsRow>
 		{/if}
 	</SettingsSection>
 
 	<SettingsSection
-		title="Connected apps"
-		description="Suite apps holding a socket, with the channels each subscribes to. An app that only produces events shows as emits only."
+		title={t('bus.apps')}
+		description={t('bus.appsText')}
 		bare={!stats || stats.apps.length === 0}
 	>
 		{#if !stats || stats.apps.length === 0}
 			<EmptyState
 				icon={icons.plug}
-				title="No app is connected"
-				description="An app appears here once it registers with the secret above and opens /pool/ws."
+				title={t('bus.noApp')}
+				description={t('bus.noAppText')}
 			/>
 		{:else}
 			{#each stats.apps as app (app.app_id)}
@@ -178,9 +178,9 @@
 								<Badge class="font-fc-mono">{channel}</Badge>
 							{/each}
 							{#if app.channels.length === 0 && app.emits.length > 0}
-								<span class="text-fc-xs text-fc-fg-muted">emits only</span>
+								<span class="text-fc-xs text-fc-fg-muted">{t('bus.emitsOnly')}</span>
 							{:else if app.channels.length === 0}
-								<span class="text-fc-xs text-fc-fg-muted">No channel</span>
+								<span class="text-fc-xs text-fc-fg-muted">{t('bus.noChannel')}</span>
 							{/if}
 						</div>
 					</div>

@@ -150,11 +150,6 @@ export const api = {
 	 */
 	authConfig: () => request<AuthConfigPayload>('/auth/config'),
 
-	login: (email: string, password: string) =>
-		request<{ token?: string }>('/auth/login', {
-			method: 'POST',
-			body: JSON.stringify({ email, password })
-		}),
 	logout: () => request<{ logged_out: boolean }>('/auth/logout', { method: 'POST', body: '{}' }),
 
 	settings: () => request<SettingsPayload>('/settings'),

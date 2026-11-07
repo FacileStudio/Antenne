@@ -8,6 +8,7 @@
 		icons
 	} from '@facile/muse';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { formatDateTime } from '$lib/utils';
 
 	let importInput = $state<HTMLInputElement | null>(null);
@@ -38,10 +39,10 @@
 </script>
 
 <div class="flex flex-col gap-10">
-	<SettingsSection title="Runtime tuning" description="Applied automatically on runtime reload.">
+	<SettingsSection title={t('advanced.tuning')} description={t('advanced.tuningText')}>
 		<SettingsRow
-			label="Request timeout"
-			description="Seconds a website check waits before it counts as down."
+			label={t('advanced.timeout')}
+			description={t('advanced.timeoutText')}
 			for="timeout"
 			stacked
 		>
@@ -56,8 +57,8 @@
 		</SettingsRow>
 
 		<SettingsRow
-			label="Listener port"
-			description="Takes effect on the next restart. Every published webhook URL and every pool client points at it, so the deployment has to agree."
+			label={t('advanced.port')}
+			description={t('advanced.portText')}
 			for="listener-port"
 			stacked
 		>
@@ -72,33 +73,33 @@
 		</SettingsRow>
 	</SettingsSection>
 
-	<SettingsSection title="Runtime" description="What this process is actually doing.">
-		<SettingsRow label="Listening on">
+	<SettingsSection title={t('advanced.runtime')} description={t('advanced.runtimeText')}>
+		<SettingsRow label={t('advanced.listening')}>
 			<span class="font-fc-mono text-fc-sm text-fc-fg">{runtime?.serverPort ?? '—'}</span>
 		</SettingsRow>
-		<SettingsRow label="Settings store">
+		<SettingsRow label={t('advanced.store')}>
 			<span class="truncate font-fc-mono text-fc-sm text-fc-fg">{runtime?.settingsPath ?? '—'}</span>
 		</SettingsRow>
-		<SettingsRow label="Source">
+		<SettingsRow label={t('advanced.source')}>
 			<span class="text-fc-sm text-fc-fg">
-				{runtime?.usingPersistedSettings ? 'Saved from the dashboard' : 'Defaults'}
+				{runtime?.usingPersistedSettings ? t('advanced.sourceSaved') : t('advanced.sourceDefaults')}
 			</span>
 		</SettingsRow>
-		<SettingsRow label="Last reload">
+		<SettingsRow label={t('advanced.lastReload')}>
 			<span class="text-fc-sm text-fc-fg">{formatDateTime(runtime?.lastReloadedAt)}</span>
 		</SettingsRow>
 	</SettingsSection>
 
 	<SettingsSection
-		title="Configuration"
-		description="The whole settings document as one JSON file."
+		title={t('advanced.configuration')}
+		description={t('advanced.configurationText')}
 	>
 		<SettingsRow
-			label="Export"
-			description="Secrets come out redacted, so the file is safe to keep and to commit."
+			label={t('advanced.export')}
+			description={t('advanced.exportText')}
 		>
 			<Button variant="outline" icon={icons.download} onclick={() => dashboard.exportConfig()}>
-				Export config
+				{t('advanced.exportButton')}
 			</Button>
 		</SettingsRow>
 	</SettingsSection>
@@ -107,12 +108,12 @@
 	     beside Export because it is not the inverse of a download — it replaces the live
 	     document and saves it on the spot. -->
 	<SettingsSection
-		title="Danger zone"
-		description="Irreversible from the dashboard. Keep an export first."
+		title={t('advanced.danger')}
+		description={t('advanced.dangerText')}
 	>
 		<SettingsRow
-			label="Import a configuration"
-			description="Replaces every provider, delivery target and system setting, then saves immediately."
+			label={t('advanced.import')}
+			description={t('advanced.importText')}
 			for="import-config"
 			stacked
 		>
@@ -137,7 +138,7 @@
 					disabled={dashboard.saving}
 					onclick={() => importInput?.click()}
 				>
-					Choose a file…
+					{t('advanced.chooseFile')}
 				</Button>
 			</div>
 		</SettingsRow>
@@ -147,9 +148,9 @@
 <ConfirmModal
 	bind:open={confirmingImport}
 	tone="danger"
-	title="Replace this instance's configuration?"
-	description={`Importing ${pendingImport?.name ?? 'this file'} overwrites every provider, every delivery target and every system setting, and saves them straight away. Providers that are not in the file stop polling and their webhook paths start answering 404; delivery targets that are not in the file stop receiving alerts. Redacted secrets in the file are restored from what is stored, so a target the file does not name loses its credentials with it.`}
-	confirmLabel="Replace configuration"
+	title={t('advanced.importTitle')}
+	description={t('advanced.importWarning', { name: pendingImport?.name ?? t('advanced.thisFile') })}
+	confirmLabel={t('advanced.replace')}
 	onConfirm={applyImport}
 	onCancel={clearImport}
 />

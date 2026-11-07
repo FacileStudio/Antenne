@@ -2,6 +2,7 @@
 	import { Badge, Button, Card, cn, icons } from '@facile/muse';
 	import ProviderEnableSwitch from './ProviderEnableSwitch.svelte';
 	import TagPill from './TagPill.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { providerIcon } from '$lib/icons';
 	import { providerLabel, type Provider } from '$lib/types';
 
@@ -45,18 +46,18 @@
 				</div>
 
 				<div class="flex items-center gap-1">
-					<Button variant="ghost" icon={icons.edit} onclick={() => onOpen(index)}>Edit</Button>
+					<Button variant="ghost" icon={icons.edit} onclick={() => onOpen(index)}>{t('common.edit')}</Button>
 					<Button
 						variant="ghost"
 						icon={icons.dashboard}
 						href={`/providers/${provider.id}`}
-						aria-label={`Activity for ${provider.name}`}
+						aria-label={t('common.activityFor', { name: provider.name })}
 					/>
 					<Button
 						variant="ghost-danger"
 						icon={icons.remove}
 						onclick={() => onRemove(index)}
-						aria-label={`Delete ${provider.name}`}
+						aria-label={t('common.deleteName', { name: provider.name })}
 					/>
 				</div>
 			</li>

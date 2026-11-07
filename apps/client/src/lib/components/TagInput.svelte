@@ -1,18 +1,21 @@
 <script lang="ts">
 	import { Input, icons } from '@facile/muse';
 	import TagPill from './TagPill.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 
 	let {
 		value = $bindable<string[]>([]),
 		suggestions = [],
 		tones = undefined,
-		placeholder = 'Type a tag and press Enter'
+		placeholder = undefined
 	}: {
 		value?: string[];
 		suggestions?: string[];
 		tones?: Record<string, number>;
 		placeholder?: string;
 	} = $props();
+
+	const hint = $derived(placeholder ?? t('tags.placeholder'));
 
 	let draft = $state('');
 
@@ -58,7 +61,7 @@
 						type="button"
 						class="rounded-fc-pill p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
 						onclick={() => remove(tag)}
-						aria-label={`Remove the ${tag} tag`}
+						aria-label={t('tags.remove', { tag })}
 					>
 						<iconify-icon icon={icons.close} width="12" height="12" class="block"></iconify-icon>
 					</button>
@@ -67,7 +70,7 @@
 		</div>
 	{/if}
 
-	<Input bind:value={draft} {placeholder} onkeydown={onKeydown} onblur={() => add(draft)} />
+	<Input bind:value={draft} placeholder={hint} onkeydown={onKeydown} onblur={() => add(draft)} />
 
 	{#if unused.length > 0}
 		<div class="flex flex-wrap gap-2">

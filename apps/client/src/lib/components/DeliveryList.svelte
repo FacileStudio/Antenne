@@ -16,6 +16,7 @@
 	import ViewToggle from './ViewToggle.svelte';
 	import { ApiError, api, isRateLimited } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { tagToneMap } from '$lib/tags';
 	import {
 		createTarget,
@@ -103,8 +104,10 @@
 			// A refusal from the far side arrived as a 200: the check worked. Its
 			// own words go through untouched, because a paraphrase is the thing an
 			// operator cannot search for.
-			if (result.ok) toast.success(`${target.name} answered.`);
-			else toast.danger(`${target.name} declined: ${result.detail || 'no reason given'}`);
+			if (result.ok) toast.success(t('delivery.answered', { name: target.name }));
+			else toast.danger(
+					t('delivery.declined', { name: target.name, detail: result.detail || t('delivery.noReason') })
+				);
 		} catch (error) {
 			if (isRateLimited(error)) {
 				const wait =
@@ -112,10 +115,10 @@
 				cooldownUntil = Date.now() + wait * 1000;
 				clock = Date.now();
 				toast.warning(
-					`Too many checks — Antenne's own limit, not a refusal from ${target.name}. Retry in ${wait}s.`
+					t('delivery.tooMany', { name: target.name, seconds: wait })
 				);
 			} else {
-				toast.danger(error instanceof Error ? error.message : 'The check could not run');
+				toast.danger(error instanceof Error ? error.message : t('delivery.checkFailed'));
 			}
 		} finally {
 			checkingId = null;
@@ -172,7 +175,7 @@
 	{/if}
 
 	<div class="flex flex-wrap items-end gap-4">
-		<Field label="New target type" class="w-full sm:w-56">
+		<Field label={t('delivery.newType')} class="w-full sm:w-56">
 			<Select bind:value={nextType as string}>
 				{#each deliveryTargetTypes as type (type)}
 					<option value={type}>{targetLabel(type)}</option>
@@ -180,7 +183,7 @@
 			</Select>
 		</Field>
 
-		<Button size="lg" icon={icons.plus} onclick={add}>Add target</Button>
+		<Button size="lg" icon={icons.plus} onclick={add}>{t('delivery.add')}</Button>
 
 		{#if targets.length > 0}
 			<div class="ml-auto">
@@ -192,10 +195,10 @@
 	{#if targets.length === 0}
 		<EmptyState
 			icon={icons.mail}
-			title="No delivery target yet"
-			description="Antenne is watching, but nothing it sees leaves the box until a target exists."
+			title={t('delivery.emptyTitle')}
+			description={t('delivery.emptyText')}
 		>
-			<Button icon={icons.plus} onclick={add}>Add target</Button>
+			<Button icon={icons.plus} onclick={add}>{t('delivery.add')}</Button>
 		</EmptyState>
 	{:else if view === 'card'}
 		<DeliveryTargetCards
@@ -235,11 +238,11 @@
 <ConfirmModal
 	bind:open={confirmOpen}
 	tone="danger"
-	title="Delete this delivery target?"
+	title={t('delivery.deleteTitle')}
 	description={pendingRemoval
-		? `${pendingRemoval.name} stops receiving events the moment this is saved, and any provider routed only here goes nowhere. Deleting cannot be undone.`
+		? t('delivery.deleteText', { name: pendingRemoval.name })
 		: undefined}
-	confirmLabel="Delete"
+	confirmLabel={t('common.delete')}
 	onConfirm={confirmRemove}
 	onCancel={() => (pendingRemoval = null)}
 />

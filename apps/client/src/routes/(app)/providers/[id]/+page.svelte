@@ -7,6 +7,7 @@
 	import TagPill from '$lib/components/TagPill.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { providerIcon } from '$lib/icons';
 	import { tagToneMap } from '$lib/tags';
 	import { hydrateProvider, providerLabel, type EventEntry, type EventStats, type Provider } from '$lib/types';
@@ -32,7 +33,7 @@
 			events = payload.events;
 			stats = payload.stats;
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'Failed to load the event log');
+			toast.danger(error instanceof Error ? error.message : t('providers.loadFailed'));
 		} finally {
 			loading = false;
 		}
@@ -59,7 +60,7 @@
 			await dashboard.save();
 			closeEdit();
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'Failed to save changes');
+			toast.danger(error instanceof Error ? error.message : t('providers.saveFailed'));
 		}
 	}
 
@@ -97,25 +98,25 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<Button variant="ghost" size="sm" icon={icons.chevronLeft} href="/providers" class="-ml-3.5 w-fit">
-				Back to providers
+				{t('providers.back')}
 			</Button>
 			{#if provider}
 				<div class="flex items-center gap-3">
 					<Switch
-						label="Enabled"
+						label={t('common.enabled')}
 						bind:checked={() => provider.enabled, (enabled) => toggleEnabled(enabled)}
 					/>
 					<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
-						Edit provider
+						{t('providers.editProvider')}
 					</Button>
 					<Button
 						variant="ghost-danger"
 						size="sm"
 						icon={icons.remove}
 						onclick={askDelete}
-						aria-label={`Delete ${provider.name}`}
+						aria-label={t('common.deleteName', { name: provider.name })}
 					>
-						Delete
+						{t('common.delete')}
 					</Button>
 				</div>
 			{/if}
@@ -140,23 +141,23 @@
 
 	{#if provider}
 		<div class="grid gap-4 sm:grid-cols-3">
-			<StatCard label="Events" value={stats?.totalEvents ?? 0} />
-			<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0} />
-			<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0} />
+			<StatCard label={t('providers.events')} value={stats?.totalEvents ?? 0} />
+			<StatCard label={t('providers.delivered')} value={stats?.deliverySuccessCount ?? 0} />
+			<StatCard label={t('providers.failed')} value={stats?.deliveryErrorCount ?? 0} />
 		</div>
 
 		<div class="flex flex-col gap-4">
 			<div class="flex items-start justify-between gap-4">
 				<div class="flex flex-col gap-1">
-					<h2 class="text-fc-lg font-semibold text-fc-fg">Event log</h2>
-					<p class="text-fc-sm text-fc-fg-muted">The last 100 events this provider produced.</p>
+					<h2 class="text-fc-lg font-semibold text-fc-fg">{t('providers.eventLog')}</h2>
+					<p class="text-fc-sm text-fc-fg-muted">{t('providers.eventLogText')}</p>
 				</div>
 				<Button
 					variant="ghost"
 					icon={icons.refresh}
 					onclick={refresh}
 					disabled={loading}
-					aria-label="Refresh the event log"
+					aria-label={t('providers.refresh')}
 				/>
 			</div>
 
@@ -171,10 +172,10 @@
 	{:else}
 		<EmptyState
 			icon={icons.warning}
-			title="This provider no longer exists"
-			description="It was deleted, or the link points at an id this Antenne has never known."
+			title={t('providers.goneTitle')}
+			description={t('providers.goneText')}
 		>
-			<Button href="/providers">Back to providers</Button>
+			<Button href="/providers">{t('providers.back')}</Button>
 		</EmptyState>
 	{/if}
 </div>
@@ -182,7 +183,7 @@
 <Drawer
 	bind:open={drawerOpen}
 	showClose
-	title={editing ? `Edit ${editing.name}` : 'Edit provider'}
+	title={editing ? t('providers.editTitle', { name: editing.name }) : t('providers.editFallback')}
 	description={editing ? providerLabel(editing.type) : undefined}
 >
 	{#if editing}
@@ -191,7 +192,7 @@
 
 	{#snippet footer()}
 		<Button icon={icons.check} onclick={saveEdit} disabled={dashboard.saving}>
-			{dashboard.saving ? 'Saving…' : 'Save'}
+			{dashboard.saving ? t('common.saving') : t('common.save')}
 		</Button>
 	{/snippet}
 </Drawer>
@@ -199,11 +200,11 @@
 <ConfirmModal
 	bind:open={confirmOpen}
 	tone="danger"
-	title="Delete this provider?"
+	title={t('providers.deleteTitle')}
 	description={provider
-		? `${provider.name} stops being watched and every delivery target routing on it — by id or by tag — loses that source. Events already in the log are kept.`
+		? t('providers.deleteText', { name: provider.name })
 		: ''}
-	confirmLabel="Delete"
+	confirmLabel={t('common.delete')}
 	onConfirm={removeProvider}
 	onCancel={() => (confirmOpen = false)}
 />

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button, Card, Switch, cn, icons } from '@facile/muse';
 	import TagPill from './TagPill.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { providerIcon } from '$lib/icons';
 	import { providerLabel, type Provider } from '$lib/types';
 
@@ -33,7 +34,7 @@
 					></iconify-icon>
 				</span>
 				<Switch
-					label="Enabled"
+					label={t('common.enabled')}
 					bind:checked={() => provider.enabled, (enabled) => onToggle(index, enabled)}
 				/>
 			</div>
@@ -62,7 +63,7 @@
 						onOpen(index);
 					}}
 				>
-					Edit
+					{t('common.edit')}
 				</Button>
 			</div>
 		</Card>

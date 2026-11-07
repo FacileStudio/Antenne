@@ -1,6 +1,7 @@
 export interface SessionPayload {
 	authenticated: boolean;
 	passwordRequired: boolean;
+	locale?: string;
 	username: string;
 	email: string;
 	name?: string;

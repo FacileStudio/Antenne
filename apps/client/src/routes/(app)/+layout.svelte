@@ -12,6 +12,7 @@
 		icons
 	} from '@facile/muse';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { spaces } from '$lib/spaces.svelte';
 	import { ANTENNE_ICON, ANTENNE_MARK } from '$lib/components/AntenneLogo.svelte';
 
@@ -36,12 +37,12 @@
 	 * No Settings row: settings is reached from the user card at the bottom of the rail and
 	 * from the avatar in MobileNav. See CHARTE §14.
 	 */
-	const links = [
-		{ href: '/providers', label: 'Providers', icon: icons.plug },
-		{ href: '/delivery', label: 'Delivery', icon: icons.mail, match: ['/delivery', '/targets'] },
-		{ href: '/activity', label: 'Activity', icon: icons.dashboard },
-		{ href: '/spaces', label: 'Spaces', icon: icons.space }
-	];
+	const links = $derived([
+		{ href: '/providers', label: t('nav.providers'), icon: icons.plug },
+		{ href: '/delivery', label: t('nav.delivery'), icon: icons.mail, match: ['/delivery', '/targets'] },
+		{ href: '/activity', label: t('nav.activity'), icon: icons.dashboard },
+		{ href: '/spaces', label: t('nav.spaces'), icon: icons.space }
+	]);
 
 	function isActive(href: string, match?: string[]): boolean {
 		return (match ?? [href]).some(
@@ -67,7 +68,7 @@
 	const routeKey = $derived(onSettings ? '/settings' : page.url.pathname);
 
 	const user = $derived({
-		name: dashboard.name?.trim() || dashboard.username?.trim() || dashboard.email || 'User',
+		name: dashboard.name?.trim() || dashboard.username?.trim() || dashboard.email || t('common.user'),
 		avatar: dashboard.avatarUrl || undefined
 	});
 	const switcherSpaces = $derived(spaces.spaces.map((space) => ({ id: space.id, name: space.name })));

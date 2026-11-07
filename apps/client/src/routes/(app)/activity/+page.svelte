@@ -16,6 +16,8 @@
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
+	import { formatNumber } from '$lib/i18n/format';
+	import { t } from '$lib/i18n/index.svelte';
 	import { hourlyBuckets } from '$lib/activity';
 	import type { EventEntry, EventStats } from '$lib/types';
 	import { formatDateTime } from '$lib/utils';
@@ -57,15 +59,15 @@
 	);
 	const recentTrend = $derived(buckets.slice(-6).map((bucket) => bucket.total));
 
-	const sourceOptions = [
-		{ value: '', label: 'All sources' },
-		{ value: 'webhook', label: 'Webhook' },
-		{ value: 'website', label: 'Website' },
-		{ value: 'imap', label: 'Inbox' },
-		{ value: 'rss', label: 'RSS' },
-		{ value: 'system', label: 'System' },
-		{ value: 'test', label: 'Test' }
-	];
+	const sourceOptions = $derived([
+		{ value: '', label: t('activity.allSources') },
+		{ value: 'webhook', label: t('source.webhook') },
+		{ value: 'website', label: t('source.website') },
+		{ value: 'imap', label: t('source.imap') },
+		{ value: 'rss', label: t('source.rss') },
+		{ value: 'system', label: t('source.system') },
+		{ value: 'test', label: t('source.test') }
+	]);
 
 	async function fetchEvents({ append = false } = {}) {
 		if (append) loadingMore = true;
@@ -84,7 +86,7 @@
 			total = payload.total;
 			stats = payload.stats;
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'Failed to load the activity log');
+			toast.danger(error instanceof Error ? error.message : t('activity.loadFailed'));
 		} finally {
 			loading = false;
 			loadingMore = false;
@@ -100,15 +102,15 @@
 		const targets = dashboard.settings.delivery.items;
 		const target = targets.find((candidate) => candidate.enabled) ?? targets[0];
 		if (!target) {
-			toast.danger('No delivery target configured.');
+			toast.danger(t('activity.noTarget'));
 			return;
 		}
 
 		try {
 			await api.replay(eventId, target.id);
-			toast.success(`Replayed to ${target.name}.`);
+			toast.success(t('activity.replayed', { name: target.name }));
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'The replay failed');
+			toast.danger(error instanceof Error ? error.message : t('activity.replayFailed'));
 		}
 	}
 
@@ -141,16 +143,16 @@
 <div class="flex flex-col gap-10">
 	<div class="flex flex-wrap items-start justify-between gap-4">
 		<div class="flex flex-col gap-2">
-			<h1 class="text-fc-2xl font-semibold text-fc-fg">Activity</h1>
+			<h1 class="text-fc-2xl font-semibold text-fc-fg">{t('activity.title')}</h1>
 			<p class="text-fc-sm text-fc-fg-muted">
-				Every alert Antenne received, and how each delivery went.
+				{t('activity.subtitle')}
 			</p>
 		</div>
 
 		<div class="flex flex-wrap items-center gap-2">
 			<Badge>
 				<iconify-icon icon={icons.clock} width="13" height="13" class="block"></iconify-icon>
-				{stats?.lastEventAt ? formatDateTime(stats.lastEventAt) : 'No events yet'}
+				{stats?.lastEventAt ? formatDateTime(stats.lastEventAt) : t('activity.noEventsYet')}
 			</Badge>
 			<Button
 				variant="outline"
@@ -158,26 +160,26 @@
 				onclick={() => fetchEvents()}
 				disabled={loading}
 			>
-				{loading ? 'Refreshing…' : 'Refresh'}
+				{loading ? t('activity.refreshing') : t('activity.refresh')}
 			</Button>
 		</div>
 	</div>
 
 	<section class="flex flex-col gap-4">
 		<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-			<StatCard label="Tracked" value={stats?.totalEvents ?? events.length}>
+			<StatCard label={t('activity.tracked')} value={stats?.totalEvents ?? events.length}>
 				<Sparkline data={trackedTrend} color={chartColor(0)} class="mt-2" />
 			</StatCard>
-			<StatCard label="Delivered" value={stats?.deliverySuccessCount ?? 0}>
+			<StatCard label={t('providers.delivered')} value={stats?.deliverySuccessCount ?? 0}>
 				<Sparkline data={deliveredTrend} color={chartColor(2)} class="mt-2" />
 			</StatCard>
-			<StatCard label="Failed" value={stats?.deliveryErrorCount ?? 0}>
+			<StatCard label={t('providers.failed')} value={stats?.deliveryErrorCount ?? 0}>
 				<Sparkline data={failedTrend} color={chartColor(1)} class="mt-2" />
 			</StatCard>
-			<StatCard label="Hit rate" value={`${successRate}%`}>
+			<StatCard label={t('activity.hitRate')} value={formatNumber(successRate / 100, { style: 'percent' })}>
 				<Sparkline data={hitRateTrend} color={chartColor(2)} class="mt-2" />
 			</StatCard>
-			<StatCard label="Recent (6h)" value={recentCount}>
+			<StatCard label={t('activity.recent')} value={recentCount}>
 				<Sparkline data={recentTrend} color={chartColor(0)} class="mt-2" />
 			</StatCard>
 		</div>
@@ -187,14 +189,14 @@
 
 	<section class="flex flex-col gap-4">
 		<div class="flex flex-col gap-2">
-			<h2 class="text-fc-lg font-semibold text-fc-fg">Activity stream</h2>
-			<p class="text-fc-sm text-fc-fg-muted">Live — new events arrive without a refresh.</p>
+			<h2 class="text-fc-lg font-semibold text-fc-fg">{t('activity.stream')}</h2>
+			<p class="text-fc-sm text-fc-fg-muted">{t('activity.live')}</p>
 		</div>
 
 		<div class="flex flex-wrap gap-4">
 			<Input
 				bind:value={search}
-				placeholder="Search events…"
+				placeholder={t('activity.search')}
 				oninput={onSearchInput}
 				class="min-w-56 flex-1"
 			/>
@@ -229,7 +231,7 @@
 				disabled={loadingMore}
 				onclick={() => fetchEvents({ append: true })}
 			>
-				{loadingMore ? 'Loading…' : 'Load more'}
+				{loadingMore ? t('common.loading') : t('activity.loadMore')}
 			</Button>
 		{/if}
 	</section>

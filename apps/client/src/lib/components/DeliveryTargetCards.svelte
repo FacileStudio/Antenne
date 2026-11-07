@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Badge, Button, Card, Switch, cn, icons } from '@facile/muse';
 	import TargetHealthRow from './TargetHealthRow.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { deliveryIcon } from '$lib/icons';
 	import {
 		isSilent,
@@ -45,7 +46,7 @@
 						></iconify-icon>
 					</span>
 					<Switch
-						label="Enabled"
+						label={t('common.enabled')}
 						bind:checked={() => target.enabled, (enabled) => onToggle(index, enabled)}
 					/>
 				</div>
@@ -56,9 +57,7 @@
 				</div>
 
 				{#if isSilent(target)}
-					<Badge tone="warning" title="Attach a provider or a tag, or this target receives nothing."
-						>No source attached</Badge
-					>
+					<Badge tone="warning" title={t('delivery.silentHelp')}>{t('delivery.silent')}</Badge>
 				{:else}
 					<span class="text-fc-xs text-fc-fg-muted">{routingSummary(target)}</span>
 				{/if}
@@ -81,7 +80,7 @@
 							onOpen(index);
 						}}
 					>
-						Edit
+						{t('common.edit')}
 					</Button>
 				</div>
 			</Card>

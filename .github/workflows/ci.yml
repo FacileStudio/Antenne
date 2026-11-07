@@ -52,8 +52,11 @@ jobs:
       - name: go vet
         run: go vet ./...
 
+      - name: build
+        run: go build ./...
+
       - name: tests
-        run: go test -race -count=1 ./...
+        run: go test -race -count=1 -timeout 10m ./...
 
   client:
     runs-on: ubuntu-latest
@@ -69,6 +72,9 @@ jobs:
 
       - name: svelte-check
         run: bun run check
+
+      - name: build
+        run: bun run build
 
   filet:
     runs-on: ubuntu-latest

@@ -2,6 +2,7 @@
 	import { Button, Drawer, icons, toast } from '@facile/muse';
 	import DeliveryEditorFields from './DeliveryEditorFields.svelte';
 	import { api } from '$lib/backend';
+	import { t } from '$lib/i18n/index.svelte';
 	import { targetLabel, type DeliveryTarget, type Provider } from '$lib/types';
 
 	let {
@@ -29,9 +30,9 @@
 		testing = true;
 		try {
 			await api.testTarget(target.id);
-			toast.success(`Test delivered to ${target.name}.`);
+			toast.success(t('delivery.testDelivered', { name: target.name }));
 		} catch (error) {
-			toast.danger(error instanceof Error ? error.message : 'The test delivery failed');
+			toast.danger(error instanceof Error ? error.message : t('delivery.testFailed'));
 		} finally {
 			testing = false;
 		}
@@ -43,7 +44,7 @@
 <Drawer
 	bind:open
 	showClose
-	title={target ? `Edit ${target.name}` : 'Edit target'}
+	title={target ? t('delivery.editTitle', { name: target.name }) : t('delivery.editFallback')}
 	description={target ? targetLabel(target.type) : undefined}
 >
 	{#if target}
@@ -53,10 +54,10 @@
 	{#snippet footer()}
 		<div class="flex flex-wrap justify-end gap-2">
 			<Button variant="outline" icon="solar:plain-linear" onclick={sendTest} disabled={testing}>
-				{testing ? 'Sending…' : 'Send a test'}
+				{testing ? t('delivery.sending') : t('delivery.sendTest')}
 			</Button>
 			<Button icon={icons.check} onclick={onSave} disabled={saving}>
-				{saving ? 'Saving…' : 'Save'}
+				{saving ? t('common.saving') : t('common.save')}
 			</Button>
 		</div>
 	{/snippet}
