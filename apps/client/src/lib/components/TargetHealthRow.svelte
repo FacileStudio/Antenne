@@ -109,7 +109,7 @@
 		{/if}
 
 		<Button
-			variant="outline"
+			variant="secondary"
 			size="sm"
 			icon={icons.refresh}
 			onclick={onCheck}

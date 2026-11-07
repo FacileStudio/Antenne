@@ -105,7 +105,7 @@
 						label={t('common.enabled')}
 						bind:checked={() => target.enabled, (enabled) => toggleEnabled(enabled)}
 					/>
-					<Button variant="outline" size="sm" icon={icons.edit} onclick={openEdit}>
+					<Button variant="secondary" size="sm" icon={icons.edit} onclick={openEdit}>
 						{t('targets.editTarget')}
 					</Button>
 					<Button

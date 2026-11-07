@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- build(client): bump muse to v0.16.1 and replace the deprecated `outline` button variant with `secondary`.
+- build: `GET /version` is baked at build time from the top released heading of `CHANGELOG.md` by `scripts/version.sh`. The `APP_VERSION` build arg is gone from the Dockerfile and compose file, so a stale Dokploy env can no longer show the wrong version. The response is unchanged.
+
 ## [1.3.2] - 2026-11-07
 
 ### Changed

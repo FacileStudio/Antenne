@@ -11,17 +11,17 @@ FROM golang:1.26-alpine AS api-build
 
 ARG TARGETOS=linux
 ARG TARGETARCH
-ARG APP_VERSION=dev
-
 WORKDIR /repo/apps/api
 
 COPY apps/api/go.mod apps/api/go.sum ./
 RUN go mod download
 
 COPY apps/api/ .
+COPY CHANGELOG.md /version/CHANGELOG.md
+COPY scripts/version.sh /version/version.sh
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH:-amd64} \
-    go build -trimpath -ldflags="-s -w -X main.version=${APP_VERSION}" -o /out/antenne .
+    go build -trimpath -ldflags="-s -w -X main.version=$(sh /version/version.sh /version/CHANGELOG.md)" -o /out/antenne .
 
 # :nonroot, because the binary writes nothing to disk — every byte of state is in
 # Postgres. The root variant was only needed while a legacy settings file had to

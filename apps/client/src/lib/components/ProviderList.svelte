@@ -167,7 +167,7 @@
 			title={t('providers.noMatchTitle')}
 			description={t('providers.noMatchText')}
 		>
-			<Button variant="outline" onclick={() => (selectedTags = [])}>{t('providers.clearFilter')}</Button>
+			<Button variant="secondary" onclick={() => (selectedTags = [])}>{t('providers.clearFilter')}</Button>
 		</EmptyState>
 	{:else if view === 'card'}
 		<ProviderCards
@@ -200,7 +200,7 @@
 
 	{#snippet footer()}
 		{#if editing?.type === 'imap'}
-			<Button variant="outline" icon={icons.plug} onclick={testConnection} disabled={testing}>
+			<Button variant="secondary" icon={icons.plug} onclick={testConnection} disabled={testing}>
 				{testing ? t('common.testing') : t('providers.testConnection')}
 			</Button>
 		{/if}

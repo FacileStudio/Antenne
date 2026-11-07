@@ -53,7 +53,7 @@
 
 	{#snippet footer()}
 		<div class="flex flex-wrap justify-end gap-2">
-			<Button variant="outline" icon="solar:plain-linear" onclick={sendTest} disabled={testing}>
+			<Button variant="secondary" icon="solar:plain-linear" onclick={sendTest} disabled={testing}>
 				{testing ? t('delivery.sending') : t('delivery.sendTest')}
 			</Button>
 			<Button icon={icons.check} onclick={onSave} disabled={saving}>

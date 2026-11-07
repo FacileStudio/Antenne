@@ -11,7 +11,7 @@
 
 {#snippet manage()}
 	{#if spaces.manageUrl}
-		<Button href={spaces.manageUrl} icon={icons.space} iconRight={icons.arrow} variant="outline">
+		<Button href={spaces.manageUrl} icon={icons.space} iconRight={icons.arrow} variant="secondary">
 			{t('spaces.manage')}
 		</Button>
 	{/if}
