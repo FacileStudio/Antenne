@@ -1,6 +1,7 @@
 package bus
 
 import (
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -264,5 +265,53 @@ func TestOnEventHandlerInvoked(t *testing.T) {
 	}
 	if p := <-receivedPayload; p != `{"status":"down"}` {
 		t.Errorf("unexpected payload: %s", p)
+	}
+}
+
+func TestServerPublishDeliversToSubscribers(t *testing.T) {
+	server := &Server{
+		queue:       NewQueue(nil, discardLogger()),
+		log:         discardLogger(),
+		connections: map[string]*connection{},
+		subscribers: map[string]map[string]bool{},
+	}
+
+	ready := make(chan struct{})
+	client := serve(t, func(socket *websocket.Conn) {
+		conn := &connection{
+			app:      RegisteredApp{AppID: "opus-1", App: "opus"},
+			socket:   socket,
+			channels: map[string]bool{},
+			closed:   make(chan struct{}),
+		}
+		server.attach(conn)
+		server.subscribe(conn, "git.pull_request")
+		defer server.detach(conn)
+		close(ready)
+		<-conn.closed
+	})
+	defer client.Close()
+
+	<-ready
+
+	_, err := server.Publish("antenne", "git.pull_request", []byte(`{"action":"opened"}`))
+	if err != nil {
+		t.Fatalf("server.Publish failed: %v", err)
+	}
+
+	client.SetReadDeadline(time.Now().Add(2 * time.Second))
+	var frame struct {
+		Type    string          `json:"type"`
+		Channel string          `json:"channel"`
+		Payload json.RawMessage `json:"payload"`
+	}
+	if err := client.ReadJSON(&frame); err != nil {
+		t.Fatalf("failed to read JSON frame: %v", err)
+	}
+	if frame.Channel != "git.pull_request" {
+		t.Errorf("expected channel git.pull_request, got %s", frame.Channel)
+	}
+	if string(frame.Payload) != `{"action":"opened"}` {
+		t.Errorf("unexpected payload: %s", string(frame.Payload))
 	}
 }

@@ -118,7 +118,7 @@ func BuildRouter(
 	// The webhook paths are registered in third-party systems — Dokploy,
 	// DocuSeal, a git forge — and cannot be moved under /api without breaking
 	// every one of them. Same for /pool/ws, which pool clients pin.
-	webhookHandler := NewWebhookHandler(application, log)
+	webhookHandler := NewWebhookHandler(application, busServer, log)
 	router.Post("/webhook/*", webhookHandler.ServeHTTP)
 	busServer.RegisterRoutes(router)
 

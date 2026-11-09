@@ -1,6 +1,7 @@
 package bus
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -94,6 +95,28 @@ func (s *Server) OnEvent(handler EventHandler) {
 	s.mu.Lock()
 	s.eventHandler = handler
 	s.mu.Unlock()
+}
+
+// Publish queues an event and fans it out to all active subscribers.
+func (s *Server) Publish(sender string, channel string, payload json.RawMessage) (Event, error) {
+	if len(payload) == 0 {
+		payload = json.RawMessage("null")
+	}
+
+	event, err := s.queue.Push(channel, payload, sender)
+	if err != nil {
+		s.log.Error("pool publish failed", slog.String("channel", channel), slog.Any("error", err))
+		return Event{}, err
+	}
+
+	recipients := s.fanOut(nil, event)
+	s.report(Activity{
+		Type:   "pool.event",
+		App:    sender,
+		Detail: sender + " → " + event.Channel + " (" + pluralRecipients(recipients) + ")",
+	})
+
+	return event, nil
 }
 
 // Cleanup applies the retention policy.
@@ -193,7 +216,7 @@ func (s *Server) fanOut(sender *connection, event Event) int {
 	s.mu.RLock()
 	targets := make([]*connection, 0)
 	for appID := range s.subscribers[event.Channel] {
-		if appID == sender.app.AppID {
+		if sender != nil && appID == sender.app.AppID {
 			continue
 		}
 		if conn, ok := s.connections[appID]; ok {

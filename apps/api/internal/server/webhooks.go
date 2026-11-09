@@ -10,6 +10,7 @@ import (
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/app"
 	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/bus"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 	"github.com/FacileStudio/Antenne/apps/api/modules/webhooks"
 )
@@ -27,12 +28,13 @@ const maxWebhookBody = 4 << 20
 // without touching the router.
 type WebhookHandler struct {
 	app *app.App
+	bus *bus.Server
 	log *slog.Logger
 }
 
 // NewWebhookHandler builds the intake.
-func NewWebhookHandler(application *app.App, log *slog.Logger) *WebhookHandler {
-	return &WebhookHandler{app: application, log: log}
+func NewWebhookHandler(application *app.App, busServer *bus.Server, log *slog.Logger) *WebhookHandler {
+	return &WebhookHandler{app: application, bus: busServer, log: log}
 }
 
 // ServeHTTP dispatches one webhook.
@@ -90,6 +92,8 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		slog.String("provider_type", string(provider.Type)),
 		slog.String("event", result.Description))
 
+	h.publishToBus(result.EventType, body)
+
 	// A recognised event with nothing worth saying is accepted and not
 	// delivered — a heartbeat should not reach Matrix.
 	if result.MessageHTML == "" {
@@ -138,4 +142,15 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func (h *WebhookHandler) publishToBus(eventType string, body []byte) {
+	if h.bus == nil || eventType == "" {
+		return
+	}
+	if _, err := h.bus.Publish("antenne", eventType, json.RawMessage(body)); err != nil {
+		h.log.Warn("webhook event was not published to bus",
+			slog.String("event", eventType),
+			slog.Any("error", err))
+	}
 }
