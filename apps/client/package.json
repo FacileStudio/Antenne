@@ -24,7 +24,7 @@
 	},
 	"dependencies": {
 		"@facile/journal": "github:FacileStudio/Journal#ts",
-		"@facile/muse": "github:FacileStudio/muse#v0.16.1",
+		"@facile/muse": "github:FacileStudio/muse#v0.18.0",
 		"iconify-icon": "^3.0.2"
 	}
 }

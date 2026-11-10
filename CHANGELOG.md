@@ -5,6 +5,7 @@
 ### Changed
 
 - Licence: Antenne is now licensed under `AGPL-3.0-only` (see `LICENSE`); before this, the repository carried no licence.
+- build(deps): tronc v0.17.1 to v0.21.0, porte v0.13.0 to v0.18.0 (`porte/directory` v0.3.0 to v0.4.0), `@facile/muse` v0.16.1 to v0.18.0. Every entry between the pins is additive.
 
 ## [1.3.4] - 2026-11-10
 

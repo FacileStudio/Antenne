@@ -4,9 +4,9 @@ go 1.26
 
 require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba
-	github.com/FacileStudio/porte v0.13.0
-	github.com/FacileStudio/porte/directory v0.3.0
-	github.com/FacileStudio/tronc v0.17.1
+	github.com/FacileStudio/porte v0.18.0
+	github.com/FacileStudio/porte/directory v0.4.0
+	github.com/FacileStudio/tronc v0.21.0
 	github.com/FacileStudio/tronc/migrate v0.1.0
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
 	github.com/go-chi/chi/v5 v5.3.1
