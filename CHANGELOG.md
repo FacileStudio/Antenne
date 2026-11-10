@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Licence: Antenne is now licensed under `AGPL-3.0-only` (see `LICENSE`); before this, the repository carried no licence.
+
 ## [1.3.4] - 2026-11-10
 
 ### Security
