@@ -11,13 +11,15 @@ import (
 
 // Accounts is the federated half of an account: porte/kit's store over
 // Antenne's users table. It resolves a sign-in, backfills pictures and erases
-// a person Registre erased. The kit has no admin flag for this table, because
-// Antenne's is a role, so OnCreate writes the one role Antenne has.
-func Accounts(db *sql.DB) *kit.Store {
+// a person Registre erased, running eraseData for the rows the person owns in
+// the transaction that deletes the account. The kit has no admin flag for this
+// table, because Antenne's is a role, so OnCreate writes the one role Antenne has.
+func Accounts(db *sql.DB, eraseData func(ctx context.Context, tx *sql.Tx, userID int64) error) *kit.Store {
 	return &kit.Store{
-		DB:       db,
-		Columns:  kit.Columns{Picture: "picture_url"},
-		OnCreate: grantAdmin,
+		DB:        db,
+		Columns:   kit.Columns{Picture: "picture_url"},
+		OnCreate:  grantAdmin,
+		EraseData: eraseData,
 	}
 }
 

@@ -33,7 +33,7 @@ func accounts(t *testing.T) (*gorm.DB, *kit.Store) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return db, Accounts(sqlDB)
+	return db, Accounts(sqlDB, nil)
 }
 
 // TestLinkingFollowsPorteRules covers the three branches the email fallback

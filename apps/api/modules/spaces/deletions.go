@@ -2,6 +2,7 @@ package spaces
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"net/http"
 
@@ -20,15 +21,15 @@ type Deletions struct {
 	receiver *directory.Deletions
 }
 
-// NewDeletions builds the receiver over Antenne's tables. erase removes porte's
-// own rows for the identity, pg.Store.EraseIdentity.
-func NewDeletions(
-	orm *gorm.DB, client directory.Client, erase func(context.Context, string, string) error, logger *slog.Logger,
-) *Deletions {
+// NewDeletions builds the receiver over Antenne's tables. eraseAccount deletes
+// the account behind a Registre identity, porte/kit's Store.EraseAccount with
+// EraseMemberships as its EraseData. erase then removes porte's own rows for
+// the identity, pg.Store.EraseIdentity.
+func NewDeletions(orm *gorm.DB, client directory.Client, eraseAccount, erase Eraser, logger *slog.Logger) *Deletions {
 	d := &Deletions{orm: orm}
 	d.receiver = &directory.Deletions{
 		Client:          client,
-		OnPersonDeleted: d.ErasePerson,
+		OnPersonDeleted: eraseAccount,
 		Erase:           erase,
 		State:           deletionState{orm: orm},
 		Logger:          logger,
@@ -46,31 +47,18 @@ func (d *Deletions) Handler() http.Handler {
 	return d.receiver.Handler()
 }
 
-// ErasePerson deletes the account behind a Registre identity: the user row,
-// which takes the porte identity, sessions, API tokens and login codes with it
-// through their foreign keys, and the person's membership of every space. The
-// event log, the providers and the delivery targets belong to the instance and
-// stay. A subject that is already gone is a no-op, so a replayed notice
-// changes nothing.
-func (d *Deletions) ErasePerson(ctx context.Context, provider, subject string) error {
-	var account struct {
-		ID    int64
-		Email string
-	}
-	err := d.orm.WithContext(ctx).Raw(
-		`SELECT u.id, u.email FROM users u
-		   JOIN porte_identities i ON i.user_id = u.id
-		  WHERE i.provider = ? AND i.subject = ?`,
-		provider, subject).Scan(&account).Error
-	if err != nil || account.ID == 0 {
-		return err
-	}
-	return d.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec(`DELETE FROM space_members WHERE lower(user_id) = lower(?)`, account.Email).Error; err != nil {
-			return err
-		}
-		return tx.Exec(`DELETE FROM users WHERE id = ?`, account.ID).Error
-	})
+// Eraser removes what one (provider, subject) identity owns.
+type Eraser func(ctx context.Context, provider, subject string) error
+
+// EraseMemberships deletes the erased person's membership of every space. It
+// is the EraseData of the account store, so it runs in the transaction that
+// deletes the users row, which takes the porte identity, sessions, API tokens
+// and login codes with it through their foreign keys. The event log, the
+// providers and the delivery targets belong to the instance and stay.
+func EraseMemberships(ctx context.Context, tx *sql.Tx, userID int64) error {
+	_, err := tx.ExecContext(ctx,
+		`DELETE FROM space_members WHERE lower(user_id) = (SELECT lower(email) FROM users WHERE id = $1)`, userID)
+	return err
 }
 
 // deletionState keeps the receiver's cursor and handled subjects in one row.

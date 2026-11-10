@@ -116,7 +116,7 @@ func run() int {
 	}
 	resealInBackground(ctx, identityStore, appLogger)
 	userStore := auth.NewStore(db)
-	accounts := auth.Accounts(sqlDB)
+	accounts := auth.Accounts(sqlDB, spaces.EraseMemberships)
 
 	sessions, err := session.New(cfg.Porte, session.Deps{
 		Sessions: identityStore.Sessions(),
@@ -191,7 +191,7 @@ func run() int {
 	}
 	sender := delivery.NewSender(appLogger)
 	spaceService := spaces.NewService(db, directoryClient, appLogger)
-	deletions := spaces.NewDeletions(db, directoryClient, identityStore.EraseIdentity, appLogger)
+	deletions := spaces.NewDeletions(db, directoryClient, accounts.EraseAccount, identityStore.EraseIdentity, appLogger)
 	spaceService.AttachDeletions(deletions)
 
 	current := store.Get()
