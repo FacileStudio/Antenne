@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { Toaster, provideLocale } from '@facile/muse';
 	import { bindLocale, localeSource } from '$lib/i18n/index.svelte';
-	import { applyStoredTheme } from '$lib/theme.svelte';
+	import { theme } from '$lib/theme.svelte';
 	import '../app.css';
 
 	let { children }: { children: Snippet } = $props();
@@ -18,7 +18,7 @@
 	 */
 	if (browser) {
 		void import('iconify-icon');
-		applyStoredTheme();
+		theme.restore();
 	}
 </script>
 

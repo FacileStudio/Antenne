@@ -10,6 +10,7 @@
 - fix(auth): a Registre erasure now deletes the account and its space memberships in one transaction, under the account lock, through `porte/kit`'s `EraseAccount`. The lookup used to run outside the transaction that deleted the rows. A test seeds a person in every table that names them and proves none does after the erasure.
 - refactor(webhooks): the channels the git and filet providers publish (`git.push`, `git.pull_request`, `git.issue`, `git.event`, `filet.check.failed`, `filet.check.passed`) come from `antenne-client/go/catalog` v1.0.0, so the suite has one definition of each name. The names on the wire are unchanged. Antenne keeps its own alert envelope: it is a different shape from `antenne-client/go/envelope`, not a copy of it.
 - refactor(server): the check-now limit runs on tronc's `middleware.Limiter` with the strict bound from tronc's `docs/ratelimit.md` (burst 5, then one check every 12 seconds, never more than 10 in a minute, 50 000 addresses remembered at most), keyed on the host of `RemoteAddr`. After the burst a caller waits 12 seconds instead of being blocked for a minute; `Retry-After` carries the real wait. The login throttle stays app-side: it counts failures and resets on success.
+- refactor(client): the theme store and the 401 redirect come from `@facile/client` v0.1.0, under the same `antenne-theme` key, so a stored choice survives. A redirect to the login page now carries `?next=`. The fetch kernel stays: `@facile/client`'s `ApiError` does not carry `Retry-After`, which the check-now button shows.
 
 ### Added
 

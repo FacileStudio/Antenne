@@ -1,4 +1,3 @@
-import { goto } from '$app/navigation';
 import type {
 	AppSettings,
 	DeliveryHealthPage,
@@ -136,9 +135,7 @@ export function isRateLimited(error: unknown): boolean {
 	return error instanceof ApiError && error.status === 429;
 }
 
-export async function redirectToLogin() {
-	await goto('/login', { replaceState: true });
-}
+export { redirectToLogin } from '@facile/client';
 
 export const api = {
 	session: () => request<SessionPayload>('/session'),

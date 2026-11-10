@@ -17,7 +17,7 @@
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { locale, rememberLocale, t } from '$lib/i18n/index.svelte';
 	import { spaces } from '$lib/spaces.svelte';
-	import { setTheme, theme } from '$lib/theme.svelte';
+	import { theme } from '$lib/theme.svelte';
 	import { ANTENNE_ICON, ANTENNE_MARK } from '$lib/components/AntenneLogo.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -80,7 +80,7 @@
 		locale: locale(),
 		onLocaleChange: (next: Locale) => rememberLocale(next),
 		theme: theme.mode,
-		onThemeChange: (next: Theme) => setTheme(next),
+		onThemeChange: (next: Theme) => theme.set(next),
 		invitations
 	});
 	const switcherSpaces = $derived(spaces.spaces.map((space) => ({ id: space.id, name: space.name })));
