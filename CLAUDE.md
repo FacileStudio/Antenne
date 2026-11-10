@@ -133,9 +133,12 @@ owns the credential — `porte_identities`, `porte_sessions`, one hashed opaque 
 `HttpOnly` `__Host-` cookie for the dashboard and a bearer token for the CLI. Antenne keeps
 what porte has no opinion about: what a user is, and who bootstraps the instance.
 
-- `auth.Store` implements `porte.UserStore` and `porte.PasswordUserStore` over Antenne's own
-  `users` table. porte/pg's `porte_users` is deliberately **not** used — `users` is referenced
-  across this codebase and carries the role.
+- `auth.Accounts` is `porte/kit`'s store over Antenne's own `users` table (`Columns{Picture:
+  "picture_url"}`): it resolves a federated sign-in, backfills pictures and erases a person
+  Registre erased. Its `OnCreate` writes `role = 'ADMIN'`, because the kit's admin flag is a
+  boolean and Antenne's is a role. `auth.Store` stays app-side as the `porte.PasswordUserStore`
+  the bootstrap seed needs. porte/pg's `porte_users` is deliberately **not** used — `users` is
+  referenced across this codebase and carries the role.
 - `auth.RequireAuth(sessions, resolver)` wraps porte's middleware and hydrates
   `authcontext.Identity` from `users`. porte hands on a user id and nothing else.
 - Handlers still read `authcontext.Identity` and never see a cookie, a token or a user row.

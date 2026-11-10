@@ -116,6 +116,7 @@ func run() int {
 	}
 	resealInBackground(ctx, identityStore, appLogger)
 	userStore := auth.NewStore(db)
+	accounts := auth.Accounts(sqlDB)
 
 	sessions, err := session.New(cfg.Porte, session.Deps{
 		Sessions: identityStore.Sessions(),
@@ -139,7 +140,7 @@ func run() int {
 	// attempt. A kit with no OIDC_ISSUER is not an error — it still serves
 	// /auth/config and authenticates every session this app issues.
 	oidcKit, err := oidc.New(ctx, cfg.Porte, oidc.Deps{
-		Users:       userStore,
+		Users:       accounts,
 		Identities:  identityStore.Identities(),
 		Sessions:    sessions,
 		Codes:       identityStore.LoginCodes(),
@@ -169,7 +170,7 @@ func run() int {
 	}
 	if oidcKit.Enabled() {
 		appLogger.Info("single sign-on enabled", slog.String("issuer", cfg.Porte.Issuer))
-		if filled, err := userStore.BackfillPictures(ctx, cfg.Porte.Issuer); err != nil {
+		if filled, err := accounts.BackfillPictures(ctx, cfg.Porte.Issuer); err != nil {
 			appLogger.Warn("pictures not backfilled", slog.Any("error", err))
 		} else {
 			appLogger.Info("pictures backfilled", slog.Int64("users", filled))
@@ -242,7 +243,11 @@ func run() int {
 		busServer.SetSecret(busSecret(cfg, next))
 	})
 
-	router := server.BuildRouter(cfg, appLogger, sqlDB, application, authService, sessions, oidcKit, passwords, spaceService, busServer)
+	router, err := server.BuildRouter(cfg, appLogger, sqlDB, application, authService, sessions, oidcKit, passwords, spaceService, busServer)
+	if err != nil {
+		appLogger.Error("router", slog.Any("error", err))
+		return 1
+	}
 	// /dashboard is a legacy redirect, not API surface.
 	if missing := apiref.Undocumented(router, server.RefConfig(), "/dashboard", "/version"); len(missing) > 0 {
 		appLogger.Warn("routes are missing from the API reference", slog.Any("routes", missing))

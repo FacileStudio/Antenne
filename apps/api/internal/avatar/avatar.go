@@ -6,19 +6,6 @@
 // without one is drawn from their initial by muse's Avatar.
 package avatar
 
-import "strings"
-
-// PhotoURL returns the picture claim when it is an https URL and "" otherwise.
-//
-// Anything else is a placeholder, such as the data: URI of initials some
-// providers send, which the dashboard draws better itself.
-func PhotoURL(claim string) string {
-	if strings.HasPrefix(strings.ToLower(claim), "https://") {
-		return claim
-	}
-	return ""
-}
-
 // ByEmail is the SQL expression for the picture of the user whose address is
 // emailSQL, or ” when no user of this instance has that address.
 //

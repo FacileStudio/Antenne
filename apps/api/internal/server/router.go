@@ -23,6 +23,7 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/modules/auth"
 	"github.com/FacileStudio/Antenne/apps/api/modules/bus"
 	"github.com/FacileStudio/Antenne/apps/api/modules/spaces"
+	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
 	"github.com/FacileStudio/porte/session"
@@ -31,7 +32,7 @@ import (
 // BuildRouter is the composition root: wiring the health endpoint, the API
 // reference, the three groups (public, auth-protected, sessioned) and the SPA
 // catch-all. The caller passes the assembled dependencies and the router is the
-// result.
+// result, or the error porte/kit returned while mounting the sign-in routes.
 func BuildRouter(
 	cfg env.Config,
 	log *slog.Logger,
@@ -43,7 +44,7 @@ func BuildRouter(
 	passwords *local.Kit,
 	spaceService *spaces.Service,
 	busServer *bus.Server,
-) chi.Router {
+) (chi.Router, error) {
 	router := httpx.NewRouter(httpx.Config{
 		// Behind Traefik and Cloudflare, RemoteAddr is only the
 		// visitor if both are trusted: Traefik replaces the forwarded
@@ -74,6 +75,7 @@ func BuildRouter(
 	apiref.Mount(router, RefConfig())
 
 	api := NewAPI(application)
+	var mountErr error
 
 	router.Route("/api", func(protected chi.Router) {
 		// Scoped to the /api subtree, so an unknown API path 404s as JSON
@@ -92,8 +94,7 @@ func BuildRouter(
 		// porte owns the credentials: the logout, the whole OIDC flow and
 		// /auth/config come from the kits, mounted before the guard because
 		// they are how a caller acquires the credential the guard demands.
-		sessions.Mount(protected)
-		oidcKit.Mount(protected)
+		mountErr = kit.Mount(protected, kit.Config{Sessions: sessions, OIDC: oidcKit})
 
 		// With an issuer configured the password route is not registered
 		// rather than rejected, so there is no endpoint left to probe for an
@@ -133,7 +134,7 @@ func BuildRouter(
 		router.NotFound(spa.Handler(spa.Config{Dir: cfg.ClientDir}).ServeHTTP)
 	}
 
-	return router
+	return router, mountErr
 }
 
 // securityConfig extends tronc's default headers with what the dashboard loads.

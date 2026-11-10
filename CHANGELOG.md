@@ -6,6 +6,7 @@
 
 - Licence: Antenne is now licensed under `AGPL-3.0-only` (see `LICENSE`); before this, the repository carried no licence.
 - build(deps): tronc v0.17.1 to v0.21.0, porte v0.13.0 to v0.18.0 (`porte/directory` v0.3.0 to v0.4.0), `@facile/muse` v0.16.1 to v0.18.0. Every entry between the pins is additive.
+- refactor(auth): a federated sign-in resolves through `porte/kit`'s store over Antenne's `users` table, and the sign-in routes mount through `kit.Mount`. The linking rules, the picture backfill and the "every account is an administrator" rule are unchanged; the route list and every unauthenticated status code are identical. The role and locale identity, the session middleware and the bootstrap password store stay in Antenne.
 
 ## [1.3.4] - 2026-11-10
 

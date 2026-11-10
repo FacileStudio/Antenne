@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/FacileStudio/porte/directory"
+	"github.com/FacileStudio/porte/kit"
 	"gorm.io/gorm"
 
-	"github.com/FacileStudio/Antenne/apps/api/internal/avatar"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
 
@@ -136,7 +136,7 @@ func (s *Service) resolve(tx *gorm.DB, member directory.Member) (string, error) 
 		INSERT INTO users (email, name, picture_url) VALUES (?, ?, ?)
 		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
 		RETURNING id`,
-		email, member.Name, avatar.PhotoURL(member.Picture)).Scan(&userID).Error; err != nil {
+		email, member.Name, kit.PictureURL(member.Picture)).Scan(&userID).Error; err != nil {
 		return "", err
 	}
 	if member.Subject == "" {

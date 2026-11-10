@@ -51,7 +51,10 @@ func TestEveryRouteIsDocumented(t *testing.T) {
 		t.Fatalf("local: %v", err)
 	}
 
-	router := server.BuildRouter(cfg, log, nil, nil, authService, sessions, kit, passwords, nil, nil)
+	router, err := server.BuildRouter(cfg, log, nil, nil, authService, sessions, kit, passwords, nil, nil)
+	if err != nil {
+		t.Fatalf("router: %v", err)
+	}
 
 	// /dashboard is a legacy redirect kept for links made before the client moved
 	// to the root; it is not part of the API surface.

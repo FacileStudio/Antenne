@@ -136,8 +136,9 @@ An app never receives its own emissions back.
 ## Authentication
 
 Antenne runs on `porte`, the suite's auth kit, and keeps only what porte has no opinion about:
-what an Antenne user is, and how the instance seeds its first account. `auth.Store` implements
-`porte.UserStore` over Antenne's own `users` table — porte/pg's `porte_users` is deliberately
+what an Antenne user is, and how the instance seeds its first account. `auth.Accounts` is
+`porte/kit`'s `porte.UserStore` over Antenne's own `users` table, and `auth.Store` is the
+`porte.PasswordUserStore` the bootstrap seed uses — porte/pg's `porte_users` is deliberately
 unused, because `users` is referenced across this codebase and carries the role.
 `auth.RequireAuth` wraps porte's middleware and hydrates an `authcontext.Identity` from that
 table; handlers read the Identity and never see a cookie, a token or a user row.

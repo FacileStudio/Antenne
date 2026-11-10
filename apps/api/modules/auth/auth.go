@@ -2,9 +2,10 @@
 //
 // The credentials belong to porte now: one hashed session row, one cookie, one
 // logout, and the same session whether a human arrived through single sign-on
-// or through the bootstrap password. What is left here is the part porte has no
-// opinion about — what an Antenne user is, and how the instance seeds its first
-// account from the environment.
+// or through the bootstrap password. porte/kit resolves a federated sign-in to a
+// row of Antenne's users table. What is left here is what the kit does not
+// cover: the role and locale an Antenne identity carries, and how the instance
+// seeds its bootstrap account from the environment.
 //
 // Handlers still read authcontext.Identity and still never see a cookie, a
 // token or a user row.
@@ -15,14 +16,12 @@ import (
 	stderrors "errors"
 	"log/slog"
 	"net/http"
-	"net/mail"
 	"strings"
 	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
-	"github.com/FacileStudio/Antenne/apps/api/internal/avatar"
 	"github.com/FacileStudio/porte"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/session"
@@ -30,9 +29,10 @@ import (
 	"github.com/FacileStudio/tronc/httpjson"
 )
 
-// registrationLockKey is the advisory lock the account rules are taken under.
-// porte cannot take it — it does not own this database — which is why the
-// account rules live in this package's stores.
+// registrationLockKey is the advisory lock the bootstrap seed is taken under.
+// porte/kit takes its own lock for federated sign-ins; the two never need to
+// serialise against each other, because every account is an administrator and
+// the unique index on users.email refuses a second row for one address.
 const registrationLockKey = 0x616E74656E6E65
 
 // bootstrapDomain is the domain the bootstrap account's address is built on
@@ -61,180 +61,19 @@ type User struct {
 // TableName pins the table so a future GORM naming change cannot rename it.
 func (User) TableName() string { return "users" }
 
-// Store resolves porte's callbacks to rows in Antenne's own users table.
-//
-// It is porte's escape hatch, taken deliberately: porte/pg ships a porte_users
-// table and Antenne could have moved onto it, but users is referenced by name
-// across this codebase and carries the role, which porte transports and never
-// assigns meaning to.
+// Store is the password half of an account: the bootstrap seed, which porte's
+// local kit drives through porte.PasswordUserStore. The federated half is
+// porte/kit's store over the same users table, built by Accounts.
 type Store struct {
 	orm *gorm.DB
 }
 
-// NewStore returns a store over the app's users table.
+// NewStore returns the password store over the app's users table.
 func NewStore(orm *gorm.DB) *Store {
 	return &Store{orm: orm}
 }
 
-var (
-	_ porte.UserStore         = (*Store)(nil)
-	_ porte.PasswordUserStore = (*Store)(nil)
-)
-
-// profile is what the provider asserts about a person and the dashboard stores.
-type profile struct {
-	email    string
-	name     string
-	picture  string
-	locale   string
-	verified bool
-}
-
-// UpsertFromOIDC matches on (provider, subject) first and creates the account
-// when nothing is found.
-//
-// Every account Antenne creates this way is an administrator, because Antenne
-// has one tier: the dashboard holds the provider credentials, the delivery
-// secrets and the pool secret, and there is no view of it that is safe for
-// someone who should not have all three. Who may reach it at all is therefore
-// the issuer's decision, expressed as an access policy on the application, not
-// something this callback can soften.
-//
-// The email fallback follows porte/pg's linking rules: it links only on an
-// address the provider verified, and it refuses an account that already holds
-// another subject of the same issuer, so a recycled address is never handed
-// over.
-func (s *Store) UpsertFromOIDC(ctx context.Context, claims porte.Claims) (int64, error) {
-	person, err := profileFrom(claims)
-	if err != nil {
-		return 0, err
-	}
-
-	var userID int64
-	txErr := s.orm.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", int64(registrationLockKey)).Error; err != nil {
-			return apierrors.Internal("failed to acquire the registration lock", err)
-		}
-		id, err := resolveUser(tx, claims, person)
-		userID = id
-		return err
-	})
-	if txErr != nil {
-		return 0, txErr
-	}
-	return userID, nil
-}
-
-// profileFrom normalises the claims, refusing an address that cannot be one.
-func profileFrom(claims porte.Claims) (profile, error) {
-	email := strings.ToLower(strings.TrimSpace(claims.Email))
-	if _, err := mail.ParseAddress(email); err != nil {
-		return profile{}, apierrors.Invalid("the identity provider returned no usable email")
-	}
-	return profile{
-		email:    email,
-		name:     claims.DisplayName(),
-		picture:  avatar.PhotoURL(claims.Picture),
-		locale:   claims.Locale,
-		verified: claims.EmailVerified,
-	}, nil
-}
-
-// resolveUser finds the account the claims belong to, or creates it.
-func resolveUser(tx *gorm.DB, claims porte.Claims, person profile) (int64, error) {
-	var linked int64
-	err := tx.Raw(
-		`SELECT user_id FROM porte_identities WHERE provider = ? AND subject = ?`,
-		claims.Provider, claims.Subject,
-	).Scan(&linked).Error
-	if err != nil {
-		return 0, apierrors.Internal("failed to resolve the identity", err)
-	}
-	if linked != 0 {
-		return linked, refreshProfile(tx, linked, person)
-	}
-
-	var existing User
-	err = tx.Where("email = ?", person.email).First(&existing).Error
-	switch {
-	case err == nil:
-		if err := mayLink(tx, existing.ID, claims); err != nil {
-			return 0, err
-		}
-		return existing.ID, refreshProfile(tx, existing.ID, person)
-	case !stderrors.Is(err, gorm.ErrRecordNotFound):
-		return 0, apierrors.Internal("failed to look up the account", err)
-	}
-
-	user := User{
-		Email: person.email, Name: person.name, Role: string(authcontext.RoleAdmin),
-		PictureURL: person.picture, Locale: localeOrDefault(person.locale),
-	}
-	if err := tx.Create(&user).Error; err != nil {
-		return 0, apierrors.Internal("failed to create the account", err)
-	}
-	return user.ID, nil
-}
-
-// mayLink decides whether a sign-in may attach to the account that already
-// holds its address.
-//
-// Matching on the address alone is an account takeover primitive wherever a
-// provider lets a user claim an address without proving it, so the provider
-// must say it verified the address. An account that already holds a different
-// subject of the same issuer belongs to someone else: the address was
-// recycled, and linking would hand that person's data over.
-func mayLink(tx *gorm.DB, userID int64, claims porte.Claims) error {
-	if !claims.EmailVerified {
-		return apierrors.Conflict("an account with this email already exists and the identity provider did not verify the address")
-	}
-	var other int64
-	err := tx.Raw(
-		`SELECT count(*) FROM porte_identities WHERE user_id = ? AND provider = ? AND subject <> ?`,
-		userID, claims.Provider, claims.Subject,
-	).Scan(&other).Error
-	if err != nil {
-		return apierrors.Internal("failed to check the account's identities", err)
-	}
-	if other > 0 {
-		return apierrors.Conflict("this account is already linked to another identity from the same provider")
-	}
-	return nil
-}
-
-// localeOrDefault gives a new account the default language when the provider
-// sent no locale claim.
-func localeOrDefault(locale string) string {
-	if locale == "" {
-		return porte.DefaultLocale
-	}
-	return locale
-}
-
-// refreshProfile keeps the name, the language and, when the provider verified
-// it, the address the provider asserts, which is what makes the identity provider the source of truth for
-// them. An empty value never overwrites one the user already has: a provider
-// that stops sending a claim should not blank the dashboard.
-//
-// The picture is the exception and is always written: the provider sends one
-// for every user it has a picture for, so a missing or non-https claim means
-// there is none and the dashboard should draw the initial instead.
-func refreshProfile(tx *gorm.DB, userID int64, person profile) error {
-	updates := map[string]any{"picture_url": person.picture}
-	if person.verified {
-		updates["email"] = person.email
-	}
-	if person.name != "" {
-		updates["name"] = person.name
-	}
-	if person.locale != "" {
-		updates["locale"] = person.locale
-	}
-	if err := tx.Model(&User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
-		return apierrors.Internal("failed to update the account", err)
-	}
-	return nil
-}
+var _ porte.PasswordUserStore = (*Store)(nil)
 
 // CreateFromPassword creates a user row for a local registration.
 //

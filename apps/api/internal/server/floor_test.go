@@ -59,7 +59,10 @@ func floorRouter(t *testing.T, db *gorm.DB) (http.Handler, *session.Manager) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := server.BuildRouter(cfg, log, sqlDB, nil, service, sessions, kit, passwords, nil, bus.NewServer(db, log, poolSecret))
+	router, err := server.BuildRouter(cfg, log, sqlDB, nil, service, sessions, kit, passwords, nil, bus.NewServer(db, log, poolSecret))
+	if err != nil {
+		t.Fatal(err)
+	}
 	return router, sessions
 }
 
