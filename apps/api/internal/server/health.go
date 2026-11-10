@@ -2,13 +2,13 @@ package server
 
 import (
 	"context"
-	"math"
 	"net/http"
 	"strconv"
 	"time"
 
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
+	troncmiddleware "github.com/FacileStudio/tronc/middleware"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/app"
@@ -42,7 +42,7 @@ type healthReporter interface {
 
 var _ healthReporter = (*app.App)(nil)
 
-// checkBudget is the on-demand check's own allowance, deliberately separate
+// newCheckLimiter is the on-demand check's own allowance, deliberately separate
 // from every other endpoint's. Courrier shipped its check button on top of the
 // folder-sync route, so pressing it spent a 5-per-minute budget shared with
 // normal use, and the 429 that followed was reported to the operator as "IMAP
@@ -51,12 +51,12 @@ var _ healthReporter = (*app.App)(nil)
 //
 // Ten a minute is one press per target on a large install, or a dozen impatient
 // presses on one target, and it is well under the point where a provider starts
-// counting: the danger is a held-down button, not a deliberate operator.
-const (
-	checkBudget = 10
-	checkWindow = time.Minute
-	checkBlock  = time.Minute
-)
+// counting: the danger is a held-down button, not a deliberate operator. It is
+// tronc's strict bound for that budget: a burst of five, then one check every
+// twelve seconds, so no minute ever admits more than ten.
+func newCheckLimiter() *troncmiddleware.Limiter {
+	return troncmiddleware.NewLimiter(troncmiddleware.RatelimitConfig{Limit: 5.0 / 60, Burst: 5, MaxKeys: 50000})
+}
 
 // TargetHealth is one dashboard row: the health record joined to the target it
 // describes. A record is keyed by id and carries nothing else, so a client
@@ -144,17 +144,12 @@ func (a *API) handleTargetHealth(w http.ResponseWriter, r *http.Request) {
 
 // handleCheckTargetHealth is the operator's "check this now" button.
 func (a *API) handleCheckTargetHealth(w http.ResponseWriter, r *http.Request) {
-	client := authcontext.ClientIP(r)
-	if wait := a.checks.RetryAfter(client); wait > 0 {
-		// 429 with Retry-After, so the client can say "retry in Ns" about
-		// Antenne instead of attributing a limit we imposed to the target.
-		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
+	allowed, wait := a.checks.AllowAt(authcontext.ClientIP(r), time.Now())
+	if !allowed {
+		w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())))
 		httpjson.WriteError(w, apierrors.RateLimited("too many checks from this client; wait before checking again"))
 		return
 	}
-	// Every call spends budget, not only the ones that fail: the cost being
-	// limited here is the outbound handshake, which happens either way.
-	a.checks.Fail(client)
 
 	targetID := chi.URLParam(r, "targetId")
 	current := a.app.Settings()

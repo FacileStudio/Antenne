@@ -1,5 +1,7 @@
-// Package ratelimit is a fixed-window in-process counter, used for login
-// attempts. It is per-instance, which is enough for a single-container service.
+// Package ratelimit is a fixed-window in-process counter of failures, used for
+// login attempts only. It is per-instance, which is enough for a single-container
+// service. It stays app-side because it counts failures and resets on success,
+// which tronc's token bucket does not do; every other limit is tronc's.
 package ratelimit
 
 import (
@@ -46,29 +48,6 @@ func (l *Limiter) Blocked(key string) bool {
 		delete(l.attempts, key)
 	}
 	return false
-}
-
-// RetryAfter is how long key must wait, or zero when it is not blocked. It
-// exists so a 429 can carry a Retry-After header: without one, a client can only
-// report "it failed" and the limit we imposed gets blamed on whatever the caller
-// was talking to.
-func (l *Limiter) RetryAfter(key string) time.Duration {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	current, ok := l.attempts[key]
-	if !ok {
-		return 0
-	}
-
-	now := time.Now()
-	if current.blockedUntil.After(now) {
-		return current.blockedUntil.Sub(now)
-	}
-	if current.firstFailure.Add(l.Window).Before(now) {
-		delete(l.attempts, key)
-	}
-	return 0
 }
 
 // Fail records one failure for key.

@@ -13,10 +13,10 @@ import (
 
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
+	troncmiddleware "github.com/FacileStudio/tronc/middleware"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/app"
-	"github.com/FacileStudio/Antenne/apps/api/internal/ratelimit"
 	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 	"github.com/FacileStudio/Antenne/apps/api/modules/events"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
@@ -67,15 +67,15 @@ type API struct {
 	app *app.App
 
 	// checks is the on-demand health check's own allowance. It is a field rather
-	// than a limiter borrowed from elsewhere on purpose; see checkBudget.
-	checks *ratelimit.Limiter
+	// than a limiter borrowed from elsewhere on purpose; see newCheckLimiter.
+	checks *troncmiddleware.Limiter
 }
 
 // NewAPI builds the dashboard API.
 func NewAPI(application *app.App) *API {
 	return &API{
 		app:    application,
-		checks: ratelimit.New(checkBudget, checkWindow, checkBlock),
+		checks: newCheckLimiter(),
 	}
 }
 

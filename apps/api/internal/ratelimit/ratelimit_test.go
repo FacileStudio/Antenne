@@ -5,28 +5,31 @@ import (
 	"time"
 )
 
-func TestRetryAfterReportsTheRemainingBlock(t *testing.T) {
-	limiter := New(2, time.Minute, 30*time.Second)
+// TestFailuresBlockAndSuccessResets pins the login throttle's rule: the fifth
+// failure within the window blocks the key, another key keeps its budget, and
+// a success clears the count.
+func TestFailuresBlockAndSuccessResets(t *testing.T) {
+	limiter := New(5, 10*time.Minute, 10*time.Minute)
 
-	if wait := limiter.RetryAfter("1.2.3.4"); wait != 0 {
-		t.Fatalf("an untouched key reported a wait of %s", wait)
+	for range 4 {
+		limiter.Fail("1.2.3.4")
+	}
+	if limiter.Blocked("1.2.3.4") {
+		t.Fatal("four failures blocked the key")
+	}
+	limiter.Reset("1.2.3.4")
+	for range 4 {
+		limiter.Fail("1.2.3.4")
+	}
+	if limiter.Blocked("1.2.3.4") {
+		t.Fatal("a reset did not clear the earlier failures")
 	}
 
 	limiter.Fail("1.2.3.4")
-	if wait := limiter.RetryAfter("1.2.3.4"); wait != 0 {
-		t.Fatalf("a key still inside its budget reported a wait of %s", wait)
+	if !limiter.Blocked("1.2.3.4") {
+		t.Fatal("the fifth failure did not block the key")
 	}
-
-	limiter.Fail("1.2.3.4")
-	wait := limiter.RetryAfter("1.2.3.4")
-	if wait <= 0 || wait > 30*time.Second {
-		t.Fatalf("a blocked key reported a wait of %s, want (0s, 30s]", wait)
-	}
-
-	// A blocked key must not leak into another caller's budget: the header the
-	// handler sends is per-client, and a shared one would tell an innocent
-	// browser to back off.
-	if wait := limiter.RetryAfter("5.6.7.8"); wait != 0 {
-		t.Fatalf("an unrelated key reported a wait of %s", wait)
+	if limiter.Blocked("5.6.7.8") {
+		t.Fatal("a blocked key leaked into another caller's budget")
 	}
 }
