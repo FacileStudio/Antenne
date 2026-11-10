@@ -13,6 +13,7 @@
 - refactor(client): the theme store and the 401 redirect come from `@facile/client` v0.1.0, under the same `antenne-theme` key, so a stored choice survives. A redirect to the login page now carries `?next=`. The fetch kernel stays: `@facile/client`'s `ApiError` does not carry `Retry-After`, which the check-now button shows.
 - fix(deps): the API's `go` directive moves to 1.26.10, which clears the critical standard-library and toolchain advisories douane reports for `go 1.26`. `golang.org/x/crypto` moves to the commit that drops the unmaintained `openpgp` package (GO-2026-5932, no release carries it yet; Antenne never imported it), `golang.org/x/text` to v0.44.0 and `go-jose` to v4.1.9.
 - ci: `filet.yml` is the suite's `preset: facile` plus Antenne's own exceptions (the ignore list, the modules without a `router.go`, and in-body why-comments allowed); filet v0.19.0 reports the same findings before and after. CI pins the filet action and binary to v0.19.0 and gains a douane 0.7.0 job (`-fail critical -scope prod`, sha256-pinned). The pre-push hook runs `filet gate` after the check script.
+- build(hooks): the pre-push gate lives in a tracked `lefthook.yml` (the suite's shared `FacileStudio/hooks` remote, then `scripts/check.sh` and `filet gate`), lefthook 2.1.12 is pinned in `mise.toml`, and `mise run hooks` runs `lefthook install --reset-hooks-path`, which moves a clone off `core.hooksPath .githooks`. `.githooks/` is gone.
 
 ### Added
 

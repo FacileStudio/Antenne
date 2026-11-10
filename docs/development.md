@@ -13,7 +13,7 @@ Local setup, where the configuration comes from, and the quality gate.
 
 ```sh
 mise run install     # client dependencies
-mise run hooks       # enable the tracked git hooks in this clone
+mise run hooks       # install the lefthook pre-push gate: check.sh, then filet gate
 ```
 
 ## Running
