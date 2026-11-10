@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,7 +45,7 @@ func TestTheLoginThrottleCountsRefusalsAndForgivesSuccess(t *testing.T) {
 
 	attempt := func() int {
 		request := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
-		request.Header.Set("X-Forwarded-For", "203.0.113.7")
+		request.RemoteAddr = "203.0.113.7:4711"
 		recorder := httptest.NewRecorder()
 		throttled.ServeHTTP(recorder, request)
 		return recorder.Code
@@ -62,11 +63,39 @@ func TestTheLoginThrottleCountsRefusalsAndForgivesSuccess(t *testing.T) {
 
 	status = http.StatusOK
 	request := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
-	request.Header.Set("X-Forwarded-For", "198.51.100.4")
+	request.RemoteAddr = "198.51.100.4:4711"
 	recorder := httptest.NewRecorder()
 	throttled.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("a different address got %d, want 200 — the bucket is not per-address", recorder.Code)
+	}
+}
+
+// A forwarded header is the caller's to write, so rotating it must not open a
+// fresh bucket: the sixth refusal is throttled whatever the header claims.
+func TestTheLoginThrottleIgnoresForwardedHeaders(t *testing.T) {
+	throttled := ThrottleLogins()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+
+	attempt := func(forged string) int {
+		request := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+		request.RemoteAddr = "203.0.113.7:4711"
+		request.Header.Set("X-Forwarded-For", forged)
+		request.Header.Set("CF-Connecting-IP", forged)
+		request.Header.Set("X-Real-IP", forged)
+		recorder := httptest.NewRecorder()
+		throttled.ServeHTTP(recorder, request)
+		return recorder.Code
+	}
+
+	for i := range 5 {
+		if got := attempt(fmt.Sprintf("198.51.100.%d", i+1)); got != http.StatusUnauthorized {
+			t.Fatalf("attempt %d: got %d, want 401", i+1, got)
+		}
+	}
+	if got := attempt("198.51.100.99"); got != http.StatusTooManyRequests {
+		t.Fatalf("a rotated forwarded header got %d, want 429", got)
 	}
 }
 

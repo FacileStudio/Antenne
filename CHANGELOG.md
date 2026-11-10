@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.4] - 2026-11-10
+
+### Security
+
+- fix(auth): the login throttle and the check-now limit key on the address tronc's real-IP middleware resolved, not on `X-Forwarded-For`, `CF-Connecting-IP` or `X-Real-IP` read by hand. A caller could pick its own bucket by forging the header, and behind a proxy that rewrites the header every visitor shared one. The boot warning about trusting `X-Forwarded-For` is gone with the cause.
+
 ## [1.3.3] - 2026-11-07
 
 ### Changed

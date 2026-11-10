@@ -340,7 +340,6 @@ func logStartup(log *slog.Logger, cfg env.Config, current settings.AppSettings, 
 	if cfg.AdminPassword == "" {
 		log.Warn("ANTENNE_ADMIN_PASSWORD is not set — the dashboard and its API are open to anyone who can reach this server")
 	}
-	log.Warn("rate limiting trusts X-Forwarded-For — make sure the reverse proxy overwrites it")
 }
 
 // poolSecret resolves the secret the pool accepts registrations under. The

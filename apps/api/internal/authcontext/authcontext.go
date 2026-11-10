@@ -12,7 +12,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"strings"
 )
 
 type contextKey int
@@ -60,24 +59,12 @@ func From(r *http.Request) Identity {
 	return identity
 }
 
-// ClientIP resolves the caller's address from the proxy headers, falling back
-// to the socket address.
+// ClientIP reports the caller's address: the host of RemoteAddr.
 //
-// It trusts X-Forwarded-For, which is only safe because every deployment puts
-// Traefik in front and Traefik overwrites the header. A directly exposed Antenne
-// lets a caller spoof its own rate-limit bucket.
+// tronc's real-IP middleware has already rewritten RemoteAddr from the forwarded
+// chain, believing only the proxies named in TRUSTED_PROXIES. Reading a
+// forwarded header here would let a caller choose its own rate-limit bucket.
 func ClientIP(r *http.Request) string {
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		if first, _, found := strings.Cut(forwarded, ","); found {
-			return strings.TrimSpace(first)
-		}
-		return strings.TrimSpace(forwarded)
-	}
-	for _, header := range []string{"CF-Connecting-IP", "X-Real-IP"} {
-		if value := r.Header.Get(header); value != "" {
-			return strings.TrimSpace(value)
-		}
-	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
