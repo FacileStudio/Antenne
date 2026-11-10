@@ -8,6 +8,7 @@
 - build(deps): tronc v0.17.1 to v0.21.0, porte v0.13.0 to v0.18.0 (`porte/directory` v0.3.0 to v0.4.0), `@facile/muse` v0.16.1 to v0.18.0. Every entry between the pins is additive.
 - refactor(auth): a federated sign-in resolves through `porte/kit`'s store over Antenne's `users` table, and the sign-in routes mount through `kit.Mount`. The linking rules, the picture backfill and the "every account is an administrator" rule are unchanged; the route list and every unauthenticated status code are identical. The role and locale identity, the session middleware and the bootstrap password store stay in Antenne.
 - fix(auth): a Registre erasure now deletes the account and its space memberships in one transaction, under the account lock, through `porte/kit`'s `EraseAccount`. The lookup used to run outside the transaction that deleted the rows. A test seeds a person in every table that names them and proves none does after the erasure.
+- refactor(webhooks): the channels the git and filet providers publish (`git.push`, `git.pull_request`, `git.issue`, `git.event`, `filet.check.failed`, `filet.check.passed`) come from `antenne-client/go/catalog` v1.0.0, so the suite has one definition of each name. The names on the wire are unchanged. Antenne keeps its own alert envelope: it is a different shape from `antenne-client/go/envelope`, not a copy of it.
 
 ## [1.3.4] - 2026-11-10
 

@@ -3,6 +3,8 @@ package webhooks
 import (
 	"fmt"
 
+	"github.com/FacileStudio/antenne-client/go/catalog"
+
 	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
@@ -104,16 +106,16 @@ var git = Definition{
 		var eventType, description, message string
 		switch {
 		case payload.isPush():
-			eventType, description = "git.push", "push to "+repository
+			eventType, description = string(catalog.GitPush), "push to "+repository
 			message = payload.pushMessage(repository, actor)
 		case payload.isPullRequest():
-			eventType, description = "git.pull_request", "PR on "+repository
+			eventType, description = string(catalog.GitPullRequest), "PR on "+repository
 			message = payload.pullRequestMessage(repository, actor)
 		case payload.isIssue():
-			eventType, description = "git.issue", "issue on "+repository
+			eventType, description = string(catalog.GitIssue), "issue on "+repository
 			message = payload.issueMessage(repository, actor)
 		default:
-			eventType, description = "git.event", "event on "+repository
+			eventType, description = string(catalog.GitEvent), "event on "+repository
 			message = fmt.Sprintf("📡 <b>[%s]</b> %s triggered a webhook event", escape(repository), escape(actor))
 		}
 
@@ -210,14 +212,14 @@ func (p gitPayload) primaryURL() string {
 
 func (p gitPayload) status(eventType string) string {
 	switch eventType {
-	case "git.push":
+	case string(catalog.GitPush):
 		return "pushed"
-	case "git.pull_request":
+	case string(catalog.GitPullRequest):
 		if p.PullRequest != nil && p.PullRequest.Merged != nil && *p.PullRequest.Merged {
 			return "merged"
 		}
 		return p.actionName()
-	case "git.issue":
+	case string(catalog.GitIssue):
 		return p.actionName()
 	}
 	return ""

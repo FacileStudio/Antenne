@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/FacileStudio/antenne-client/go/catalog"
+
 	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
@@ -123,9 +125,9 @@ func (p filetPayload) onDefaultBranch() bool {
 
 func (p filetPayload) eventType() string {
 	if p.failed() {
-		return "filet.check.failed"
+		return string(catalog.FiletCheckFailed)
 	}
-	return "filet.check.passed"
+	return string(catalog.FiletCheckPassed)
 }
 
 func (p filetPayload) description(repository string) string {
