@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- build(deps): porte v0.18.0 to v0.18.1. `porte/kit` matches `<issuer>` and `<issuer>/` as one provider in the sign-in lookup, the second-subject refusal, the erasure, the picture backfill and the invitations subject, so an identity stored in the other spelling is found rather than linked twice or left unerased.
+- fix(client): `@facile/client` is excluded from Vite's dev dependency optimizer next to muse, because it ships uncompiled `.svelte.ts` source. `vite build` was never affected.
+
 ## [1.4.0] - 2026-11-10
 
 ### Changed
