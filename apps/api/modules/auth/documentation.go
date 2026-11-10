@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/tronc/apiref"
 )
 
@@ -17,6 +18,7 @@ func Documentation() apiref.Module {
 	routes := passwordRoutes()
 	routes = append(routes, oidcRoutes()...)
 	routes = append(routes, sessionRoutes()...)
+	routes = append(routes, invitationsRoute())
 	return apiref.Module{
 		Name:        "Auth",
 		Description: "Sessions, on the suite's porte kit. One session model and two transports: an HttpOnly cookie for the dashboard, a bearer token for the CLI. Single sign-on against Authentik when OIDC_ISSUER is set, plus the bootstrap password login.",
@@ -119,4 +121,15 @@ func sessionRoutes() []apiref.Route {
 			},
 		},
 	}
+}
+
+// invitationsRoute documents porte/kit's pending invitations route at its full
+// path, because this reference documents every route from the root. It is
+// mounted only when single sign-on and the directory credentials are set.
+func invitationsRoute() apiref.Route {
+	route := kit.InvitationsRoute()
+	route.Path = "/api" + kit.InvitationsPath
+	route.ResponseBody = kit.InvitationsResponse{}
+	route.Description += " Mounted only when OIDC_ISSUER and OIDC_CLIENT_SECRET are set."
+	return route
 }

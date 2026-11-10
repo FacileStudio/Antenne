@@ -11,6 +11,10 @@
 - refactor(webhooks): the channels the git and filet providers publish (`git.push`, `git.pull_request`, `git.issue`, `git.event`, `filet.check.failed`, `filet.check.passed`) come from `antenne-client/go/catalog` v1.0.0, so the suite has one definition of each name. The names on the wire are unchanged. Antenne keeps its own alert envelope: it is a different shape from `antenne-client/go/envelope`, not a copy of it.
 - refactor(server): the check-now limit runs on tronc's `middleware.Limiter` with the strict bound from tronc's `docs/ratelimit.md` (burst 5, then one check every 12 seconds, never more than 10 in a minute, 50 000 addresses remembered at most), keyed on the host of `RemoteAddr`. After the burst a caller waits 12 seconds instead of being blocked for a minute; `Retry-After` carries the real wait. The login throttle stays app-side: it counts failures and resets on success.
 
+### Added
+
+- feat(auth): the user menu shows pending Registre space invitations. `GET /api/me/invitations` comes from `porte/kit`'s `MountInvitations`, behind the session, mounted only when single sign-on and the directory credentials are set; the dashboard passes the answer to muse's `SideBar` and `MobileNav`.
+
 ## [1.3.4] - 2026-11-10
 
 ### Security

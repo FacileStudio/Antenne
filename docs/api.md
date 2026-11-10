@@ -29,7 +29,7 @@ Mounted at both prefixes so an external monitor cannot mistake the SPA shell for
 ## Authentication
 
 Antenne runs on [`porte`](https://github.com/FacileStudio/porte), which owns every route below
-except the last.
+except `GET /api/session`.
 
 | Route | Body | Notes |
 |---|---|---|
@@ -40,6 +40,7 @@ except the last.
 | `GET /api/auth/oidc/callback` | — | a browser navigation: both outcomes are a 302, read `Location` |
 | `POST /api/auth/oidc/exchange` | `{"code":"…"}` | a CLI trading its one-time login code for a bearer token |
 | `GET /api/session` | — | authenticated: the current caller |
+| `GET /api/me/invitations` | — | authenticated: `{"count","href"}`, the caller's pending Registre space invitations for the user menu. Never fails: `{"count":0}` when Registre cannot answer. Mounted only when `OIDC_ISSUER` and `OIDC_CLIENT_SECRET` are set |
 
 **Two transports, one session model.** The dashboard rides an `HttpOnly` cookie, named
 `__Host-session` over https; a CLI or a script sends `Authorization: Bearer`. Same table, same

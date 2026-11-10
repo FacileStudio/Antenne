@@ -13,6 +13,7 @@
 		type Locale,
 		type Theme
 	} from '@facile/muse';
+	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
 	import { locale, rememberLocale, t } from '$lib/i18n/index.svelte';
 	import { spaces } from '$lib/spaces.svelte';
@@ -71,6 +72,7 @@
 		email: dashboard.email || undefined,
 		avatar: dashboard.avatarUrl || undefined
 	});
+	let invitations = $state<{ count: number; href: string } | null>(null);
 	const userMenu = $derived({
 		subscription: { plan: 'Gratuit', href: 'https://sso.facile.studio/spaces' },
 		helpHref: 'https://github.com/FacileStudio/Antenne/tree/main/docs',
@@ -78,13 +80,21 @@
 		locale: locale(),
 		onLocaleChange: (next: Locale) => rememberLocale(next),
 		theme: theme.mode,
-		onThemeChange: (next: Theme) => setTheme(next)
+		onThemeChange: (next: Theme) => setTheme(next),
+		invitations
 	});
 	const switcherSpaces = $derived(spaces.spaces.map((space) => ({ id: space.id, name: space.name })));
 
 	$effect(() => {
 		void dashboard.load();
 		void spaces.load();
+	});
+
+	$effect(() => {
+		api
+			.invitations()
+			.then((answer) => (invitations = answer?.href ? { count: answer.count, href: answer.href } : null))
+			.catch(() => (invitations = null));
 	});
 
 	$effect(() => {

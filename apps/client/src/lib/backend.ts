@@ -152,6 +152,12 @@ export const api = {
 
 	logout: () => request<{ logged_out: boolean }>('/auth/logout', { method: 'POST', body: '{}' }),
 
+	/**
+	 * The signed-in person's pending Registre space invitations, for the user menu. porte/kit
+	 * serves it only when single sign-on is configured, so a 404 means "no row", like a count of 0.
+	 */
+	invitations: () => request<{ count: number; href?: string }>('/me/invitations'),
+
 	settings: () => request<SettingsPayload>('/settings'),
 	saveSettings: (settings: AppSettings) =>
 		request<SettingsPayload>('/settings', { method: 'PUT', body: JSON.stringify(settings) }),

@@ -4,6 +4,7 @@ package server
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -23,6 +24,7 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/modules/auth"
 	"github.com/FacileStudio/Antenne/apps/api/modules/bus"
 	"github.com/FacileStudio/Antenne/apps/api/modules/spaces"
+	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
@@ -44,6 +46,7 @@ func BuildRouter(
 	passwords *local.Kit,
 	spaceService *spaces.Service,
 	busServer *bus.Server,
+	identities kit.IdentityLister,
 ) (chi.Router, error) {
 	router := httpx.NewRouter(httpx.Config{
 		// Behind Traefik and Cloudflare, RemoteAddr is only the
@@ -75,7 +78,7 @@ func BuildRouter(
 	apiref.Mount(router, RefConfig())
 
 	api := NewAPI(application)
-	var mountErr error
+	var mountErr, invitationsErr error
 
 	router.Route("/api", func(protected chi.Router) {
 		// Scoped to the /api subtree, so an unknown API path 404s as JSON
@@ -113,6 +116,7 @@ func BuildRouter(
 			api.RegisterRoutes(sessioned)
 			spaceService.RegisterRoutes(sessioned)
 			busServer.RegisterStats(sessioned)
+			invitationsErr = mountInvitations(sessioned, cfg, identities, log)
 		})
 	})
 
@@ -134,7 +138,25 @@ func BuildRouter(
 		router.NotFound(spa.Handler(spa.Config{Dir: cfg.ClientDir}).ServeHTTP)
 	}
 
-	return router, mountErr
+	return router, errors.Join(mountErr, invitationsErr)
+}
+
+// mountInvitations serves the user menu's pending Registre invitations. It
+// needs the directory credentials the deletion receiver already uses, so an
+// instance without single sign-on, or without a client secret, mounts nothing.
+func mountInvitations(router chi.Router, cfg env.Config, identities kit.IdentityLister, log *slog.Logger) error {
+	if cfg.Porte.Issuer == "" || cfg.Porte.ClientSecret == "" || identities == nil {
+		return nil
+	}
+	return kit.MountInvitations(router, kit.InvitationsConfig{
+		Directory: directory.Client{
+			Issuer:       cfg.Porte.Issuer,
+			ClientID:     cfg.Porte.ClientID,
+			ClientSecret: cfg.Porte.ClientSecret,
+		},
+		Identities: identities,
+		Logger:     log,
+	})
 }
 
 // securityConfig extends tronc's default headers with what the dashboard loads.

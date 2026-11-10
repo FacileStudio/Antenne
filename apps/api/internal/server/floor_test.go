@@ -38,7 +38,7 @@ func floorRouter(t *testing.T, db *gorm.DB) (http.Handler, *session.Manager) {
 		AdminUsername: "admin",
 		AdminPassword: "bootstrap-password",
 		Version:       "v-test",
-		Porte:         porte.Config{Issuer: "https://sso.example", ClientID: "antenne"},
+		Porte:         porte.Config{Issuer: "https://sso.example", ClientID: "antenne", ClientSecret: "secret"},
 	}
 	stores := portepg.New(sqlDB)
 	sessions, err := session.New(cfg.Porte, session.Deps{Sessions: stores.Sessions(), Logger: log})
@@ -59,7 +59,7 @@ func floorRouter(t *testing.T, db *gorm.DB) (http.Handler, *session.Manager) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router, err := server.BuildRouter(cfg, log, sqlDB, nil, service, sessions, kit, passwords, nil, bus.NewServer(db, log, poolSecret))
+	router, err := server.BuildRouter(cfg, log, sqlDB, nil, service, sessions, kit, passwords, nil, bus.NewServer(db, log, poolSecret), stores.Identities())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,9 @@ func send(router http.Handler, method, path, body string, header map[string]stri
 // not break: a CLI or another app holding a bearer token reaches the API with
 // no cookie, a pool client registers with the shared secret and no session,
 // the dashboard API refuses an anonymous caller, and no password or
-// registration route answers once an issuer is configured.
+// registration route answers once an issuer is configured. The user menu's
+// invitations route sits behind the session and never fails for a user
+// Registre does not know.
 func TestSessionlessCallersStillWork(t *testing.T) {
 	db := pgtest.New(t)
 	router, sessions := floorRouter(t, db)
@@ -114,6 +116,14 @@ func TestSessionlessCallersStillWork(t *testing.T) {
 		if got := send(router, "POST", path, body, nil); got.Code != http.StatusNotFound {
 			t.Errorf("%s answered %d, want 404 with an issuer configured", path, got.Code)
 		}
+	}
+
+	if got := send(router, "GET", "/api/me/invitations", "", nil); got.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous invitations: %d, want 401", got.Code)
+	}
+	invitations := send(router, "GET", "/api/me/invitations", "", map[string]string{"Authorization": "Bearer " + token})
+	if invitations.Code != http.StatusOK || invitations.Body.String() != `{"count":0}`+"\n" {
+		t.Errorf("invitations for a user with no Registre identity: %d %s", invitations.Code, invitations.Body.String())
 	}
 
 	if got := send(router, "GET", "/version", "", nil); !strings.Contains(got.Body.String(), "v-test") {

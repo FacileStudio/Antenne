@@ -243,7 +243,7 @@ func run() int {
 		busServer.SetSecret(busSecret(cfg, next))
 	})
 
-	router, err := server.BuildRouter(cfg, appLogger, sqlDB, application, authService, sessions, oidcKit, passwords, spaceService, busServer)
+	router, err := server.BuildRouter(cfg, appLogger, sqlDB, application, authService, sessions, oidcKit, passwords, spaceService, busServer, identityStore.Identities())
 	if err != nil {
 		appLogger.Error("router", slog.Any("error", err))
 		return 1

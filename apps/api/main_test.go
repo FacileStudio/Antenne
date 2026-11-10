@@ -51,7 +51,7 @@ func TestEveryRouteIsDocumented(t *testing.T) {
 		t.Fatalf("local: %v", err)
 	}
 
-	router, err := server.BuildRouter(cfg, log, nil, nil, authService, sessions, kit, passwords, nil, nil)
+	router, err := server.BuildRouter(cfg, log, nil, nil, authService, sessions, kit, passwords, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("router: %v", err)
 	}
