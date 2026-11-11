@@ -23,16 +23,22 @@ type Deletions struct {
 
 // NewDeletions builds the receiver over Antenne's tables. eraseAccount deletes
 // the account behind a Registre identity, porte/kit's Store.EraseAccount with
-// EraseMemberships as its EraseData. erase then removes porte's own rows for
-// the identity, pg.Store.EraseIdentity.
+// EraseMemberships and ErasePoolEvents in its EraseData. The bus events naming
+// the subject go next, for a person who never had an Antenne account. erase
+// then removes porte's own rows for the identity, pg.Store.EraseIdentity.
 func NewDeletions(orm *gorm.DB, client directory.Client, eraseAccount, erase Eraser, logger *slog.Logger) *Deletions {
 	d := &Deletions{orm: orm}
 	d.receiver = &directory.Deletions{
-		Client:          client,
-		OnPersonDeleted: eraseAccount,
-		Erase:           erase,
-		State:           deletionState{orm: orm},
-		Logger:          logger,
+		Client: client,
+		OnPersonDeleted: func(ctx context.Context, provider, subject string) error {
+			if err := eraseAccount(ctx, provider, subject); err != nil {
+				return err
+			}
+			return orm.WithContext(ctx).Exec(poolEventsNaming+`(SELECT lower(?::text)))`, subject).Error
+		},
+		Erase:  erase,
+		State:  deletionState{orm: orm},
+		Logger: logger,
 	}
 	return d
 }
@@ -58,6 +64,24 @@ type Eraser func(ctx context.Context, provider, subject string) error
 func EraseMemberships(ctx context.Context, tx *sql.Tx, userID int64) error {
 	_, err := tx.ExecContext(ctx,
 		`DELETE FROM space_members WHERE lower(user_id) = (SELECT lower(email) FROM users WHERE id = $1)`, userID)
+	return err
+}
+
+// poolEventsNaming deletes every bus event whose payload holds, as any string value
+// at any depth, one of the lowered names the appended subquery returns. An exact
+// value match, so erasing bob@example.com leaves jimbob@example.com's events.
+const poolEventsNaming = `DELETE FROM pool_events e WHERE EXISTS (
+	SELECT 1 FROM jsonb_path_query(e.payload, 'strict $.**') AS v
+	WHERE jsonb_typeof(v) = 'string' AND lower(v #>> '{}') IN `
+
+// ErasePoolEvents deletes the bus events that name the erased person by email or by
+// any of their identity subjects, in the transaction that deletes the account. Apps
+// publish payloads such as owner_email and the Registre subject on the bus, and
+// retention alone keeps them for up to 30 days.
+func ErasePoolEvents(ctx context.Context, tx *sql.Tx, userID int64) error {
+	_, err := tx.ExecContext(ctx, poolEventsNaming+`(
+		SELECT lower(email) FROM users WHERE id = $1 AND email <> ''
+		UNION SELECT lower(subject) FROM porte_identities WHERE user_id = $1 AND subject <> ''))`, userID)
 	return err
 }
 
