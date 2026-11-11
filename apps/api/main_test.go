@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/env"
 	"github.com/FacileStudio/Antenne/apps/api/internal/server"
@@ -102,6 +103,26 @@ func TestTheReferenceRendersEveryModule(t *testing.T) {
 	} {
 		if _, found := paths[expected]; !found {
 			t.Errorf("the reference is missing %s", expected)
+		}
+	}
+}
+
+// TestMaintenanceRunsEveryChoreAtBoot pins the retention fix: with a ticker far longer
+// than the test, every chore still runs once, because a process redeployed several
+// times a day never reaches the first tick.
+func TestMaintenanceRunsEveryChoreAtBoot(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ran := make(chan int, 2)
+	go maintenance(ctx, 24*time.Hour, func() { ran <- 1 }, func() { ran <- 2 })
+	for _, want := range []int{1, 2} {
+		select {
+		case got := <-ran:
+			if got != want {
+				t.Fatalf("chore %d ran, want %d", got, want)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("chore %d did not run at boot", want)
 		}
 	}
 }

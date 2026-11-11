@@ -267,7 +267,11 @@ func run() int {
 	application.Start(ctx)
 	defer application.Stop()
 
-	go maintenance(ctx, appLogger, authService, eventLog, busServer)
+	go maintenance(ctx, time.Hour,
+		func() { authService.PurgeExpiredSessions(ctx) },
+		eventLog.Prune,
+		busServer.Cleanup,
+	)
 	go spaceService.Run(ctx)
 	if cfg.Porte.Enabled() {
 		go deletions.Run(ctx)
@@ -307,24 +311,21 @@ func run() int {
 	return 0
 }
 
-// maintenance runs the periodic chores: pool retention, session expiry and
-// event-log pruning.
-func maintenance(ctx context.Context, log *slog.Logger, authService *auth.Service, eventLog *events.Service, busServer *bus.Server) {
-	daily := time.NewTicker(24 * time.Hour)
-	hourly := time.NewTicker(time.Hour)
-	defer daily.Stop()
-	defer hourly.Stop()
+// maintenance runs the periodic chores once at boot and then every interval: pool
+// retention, session expiry and event-log pruning. Antenne redeploys several times a
+// day, so a chore that waited for a first tick of a day-long ticker never ran.
+func maintenance(ctx context.Context, interval time.Duration, chores ...func()) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
 	for {
+		for _, chore := range chores {
+			chore()
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case <-hourly.C:
-			authService.PurgeExpiredSessions(ctx)
-			eventLog.Prune()
-		case <-daily.C:
-			log.Debug("running pool retention")
-			busServer.Cleanup()
+		case <-ticker.C:
 		}
 	}
 }
