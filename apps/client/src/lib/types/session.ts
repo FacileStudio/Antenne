@@ -22,7 +22,7 @@ export interface AuthConfigPayload {
 	sso_only: boolean;
 	oidc_enabled: boolean;
 	password_required: boolean;
-	username: string;
-	email: string;
+	username?: string;
+	email?: string;
 	journal?: { url: string; key: string };
 }
