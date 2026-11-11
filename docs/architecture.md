@@ -131,7 +131,8 @@ deliver everything twice.
 **Retention is interest-based, not time-based.** Events stay until every active listener has
 acked them, past a 48h floor kept for replay. A listener not seen for 14 days stops pinning
 the log. A 30-day ceiling backstops everything, and crossing it while a listener is still
-behind logs loudly rather than dropping silently.
+behind logs loudly rather than dropping silently. The pass runs at boot and then hourly. A
+daily ticker never fired, because each redeploy reset it.
 
 An app never receives its own emissions back.
 

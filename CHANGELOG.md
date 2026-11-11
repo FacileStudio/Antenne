@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+
+- fix(server): every dashboard response redacts error text the way the MCP server does. The test-target, replay, test-alert, test-provider and settings errors go through `delivery.RedactError`, and stored delivery errors, health details and standing alerts go through `delivery.ScrubURLs` on read, so a Discord webhook URL that an event row or a health row written before v1.6.0 still holds is cut to `scheme://host` in every API response. Stored rows are not rewritten.
+- fix(spaces): Registre erasure deletes every `pool_events` row whose payload holds, as an exact string value at any depth, the person's email or one of their identity subjects, in the transaction that deletes the account. A subject Antenne never saw sign in is erased from the bus too. Free text that merely mentions the address is not matched.
+- fix(spaces): the Registre import no longer creates a user for a space member who never signed in. Every Antenne account is an admin, so the import had made one admin row per Registre member; a sign-in is now the only way an account is created. Membership stays keyed by address, so a first sign-in lands on it. Migration 00010 adds `space_members.from_registre` so a sync still removes an imported member Registre dropped. Existing rows are left as they are.
+- fix(auth): `GET /api/auth/config` sends `username` and `email` only when the password form is offered, so an SSO-only instance no longer tells anonymous callers its bootstrap address.
+
+### Fixed
+
+- fix(api): the maintenance chores (pool retention, session expiry, event-log pruning) run at boot and then hourly. Pool retention ran on a 24-hour ticker that every redeploy reset, so the 48-hour floor and the 30-day ceiling were almost never applied. The first boot of this release trims the backlog.
+
+### Rollback
+
+- Reverting to v1.6.0 is safe: it ignores `from_registre`, and its migrator accepts the newer version. It would again pre-provision admin rows on the next sync.
+
 ## [1.6.0] - 2026-11-11
 
 ### Added
