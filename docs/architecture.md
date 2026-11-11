@@ -107,7 +107,9 @@ of replaying the whole inbox into Matrix.
 ## The Antenne Pool
 
 A WebSocket bus with a durable, offset-based queue in Postgres. A client registers over HTTP
-with the shared secret, receives a token, and connects with it.
+with the shared secret, receives a token, and connects with it. Each registration issues a new
+token, and a token is valid only under the secret it was issued with, so rotating the secret
+revokes every token (see [api.md](api.md#tokens)).
 
 | Frame | Direction | Meaning |
 |---|---|---|

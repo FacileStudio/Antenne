@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+
+- fix(bus): registering never returns an existing app's token. Every registration issues a new token, revokes the app's previous one and closes the connection that used it; the app id is kept, so subscriptions and retention carry over. Before this, anyone holding the shared secret could register under an existing app's name and receive that app's live token.
+- fix(bus): a pool token is bound to the secret it was issued under. `pool_apps.secret_fingerprint` (migration 00008) holds an HMAC-SHA256 keyed by the effective secret, never the secret itself, and the socket refuses a token whose fingerprint is not the current secret's. A dashboard save that changes the secret closes every live connection at once, and a restart with a new `ANTENNE_SECRET` refuses every old token, so rotating the secret now revokes every token issued under the old one. Rows from before the migration are bound to the current secret at the first boot, so the deploy disconnects nobody. `docs/configuration.md` has the rotation steps.
+
+### Rollback
+
+- Reverting to v1.4.1 is safe: it ignores the new column. Tokens it hands out meanwhile have no fingerprint, and the next forward boot binds them to the current secret.
+
 ## [1.4.1] - 2026-11-10
 
 ### Fixed

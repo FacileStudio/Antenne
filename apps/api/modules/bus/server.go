@@ -48,39 +48,39 @@ type Server struct {
 
 	mu           sync.RWMutex
 	secret       string
+	fingerprint  string
 	connections  map[string]*connection
 	subscribers  map[string]map[string]bool
 	activity     ActivityLogger
 	eventHandler EventHandler
 }
 
-// NewServer builds the pool server.
+// NewServer builds the pool server and binds any token issued before tokens
+// carried a fingerprint to the secret it boots with.
 func NewServer(db *gorm.DB, log *slog.Logger, secret string) *Server {
-	if secret == "" {
-		secret = "pool"
-	}
+	secret = effectiveSecret(secret)
 	if secret == "pool" {
 		log.Warn("pool is using the default secret 'pool' — set ANTENNE_SECRET in production")
 	}
 
-	return &Server{
+	server := &Server{
 		queue:       NewQueue(db, log),
 		log:         log,
 		secret:      secret,
+		fingerprint: secretFingerprint(secret),
 		connections: map[string]*connection{},
 		subscribers: map[string]map[string]bool{},
 		upgrader:    websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }},
 	}
-}
-
-// SetSecret swaps the registration secret, after a dashboard save.
-func (s *Server) SetSecret(secret string) {
-	if secret == "" {
-		secret = "pool"
+	if db != nil {
+		adopted, err := server.queue.adoptUnbound(server.fingerprint)
+		if err != nil {
+			log.Error("pool token binding failed", slog.Any("error", err))
+		} else if adopted > 0 {
+			log.Info("pool tokens bound to the current secret", slog.Int64("tokens", adopted))
+		}
 	}
-	s.mu.Lock()
-	s.secret = secret
-	s.mu.Unlock()
+	return server
 }
 
 // OnActivity installs the activity logger.
@@ -165,18 +165,20 @@ func (s *Server) Stats() Stats {
 	return stats
 }
 
-func (s *Server) attach(conn *connection) {
+// attach makes conn the app's one live connection. It refuses a connection
+// whose token was issued under a secret rotated away since the token was
+// checked, which closes the gap between the check and the attach.
+func (s *Server) attach(conn *connection) bool {
 	s.mu.Lock()
-	// One live connection per app: a reconnect that arrives before the old
-	// socket's close is noticed would otherwise get events twice.
+	defer s.mu.Unlock()
+	if conn.app.fingerprint != s.fingerprint {
+		return false
+	}
 	if stale, ok := s.connections[conn.app.AppID]; ok && stale != conn {
-		s.removeLocked(stale)
-		go stale.socket.WriteControl(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "replaced by new connection"),
-			time.Now().Add(time.Second))
+		s.evictLocked(stale, "replaced by new connection")
 	}
 	s.connections[conn.app.AppID] = conn
-	s.mu.Unlock()
+	return true
 }
 
 func (s *Server) detach(conn *connection) {

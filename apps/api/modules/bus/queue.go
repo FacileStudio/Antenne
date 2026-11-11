@@ -26,6 +26,7 @@ type appRow struct {
 	AppID          string `gorm:"primaryKey;column:app_id"`
 	App            string
 	Token          string
+	Fingerprint    *string    `gorm:"column:secret_fingerprint"`
 	EmitChannels   []byte     `gorm:"column:emit_channels;type:jsonb"`
 	ListenChannels []byte     `gorm:"column:listen_channels;type:jsonb"`
 	RegisteredAt   time.Time  `gorm:"column:registered_at"`
@@ -68,6 +69,7 @@ type RegisteredApp struct {
 	EmitChannels   []string `json:"emit_channels"`
 	ListenChannels []string `json:"listen_channels"`
 	RegisteredAt   string   `json:"registered_at"`
+	fingerprint    string
 }
 
 // Event is one queued message.
@@ -198,8 +200,13 @@ func (q *Queue) Touch(appID string) {
 	q.db.Model(&appRow{}).Where("app_id = ?", appID).Update("last_seen_at", now)
 }
 
-// Register mints or refreshes an app's token and declared channels.
-func (q *Queue) Register(app string, emitChannels, listenChannels []string) (RegisteredApp, error) {
+// Register issues a fresh token for an app and records its declared channels.
+//
+// Every registration replaces the app's previous token, so knowing the secret
+// never hands out a token someone else is using. The app keeps its id, which
+// is what its subscriptions and retention are keyed by. The token is bound to
+// fingerprint, the keyed hash of the secret it was issued under.
+func (q *Queue) Register(app string, emitChannels, listenChannels []string, fingerprint string) (RegisteredApp, error) {
 	emit, err := json.Marshal(emitChannels)
 	if err != nil {
 		return RegisteredApp{}, err
@@ -209,39 +216,23 @@ func (q *Queue) Register(app string, emitChannels, listenChannels []string) (Reg
 		return RegisteredApp{}, err
 	}
 
-	var existing appRow
-	err = q.db.Where("app = ?", app).First(&existing).Error
-	if err == nil {
-		// The token is deliberately preserved across re-registration: a client
-		// restarting must not invalidate the token its other instance is using.
-		if err := q.db.Model(&existing).Updates(map[string]any{
-			"emit_channels":   emit,
-			"listen_channels": listen,
-		}).Error; err != nil {
-			return RegisteredApp{}, err
-		}
-		return RegisteredApp{
-			AppID:          existing.AppID,
-			App:            app,
-			Token:          existing.Token,
-			EmitChannels:   emitChannels,
-			ListenChannels: listenChannels,
-			RegisteredAt:   existing.RegisteredAt.UTC().Format(time.RFC3339),
-		}, nil
-	}
-	if err != gorm.ErrRecordNotFound {
-		return RegisteredApp{}, err
-	}
-
 	row := appRow{
 		AppID:          settings.NewID(),
 		App:            app,
 		Token:          settings.NewID(),
+		Fingerprint:    &fingerprint,
 		EmitChannels:   emit,
 		ListenChannels: listen,
 		RegisteredAt:   time.Now().UTC(),
 	}
-	if err := q.db.Create(&row).Error; err != nil {
+	err = q.db.Clauses(
+		clause.OnConflict{
+			Columns:   []clause.Column{{Name: "app"}},
+			DoUpdates: clause.AssignmentColumns([]string{"token", "secret_fingerprint", "emit_channels", "listen_channels"}),
+		},
+		clause.Returning{Columns: []clause.Column{{Name: "app_id"}, {Name: "registered_at"}}},
+	).Create(&row).Error
+	if err != nil {
 		return RegisteredApp{}, err
 	}
 
@@ -251,14 +242,16 @@ func (q *Queue) Register(app string, emitChannels, listenChannels []string) (Reg
 		Token:          row.Token,
 		EmitChannels:   emitChannels,
 		ListenChannels: listenChannels,
-		RegisteredAt:   row.RegisteredAt.Format(time.RFC3339),
+		RegisteredAt:   row.RegisteredAt.UTC().Format(time.RFC3339),
+		fingerprint:    fingerprint,
 	}, nil
 }
 
-// ByToken resolves a connection token to its app.
-func (q *Queue) ByToken(token string) (RegisteredApp, bool) {
+// ByToken resolves a connection token to its app. A token issued under any
+// secret other than the one fingerprint names is refused.
+func (q *Queue) ByToken(token, fingerprint string) (RegisteredApp, bool) {
 	var row appRow
-	if err := q.db.Where("token = ?", token).First(&row).Error; err != nil {
+	if err := q.db.Where("token = ? AND secret_fingerprint = ?", token, fingerprint).First(&row).Error; err != nil {
 		return RegisteredApp{}, false
 	}
 
@@ -267,10 +260,19 @@ func (q *Queue) ByToken(token string) (RegisteredApp, bool) {
 		App:          row.App,
 		Token:        row.Token,
 		RegisteredAt: row.RegisteredAt.UTC().Format(time.RFC3339),
+		fingerprint:  fingerprint,
 	}
 	app.EmitChannels = storedChannels(row.EmitChannels)
 	app.ListenChannels = storedChannels(row.ListenChannels)
 	return app, true
+}
+
+// adoptUnbound binds every token that predates fingerprints to the current
+// secret. It runs at boot, so the deploy that adds the column disconnects
+// nobody; a token that is still unbound is refused.
+func (q *Queue) adoptUnbound(fingerprint string) (int64, error) {
+	result := q.db.Model(&appRow{}).Where("secret_fingerprint IS NULL").Update("secret_fingerprint", fingerprint)
+	return result.RowsAffected, result.Error
 }
 
 // storedChannels reads a stored channel list. A list that no longer parses is

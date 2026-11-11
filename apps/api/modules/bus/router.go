@@ -61,7 +61,9 @@ func declaredChannels(emit, listen []string) ([]string, []string) {
 	return emit, listen
 }
 
-// HandleRegister exchanges the shared secret for a connection token.
+// HandleRegister exchanges the shared secret for a connection token. Each call
+// issues a new token, revokes the app's previous one and closes the connection
+// that used it.
 func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	var body registrationRequest
 	if err := httpjson.DecodeJSON(w, r, &body); err != nil {
@@ -74,7 +76,7 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.mu.RLock()
-	secret := s.secret
+	secret, fingerprint := s.secret, s.fingerprint
 	s.mu.RUnlock()
 
 	if !hmac.Equal([]byte(body.Secret), []byte(secret)) {
@@ -89,11 +91,12 @@ func (s *Server) HandleRegister(w http.ResponseWriter, r *http.Request) {
 
 	emit, listen := declaredChannels(body.Events.Emit, body.Events.Listen)
 
-	registered, err := s.queue.Register(identity, emit, listen)
+	registered, err := s.queue.Register(identity, emit, listen, fingerprint)
 	if err != nil {
 		httpjson.WriteError(w, err)
 		return
 	}
+	s.evict(registered.AppID, "token reissued")
 	s.queue.Touch(registered.AppID)
 
 	s.log.Info("pool app registered",
@@ -114,7 +117,7 @@ func (s *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, ok := s.queue.ByToken(token)
+	app, ok := s.queue.ByToken(token, s.currentFingerprint())
 	if !ok {
 		httpjson.WriteError(w, apierrors.Forbidden("invalid token"))
 		return
@@ -132,7 +135,10 @@ func (s *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	})
 
 	conn := &connection{app: app, socket: socket, channels: map[string]bool{}, closed: make(chan struct{})}
-	s.attach(conn)
+	if !s.attach(conn) {
+		refuse(socket)
+		return
+	}
 
 	if err := conn.send(map[string]string{
 		"type":   "welcome",

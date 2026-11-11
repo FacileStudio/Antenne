@@ -98,6 +98,10 @@ The URL layout is not uniform, and that is deliberate — see the conventions be
 - **Long-running work hangs off the process context, never a request context.** Re-applying
   the runtime under `r.Context()` starts every poller and has it cancelled when the response
   is written.
+- **A pool registration always issues a new token**, and a token is valid only under the secret
+  it was issued with (`pool_apps.secret_fingerprint`). Never return a stored token from
+  `/antenne/register`: knowing the shared secret must not hand out another app's live token.
+  Rotating the secret revokes every token; `docs/configuration.md` has the steps.
 - Webhook providers live in `apps/api/modules/webhooks/provider_*.go`, one file per provider,
   registered in `webhooks.Registry`.
 - Delivery targets are sender methods in `modules/delivery`.

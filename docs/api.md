@@ -171,19 +171,37 @@ payload withheld".
 
 | Route | Notes |
 |---|---|
-| `POST /pool/register`, `POST /api/antenne/register` | exchange the shared secret for a token |
-| `GET /pool/ws`, `GET /api/antenne/ws` | the WebSocket, `?token=…` |
+| `POST /antenne/register`, `POST /api/antenne/register` | exchange the shared secret for a token |
+| `GET /antenne/ws`, `GET /api/antenne/ws` | the WebSocket, `?token=…` |
 | `GET /api/antenne/stats` | authenticated: epoch, live connections, connected apps |
 
 ```jsonc
-// POST /pool/register
+// POST /antenne/register
 { "app": "sablier", "instance_id": "optional",
   "secret": "…", "events": { "emit": ["*"], "listen": ["*"] } }
 // → { "token": "…", "app_id": "…" }
 ```
 
-Re-registering an app keeps its existing token: a restarting client must not invalidate the
-token another instance is using.
+### Tokens
+
+- **Every registration issues a new token.** Registering under a name that already exists
+  replaces that app's token, revokes the old one and closes the connection that used it. The
+  app id stays the same, so subscriptions and retention carry over. Knowing the secret never
+  returns a token someone else is using.
+- **A token is bound to the secret it was issued under.** `pool_apps.secret_fingerprint` holds
+  an HMAC-SHA256 keyed by the effective secret, never the secret itself. The socket refuses a
+  token whose fingerprint is not the current secret's, with the same `403 invalid token`.
+- **Changing the effective secret revokes every token.** The effective secret is the dashboard
+  value when set, else `ANTENNE_SECRET`, else `pool`. A dashboard save that changes it closes
+  every live connection at once (close reason `secret rotated`); a restart with a new env value
+  refuses every old token. A save that leaves the secret as it was disconnects nobody.
+- **Identity is `app`, or `app:instance_id`.** Two processes that share an identity replace
+  each other's token on every reconnect. Give each running instance its own `instance_id`.
+
+Clients do not cache tokens. Both antenne-client implementations (Go from the first release,
+TypeScript) register before every connection attempt, so a client whose token was revoked
+registers again on its next reconnect and needs no change. A client holding a rotated-away
+secret gets `403 invalid secret` and keeps retrying under its reconnect policy.
 
 ### Frames
 

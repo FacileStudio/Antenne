@@ -81,6 +81,29 @@ their rotation age; Dokploy remains the bootstrap tier that hands them to the pr
 Rotating a production secret is therefore: `casier secrets set -p antenne -e prod KEY value`,
 then `casier push dokploy`, then redeploy.
 
+### Rotating the pool secret
+
+Antenne accepts one pool secret at a time, and changing it revokes every token issued under the
+old one (see [the pool's tokens](api.md#tokens)). Every connected app drops at the switch and
+cannot come back until it holds the new secret. Apps with a durable outbox keep their events
+and send them once they reconnect. Keep the window short by doing the last two steps back to
+back.
+
+1. Put the new value in Casier for Antenne and every pool client (`ANTENNE_SECRET`), without
+   deploying any of them.
+2. Push and redeploy Antenne. While the dashboard holds a value, the dashboard wins, so nothing
+   changes yet and every app reconnects with the old secret.
+3. Clear the dashboard value: Settings > Bus, empty field, save (or `PUT /api/settings` with
+   `"bus": {"secret": ""}`). The env value takes over at once. Every connection closes and
+   every token is revoked, including tokens held by stale registrations.
+4. Push and redeploy each client app, one after the other. Each registers with the new secret
+   at boot and gets a new token.
+5. Verify: `/api/antenne/stats` lists every app again, Antenne logs `pool app registered` for
+   each, and a registration with the old secret answers `403 invalid secret`.
+
+Rotating from the dashboard instead (typing a new value in step 3) works the same way, but the
+value then lives only in Antenne's database and env stops mattering until it is cleared.
+
 ## The settings document
 
 Everything else — providers, delivery targets, credentials, routing, system events, the pool

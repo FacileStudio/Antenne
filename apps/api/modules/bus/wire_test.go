@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/pgtest"
 )
@@ -34,7 +35,13 @@ type wireApp struct {
 // BuildRouter mounts them, over a migrated Postgres schema.
 func newWirePool(t *testing.T) *wirePool {
 	t.Helper()
-	server := NewServer(pgtest.New(t), discardLogger(), wireSecret)
+	return wirePoolOn(t, pgtest.New(t), wireSecret)
+}
+
+// wirePoolOn boots a pool over db with secret, the way a restart does.
+func wirePoolOn(t *testing.T, db *gorm.DB, secret string) *wirePool {
+	t.Helper()
+	server := NewServer(db, discardLogger(), secret)
 	router := chi.NewRouter()
 	server.RegisterRoutes(router)
 	router.Route("/api", server.RegisterRoutes)
