@@ -10,8 +10,8 @@ type AuthConfigResponse struct {
 	SSOOnly          bool   `json:"sso_only"`
 	OIDCEnabled      bool   `json:"oidc_enabled"`
 	PasswordRequired bool   `json:"password_required"`
-	Username         string `json:"username"`
-	Email            string `json:"email"`
+	Username         string `json:"username,omitempty"`
+	Email            string `json:"email,omitempty"`
 }
 
 func Documentation() apiref.Module {

@@ -190,3 +190,18 @@ func TestHandleSessionResolvesIdentity(t *testing.T) {
 		})
 	}
 }
+
+// TestAuthConfigHidesTheBootstrapAddressWithoutAPasswordForm checks GET
+// /auth/config names the bootstrap account only where the password form is drawn.
+func TestAuthConfigHidesTheBootstrapAddressWithoutAPasswordForm(t *testing.T) {
+	sso := NewService(nil, nil, Config{AdminUsername: "owner@example.com", AdminPassword: "pw", Issuer: "https://sso.example"}, nil, nil, nil)
+	for _, key := range []string{"email", "username"} {
+		if _, ok := sso.ConfigExtra()()[key]; ok {
+			t.Errorf("an SSO-only instance exposes %s", key)
+		}
+	}
+	local := NewService(nil, nil, Config{AdminUsername: "owner@example.com", AdminPassword: "pw"}, nil, nil, nil)
+	if got := local.ConfigExtra()()["email"]; got != "owner@example.com" {
+		t.Errorf("the password form lost its prefill: %v", got)
+	}
+}

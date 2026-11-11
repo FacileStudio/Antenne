@@ -38,17 +38,19 @@ func (s *Service) RegisterRoutes(router chi.Router) {
 // porte serves sso_only and oidc_enabled there and owns the route, so an app
 // with a third key either loses it or registers the path twice and chi panics
 // at boot. The login page draws its password form on password_required, which
-// is false on an instance that only federates.
+// is false on an instance that only federates. username and email prefill that
+// form and the CLI's prompt, so they are sent only with it: an SSO-only
+// instance does not tell anonymous callers its bootstrap address.
 //
 // journal is the browser SDK's configuration and is omitted entirely unless both
 // variables are set, so hooks.client.ts can treat a missing key as "reporting is
 // off" rather than as a broken deployment.
 func (s *Service) ConfigExtra() func() map[string]any {
 	return func() map[string]any {
-		extra := map[string]any{
-			"password_required": s.PasswordRequired(),
-			"username":          s.cfg.AdminUsername,
-			"email":             s.AdminEmail(),
+		extra := map[string]any{"password_required": s.PasswordRequired()}
+		if s.PasswordRequired() {
+			extra["username"] = s.cfg.AdminUsername
+			extra["email"] = s.AdminEmail()
 		}
 		if s.cfg.JournalBrowserURL != "" && s.cfg.JournalBrowserKey != "" {
 			extra["journal"] = map[string]any{
