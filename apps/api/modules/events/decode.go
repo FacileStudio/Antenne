@@ -32,7 +32,9 @@ func decode(stored row) Entry {
 }
 
 // decodeDeliveries reads the stored attempt list, keeping whatever parsed and
-// never handing back nil.
+// never handing back nil. Each error passes through delivery.ScrubURLs: rows
+// written before Antenne redacted delivery errors can hold a webhook URL, and
+// redacting on read covers them without rewriting the log.
 //
 // A blob that no longer decodes costs the event its delivery record and nothing
 // else. The attempts are a log of what already happened rather than state
@@ -45,6 +47,9 @@ func decodeDeliveries(blob []byte) []delivery.Attempt {
 	}
 	if attempts == nil {
 		return []delivery.Attempt{}
+	}
+	for index := range attempts {
+		attempts[index].Error = delivery.ScrubURLs(attempts[index].Error)
 	}
 	return attempts
 }

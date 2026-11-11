@@ -3,7 +3,6 @@ package mcp
 import (
 	"context"
 	stderrors "errors"
-	"regexp"
 	"strconv"
 
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
@@ -39,7 +38,6 @@ var (
 	errTarget   = errors.NotFound("delivery target not found")
 	errProvider = errors.NotFound("provider not found")
 	errEvent    = errors.NotFound("event not found")
-	urlPath     = regexp.MustCompile(`(https?://[^/\s"'<>]+)[^\s"'<>]*`)
 )
 
 // toolset holds what the tool handlers share.
@@ -73,10 +71,4 @@ func (t *toolset) target(id string) (settings.DeliveryTarget, error) {
 // limitKey is the check-now allowance of one person, apart from any dashboard address.
 func limitKey(userID int64) string {
 	return "mcp:" + strconv.FormatInt(userID, 10)
-}
-
-// scrub keeps only the scheme and host of every URL in text: a delivery error logged
-// before Antenne redacted them can carry a webhook URL whose path is its credential.
-func scrub(text string) string {
-	return urlPath.ReplaceAllString(text, "$1")
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/server"
+	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -76,7 +77,7 @@ func (t *toolset) listTargets(ctx context.Context, req *sdk.CallToolRequest, _ e
 	}
 	for _, alert := range healthPage.StandingAlerts {
 		out.StandingAlerts = append(out.StandingAlerts, standingOut{
-			TargetID: alert.TargetID, Target: alert.TargetName, Title: alert.Title, Detail: scrub(alert.Detail),
+			TargetID: alert.TargetID, Target: alert.TargetName, Title: alert.Title, Detail: delivery.ScrubURLs(alert.Detail),
 			Since: alert.Since.UTC().Format(time.RFC3339),
 		})
 	}
@@ -88,7 +89,7 @@ func targetOf(target settings.DeliveryTarget, row server.TargetHealth) targetOut
 	out := targetOut{
 		ID: target.ID, Type: string(target.Type), Name: target.Name, Enabled: target.Enabled,
 		ProviderIDs: orEmpty(target.ProviderIDs), ProviderTags: orEmpty(target.ProviderTags),
-		State: row.State, Deliverable: row.Deliverable, Detail: scrub(row.Detail),
+		State: row.State, Deliverable: row.Deliverable, Detail: delivery.ScrubURLs(row.Detail),
 		DownSince: stamp(row.DownSince), LastSuccess: stamp(row.LastSuccessAt),
 	}
 	if out.State == "" {
