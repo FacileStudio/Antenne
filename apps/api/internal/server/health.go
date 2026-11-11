@@ -136,38 +136,47 @@ type TargetCheckResult struct {
 }
 
 func (a *API) handleTargetHealth(w http.ResponseWriter, r *http.Request) {
-	current := a.app.Settings()
-	page := buildHealthPage(current.Delivery.Items, a.app.TargetHealth(), time.Now())
+	httpjson.WriteJSON(w, http.StatusOK, a.HealthPage())
+}
+
+// HealthPage is the delivery health snapshot the dashboard and the MCP server show:
+// every configured target joined to its health record, and the standing alerts.
+func (a *API) HealthPage() DeliveryHealthPage {
+	page := buildHealthPage(a.app.Settings().Delivery.Items, a.app.TargetHealth(), time.Now())
 	page.StandingAlerts = a.app.StandingHealthAlerts()
-	httpjson.WriteJSON(w, http.StatusOK, page)
+	return page
 }
 
 // handleCheckTargetHealth is the operator's "check this now" button.
 func (a *API) handleCheckTargetHealth(w http.ResponseWriter, r *http.Request) {
-	allowed, wait := a.checks.AllowAt(authcontext.ClientIP(r), time.Now())
-	if !allowed {
+	result, wait, err := a.CheckTarget(r.Context(), authcontext.ClientIP(r), chi.URLParam(r, "targetId"))
+	if wait > 0 {
 		w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())))
-		httpjson.WriteError(w, apierrors.RateLimited("too many checks from this client; wait before checking again"))
-		return
 	}
-
-	targetID := chi.URLParam(r, "targetId")
-	current := a.app.Settings()
-	target, ok := current.FindTarget(targetID)
-	if !ok {
-		httpjson.WriteError(w, apierrors.NotFound("delivery target not found"))
-		return
-	}
-
-	observation, err := a.app.CheckTargetHealth(r.Context(), targetID)
 	if err != nil {
-		// The check could not run. Not the target's verdict, so not the target's
-		// fault, so not a 200 either.
-		httpjson.WriteError(w, apierrors.Internal("the check could not run: "+err.Error(), err))
+		httpjson.WriteError(w, err)
 		return
 	}
+	httpjson.WriteJSON(w, http.StatusOK, result)
+}
 
-	httpjson.WriteJSON(w, http.StatusOK, TargetCheckResult{
+// CheckTarget probes one target on demand under the check-now allowance of key, the
+// caller's address on the dashboard. A refusal returns the wait before the next check.
+// A check that could not run is an internal error: not the target's verdict.
+func (a *API) CheckTarget(ctx context.Context, key, targetID string) (TargetCheckResult, time.Duration, error) {
+	allowed, wait := a.checks.AllowAt(key, time.Now())
+	if !allowed {
+		return TargetCheckResult{}, wait, apierrors.RateLimited("too many checks from this client; wait before checking again")
+	}
+	target, ok := a.app.Settings().FindTarget(targetID)
+	if !ok {
+		return TargetCheckResult{}, 0, apierrors.NotFound("delivery target not found")
+	}
+	observation, err := a.app.CheckTargetHealth(ctx, targetID)
+	if err != nil {
+		return TargetCheckResult{}, 0, apierrors.Internal("the check could not run: "+err.Error(), err)
+	}
+	return TargetCheckResult{
 		TargetID:          targetID,
 		OK:                observation.OK,
 		Kind:              string(observation.Kind),
@@ -175,7 +184,7 @@ func (a *API) handleCheckTargetHealth(w http.ResponseWriter, r *http.Request) {
 		Detail:            observation.Detail,
 		RetryAfterSeconds: int(observation.RetryAfter.Seconds()),
 		State:             describeHealth(target, recordFor(a.app.TargetHealth(), targetID), time.Now()).State,
-	})
+	}, 0, nil
 }
 
 func buildHealthPage(targets []settings.DeliveryTarget, records []health.Record, now time.Time) DeliveryHealthPage {
