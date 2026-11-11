@@ -25,7 +25,7 @@ func (t *toolset) checkTarget(ctx context.Context, req *sdk.CallToolRequest, in 
 		return nil, checkOutput{}, mcpkit.Failure(err, hintTarget)
 	}
 	return nil, checkOutput{
-		TargetID: result.TargetID, OK: result.OK, Kind: result.Kind, Detail: scrub(result.Detail),
+		TargetID: result.TargetID, OK: result.OK, Kind: result.Kind, Detail: delivery.ScrubURLs(result.Detail),
 		State: result.State, RetryAfterSeconds: result.RetryAfterSeconds,
 	}, nil
 }
@@ -40,7 +40,7 @@ func (t *toolset) testTarget(ctx context.Context, req *sdk.CallToolRequest, in t
 		return nil, sendOutput{}, err
 	}
 	if err := t.Pipeline.TestTarget(ctx, in.TargetID); err != nil {
-		return nil, sendOutput{Status: statusFailed, ID: in.TargetID, Error: scrub(delivery.SafeErrorText(err))}, nil
+		return nil, sendOutput{Status: statusFailed, ID: in.TargetID, Error: delivery.RedactError(err)}, nil
 	}
 	return nil, sendOutput{Status: statusOK, ID: in.TargetID}, nil
 }
@@ -58,7 +58,7 @@ func (t *toolset) testProvider(ctx context.Context, req *sdk.CallToolRequest, in
 		return nil, sendOutput{}, mcpkit.Failure(errNotIMAP, "")
 	}
 	if err := t.Pipeline.TestProvider(in.ProviderID); err != nil {
-		return nil, sendOutput{Status: statusFailed, ID: in.ProviderID, Error: scrub(delivery.SafeErrorText(err))}, nil
+		return nil, sendOutput{Status: statusFailed, ID: in.ProviderID, Error: delivery.RedactError(err)}, nil
 	}
 	return nil, sendOutput{Status: statusOK, ID: in.ProviderID}, nil
 }

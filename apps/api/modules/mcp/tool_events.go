@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
+	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 	"github.com/FacileStudio/Antenne/apps/api/modules/events"
 	mcpkit "github.com/FacileStudio/tronc/mcp"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -142,7 +143,7 @@ func detailOf(e envelope.Envelope) *eventDetail {
 func attempts(entry events.Entry) []attemptOut {
 	out := make([]attemptOut, 0, len(entry.Deliveries))
 	for _, a := range entry.Deliveries {
-		out = append(out, attemptOut{TargetID: a.TargetID, Target: a.TargetName, Status: a.Status, Error: scrub(a.Error)})
+		out = append(out, attemptOut{TargetID: a.TargetID, Target: a.TargetName, Status: a.Status, Error: delivery.ScrubURLs(a.Error)})
 	}
 	return out
 }

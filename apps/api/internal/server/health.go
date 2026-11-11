@@ -13,6 +13,7 @@ import (
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/app"
 	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
+	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 	"github.com/FacileStudio/Antenne/apps/api/modules/health"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
 )
@@ -144,6 +145,9 @@ func (a *API) handleTargetHealth(w http.ResponseWriter, r *http.Request) {
 func (a *API) HealthPage() DeliveryHealthPage {
 	page := buildHealthPage(a.app.Settings().Delivery.Items, a.app.TargetHealth(), time.Now())
 	page.StandingAlerts = a.app.StandingHealthAlerts()
+	for index := range page.StandingAlerts {
+		page.StandingAlerts[index].Detail = delivery.ScrubURLs(page.StandingAlerts[index].Detail)
+	}
 	return page
 }
 
@@ -174,14 +178,14 @@ func (a *API) CheckTarget(ctx context.Context, key, targetID string) (TargetChec
 	}
 	observation, err := a.app.CheckTargetHealth(ctx, targetID)
 	if err != nil {
-		return TargetCheckResult{}, 0, apierrors.Internal("the check could not run: "+err.Error(), err)
+		return TargetCheckResult{}, 0, apierrors.Internal("the check could not run: "+delivery.RedactError(err), err)
 	}
 	return TargetCheckResult{
 		TargetID:          targetID,
 		OK:                observation.OK,
 		Kind:              string(observation.Kind),
 		Source:            string(observation.Source),
-		Detail:            observation.Detail,
+		Detail:            delivery.ScrubURLs(observation.Detail),
 		RetryAfterSeconds: int(observation.RetryAfter.Seconds()),
 		State:             describeHealth(target, recordFor(a.app.TargetHealth(), targetID), time.Now()).State,
 	}, 0, nil
@@ -225,7 +229,7 @@ func describeHealth(target settings.DeliveryTarget, record health.Record, now ti
 		Deliverable:         state.Deliverable(),
 		Source:              string(record.LastSource),
 		Kind:                string(record.LastKind),
-		Detail:              record.LastDetail,
+		Detail:              delivery.ScrubURLs(record.LastDetail),
 		LastObservedAt:      record.LastObservedAt,
 		LastSuccessAt:       record.LastSuccessAt,
 		LastFailureAt:       record.LastFailureAt,

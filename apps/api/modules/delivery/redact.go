@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 )
+
+var urlPath = regexp.MustCompile(`(https?://[^/\s"'<>]+)[^\s"'<>]*`)
 
 /*
 SafeErrorText renders a transport error without the URL it was talking to.
@@ -49,4 +52,17 @@ func safeURL(raw string) string {
 		return "the configured URL"
 	}
 	return parsed.Scheme + "://" + parsed.Host
+}
+
+// ScrubURLs keeps only the scheme and host of every URL in text. Error text stored
+// before Antenne redacted it can carry a webhook URL whose path is its credential, so
+// every response that shows stored error text passes it through here on the way out.
+func ScrubURLs(text string) string {
+	return urlPath.ReplaceAllString(text, "$1")
+}
+
+// RedactError is the error text an API response may carry: SafeErrorText, then
+// ScrubURLs for a URL quoted anywhere else in the message.
+func RedactError(err error) string {
+	return ScrubURLs(SafeErrorText(err))
 }

@@ -87,7 +87,7 @@ func (t *toolset) runReplay(ctx context.Context, a mcpkit.Action) error {
 		return err
 	}
 	if err := t.Pipeline.Replay(ctx, ref.Event, ref.Target); err != nil {
-		return errors.Failed("the replay was not delivered: " + scrub(delivery.SafeErrorText(err)))
+		return errors.Failed("the replay was not delivered: " + delivery.RedactError(err))
 	}
 	return nil
 }

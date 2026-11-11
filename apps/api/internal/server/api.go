@@ -113,7 +113,7 @@ func (a *API) handlePutSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := a.app.UpdateSettings(r.Context(), raw); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid(err.Error()))
+		httpjson.WriteError(w, apierrors.Invalid(delivery.RedactError(err)))
 		return
 	}
 
@@ -131,7 +131,7 @@ func (a *API) snapshot() SettingsResponse {
 
 func (a *API) handleTestAlert(w http.ResponseWriter, r *http.Request) {
 	if err := a.app.SendTestAlert(r.Context()); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid(err.Error()))
+		httpjson.WriteError(w, apierrors.Invalid(delivery.RedactError(err)))
 		return
 	}
 	writeOK(w)
@@ -146,7 +146,7 @@ func (a *API) handleTestTarget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.app.TestTarget(r.Context(), body.TargetID); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid(err.Error()))
+		httpjson.WriteError(w, apierrors.Invalid(delivery.RedactError(err)))
 		return
 	}
 	writeOK(w)
@@ -161,7 +161,7 @@ func (a *API) handleTestProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.app.TestProvider(body.ProviderID); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid(err.Error()))
+		httpjson.WriteError(w, apierrors.Invalid(delivery.RedactError(err)))
 		return
 	}
 	writeOK(w)
@@ -277,7 +277,7 @@ func (a *API) handleReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.app.Replay(r.Context(), chi.URLParam(r, "eventId"), body.TargetID); err != nil {
-		httpjson.WriteError(w, apierrors.Invalid(err.Error()))
+		httpjson.WriteError(w, apierrors.Invalid(delivery.RedactError(err)))
 		return
 	}
 	writeOK(w)
