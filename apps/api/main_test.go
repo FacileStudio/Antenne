@@ -9,6 +9,7 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/internal/env"
 	"github.com/FacileStudio/Antenne/apps/api/internal/server"
 	"github.com/FacileStudio/Antenne/apps/api/modules/auth"
+	"github.com/FacileStudio/Antenne/apps/api/modules/mcp"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
 	portepg "github.com/FacileStudio/porte/pg"
@@ -51,21 +52,20 @@ func TestEveryRouteIsDocumented(t *testing.T) {
 		t.Fatalf("local: %v", err)
 	}
 
-	router, err := server.BuildRouter(cfg, log, nil, nil, authService, sessions, kit, passwords, nil, nil, nil)
+	var confirmPage *mcp.Service
+	router, err := server.BuildRouter(cfg, log, nil, nil, server.NewAPI(nil), authService, sessions, kit, passwords, nil, nil, nil, confirmPage)
 	if err != nil {
 		t.Fatalf("router: %v", err)
 	}
 
-	// /dashboard is a legacy redirect kept for links made before the client moved
-	// to the root; it is not part of the API surface.
-	if missing := apiref.Undocumented(router, server.RefConfig(), "/dashboard", "/version"); len(missing) > 0 {
+	if missing := apiref.Undocumented(router, server.RefConfig(mcp.Documentation()), undocumented...); len(missing) > 0 {
 		t.Errorf("routes missing from the API registry: %v", missing)
 	}
 }
 
 func TestRegistryIsComplete(t *testing.T) {
 	if issues := apiref.Incomplete(
-		server.RefConfig(),
+		server.RefConfig(mcp.Documentation()),
 		"/api/auth/logout",
 		"/api/auth/oidc",
 		"/api/auth/oidc/callback",

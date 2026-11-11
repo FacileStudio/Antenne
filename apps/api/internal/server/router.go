@@ -31,15 +31,25 @@ import (
 	"github.com/FacileStudio/porte/session"
 )
 
+// MCP is the remote MCP server: its endpoint and metadata at the root, its confirm
+// page's API for a signed-in person, and that API's reference.
+type MCP interface {
+	RegisterRoutes(router chi.Router)
+	RegisterPendingRoutes(router chi.Router)
+	Documentation() apiref.Module
+}
+
 // BuildRouter is the composition root: wiring the health endpoint, the API
 // reference, the three groups (public, auth-protected, sessioned) and the SPA
 // catch-all. The caller passes the assembled dependencies and the router is the
-// result, or the error porte/kit returned while mounting the sign-in routes.
+// result, or the error porte/kit returned while mounting the sign-in routes. A nil
+// mcpServer leaves /mcp unmounted.
 func BuildRouter(
 	cfg env.Config,
 	log *slog.Logger,
 	sqlDB *sql.DB,
 	application *app.App,
+	api *API,
 	authService *auth.Service,
 	sessions *session.Manager,
 	oidcKit *oidc.Kit,
@@ -47,6 +57,7 @@ func BuildRouter(
 	spaceService *spaces.Service,
 	busServer *bus.Server,
 	identities kit.IdentityLister,
+	mcpServer MCP,
 ) (chi.Router, error) {
 	router := httpx.NewRouter(httpx.Config{
 		// Behind Traefik and Cloudflare, RemoteAddr is only the
@@ -75,9 +86,11 @@ func BuildRouter(
 	// The reference stays at the root, unauthenticated, next to the routes it
 	// documents. It describes the public contract — the webhook intake and the
 	// pool protocol other apps integrate against — and carries no data.
-	apiref.Mount(router, RefConfig())
+	apiref.Mount(router, RefConfig(mcpDocs(mcpServer)...))
+	if mcpServer != nil {
+		mcpServer.RegisterRoutes(router)
+	}
 
-	api := NewAPI(application)
 	var mountErr, invitationsErr error
 
 	router.Route("/api", func(protected chi.Router) {
@@ -117,6 +130,9 @@ func BuildRouter(
 			spaceService.RegisterRoutes(sessioned)
 			busServer.RegisterStats(sessioned)
 			invitationsErr = mountInvitations(sessioned, cfg, identities, log)
+			if mcpServer != nil {
+				mcpServer.RegisterPendingRoutes(sessioned)
+			}
 		})
 	})
 
@@ -139,6 +155,14 @@ func BuildRouter(
 	}
 
 	return router, errors.Join(mountErr, invitationsErr)
+}
+
+// mcpDocs is the reference of the MCP server's routes, or nothing without one.
+func mcpDocs(mcpServer MCP) []apiref.Module {
+	if mcpServer == nil {
+		return nil
+	}
+	return []apiref.Module{mcpServer.Documentation()}
 }
 
 // mountInvitations serves the user menu's pending Registre invitations. It

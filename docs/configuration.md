@@ -22,6 +22,7 @@ Read once at startup. Every error `env.Load` returns is a reason not to boot.
 | `OIDC_REDIRECT_URL` | Callback registered on the provider | `PUBLIC_URL` + `/api/auth/oidc/callback` |
 | `OIDC_SUCCESS_URL` | Where the browser lands after a successful login | `PUBLIC_URL` + `/` |
 | `ANTENNE_SECRET` | Shared secret pool clients register with. A dashboard value wins over it | `pool` |
+| `MCP_RESOURCE` | The MCP server's canonical URI, the resource Registre binds its tokens to. Only read with single sign-on and a client secret set | `PUBLIC_URL` + `/mcp` |
 | `TIMEOUT` | Website check timeout, in seconds | `10` |
 | `JOURNAL_URL` / `JOURNAL_TOKEN` | Ship logs to Journal. Both must be set for anything to ship | — |
 | `JOURNAL_BROWSER_URL` / `JOURNAL_BROWSER_KEY` | Ship the dashboard's own client-side errors to Journal. Both must be set, and the URL must end in `/api` or Antenne refuses to boot | — |

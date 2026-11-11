@@ -4,6 +4,7 @@ import type {
 	EventEntry,
 	EventStats,
 	BusStats,
+	PendingAction,
 	TargetCheckResult,
 	SessionPayload,
 	AuthConfigPayload,
@@ -216,6 +217,13 @@ export const api = {
 		}),
 
 	busStats: () => request<BusStats>('/antenne/stats'),
+
+	/** Replays an AI client asked for, waiting for this person to confirm them. */
+	pending: () => request<{ actions: PendingAction[] }>('/mcp/pending'),
+	confirmPending: (id: string) =>
+		request<{ status: string }>(`/mcp/pending/${encodeURIComponent(id)}/confirm`, { method: 'POST', body: '{}' }),
+	dismissPending: (id: string) =>
+		request<{ status: string }>(`/mcp/pending/${encodeURIComponent(id)}/dismiss`, { method: 'POST', body: '{}' }),
 
 	spaces: () => request<{ spaces: Space[]; manageUrl: string }>('/spaces'),
 	space: (id: string) =>
