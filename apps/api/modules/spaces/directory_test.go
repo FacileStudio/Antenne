@@ -65,8 +65,9 @@ func roles(t *testing.T, spaceID string) map[string]Role {
 }
 
 // TestApplyMirrorsTheSnapshot covers the whole contract of Apply: link by name,
-// create, pre-provision, link an existing user by address, role mapping, the
-// removal that spares local-only members, and a second apply changing nothing.
+// create, hold a member who never signed in by address with no account, link an
+// existing user by address, role mapping, the removal that spares local-only
+// members, and a second apply changing nothing.
 func TestApplyMirrorsTheSnapshot(t *testing.T) {
 	studio := newSpace(t, user("local@antenne.local"), "Studio")
 	seedUser(t, "gone@example.test", "sub-gone")
@@ -115,16 +116,10 @@ func TestApplyMirrorsTheSnapshot(t *testing.T) {
 		t.Errorf("an unknown role did not map to member: %v", got)
 	}
 
-	var provisioned struct {
-		Name       string
-		PictureURL string
-		Subjects   int
-	}
-	testDB.Raw(`SELECT users.name, users.picture_url,
-	                   (SELECT count(*) FROM porte_identities WHERE user_id = users.id AND provider = ?) AS subjects
-	              FROM users WHERE email = 'new@example.test'`, testIssuer).Scan(&provisioned)
-	if provisioned.Name != "New Mate" || provisioned.PictureURL != testIssuer+"/avatars/sub-new" || provisioned.Subjects != 1 {
-		t.Errorf("the new mate was not pre-provisioned: %+v", provisioned)
+	var accounts int64
+	testDB.Raw(`SELECT count(*) FROM users WHERE lower(email) = 'new@example.test'`).Scan(&accounts)
+	if accounts != 0 {
+		t.Errorf("the import created an account for a member who never signed in")
 	}
 	var matched int64
 	testDB.Raw(`SELECT count(*) FROM porte_identities JOIN users ON users.id = porte_identities.user_id
@@ -139,6 +134,15 @@ func TestApplyMirrorsTheSnapshot(t *testing.T) {
 	}
 	if after := state(t); !reflect.DeepEqual(before, after) {
 		t.Errorf("a second apply changed state:\nbefore %v\nafter  %v", before, after)
+	}
+
+	snapshot.Spaces[0].Members = snapshot.Spaces[0].Members[:1]
+	if err := service.Apply(context.Background(), snapshot); err != nil {
+		t.Fatalf("third apply: %v", err)
+	}
+	want = map[string]Role{"local@antenne.local": RoleOwner, "kept@example.test": RoleMember}
+	if got := roles(t, studio); !reflect.DeepEqual(got, want) {
+		t.Errorf("a member without an account was not removed with the others: got %v, want %v", got, want)
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/FacileStudio/porte/directory"
-	"github.com/FacileStudio/porte/kit"
 	"gorm.io/gorm"
 
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
@@ -19,11 +18,13 @@ import (
 // Each Registre space is linked by its id, else to the unlinked local space of
 // the same name in any case, else created; its name follows Registre's. Each
 // member is resolved to a local address by porte identity, then by an existing
-// user with the same email, and is otherwise pre-provisioned as a user with a
-// porte identity so their first sign-in lands on that account. A member of a
-// linked space who signs in through Registre and is absent from the snapshot is
-// removed; a local-only member, such as the bootstrap account, is never
-// touched, and neither is an unlinked space. A linked space missing from the
+// user with the same email, and is otherwise held by address alone: the import
+// never creates an account, because every Antenne account is an admin and only a
+// sign-in may create one. Membership is keyed by address, so a first sign-in
+// lands on it. A member of a linked space who signs in through Registre, or
+// whom the import added, and is absent from the snapshot is removed; a
+// local-only member, such as the bootstrap account, is never touched, and
+// neither is an unlinked space. A linked space missing from the
 // snapshot is kept and logged, because Registre does not delete spaces.
 //
 // Applying the same snapshot twice changes nothing.
@@ -86,22 +87,22 @@ func (s *Service) applyMembers(tx *gorm.DB, spaceID string, members []directory.
 		kept = append(kept, email)
 	}
 
-	federated := tx.Table("users").Select("users.email").
+	federated := tx.Table("users").Select("lower(users.email)").
 		Joins("JOIN porte_identities ON porte_identities.user_id = users.id").
 		Where("porte_identities.provider = ?", s.issuer)
-	stale := tx.Where("space_id = ? AND lower(user_id) IN (?)", spaceID, federated)
+	stale := tx.Where("space_id = ? AND (from_registre OR lower(user_id) IN (?))", spaceID, federated)
 	if len(kept) > 0 {
 		stale = stale.Where("lower(user_id) NOT IN ?", kept)
 	}
 	return stale.Delete(&Member{}).Error
 }
 
-// setMembership adds email to a space at role, or moves an existing
-// membership to role. The address is matched in any case.
+// setMembership adds email to a space at role, marked as written by the import,
+// or moves an existing membership to role. The address is matched in any case.
 func setMembership(tx *gorm.DB, spaceID, email string, role Role) error {
 	if err := tx.Exec(`
-		INSERT INTO space_members (space_id, user_id, role)
-		SELECT ?, ?, ?
+		INSERT INTO space_members (space_id, user_id, role, from_registre)
+		SELECT ?, ?, ?, true
 		 WHERE NOT EXISTS (SELECT 1 FROM space_members WHERE space_id = ? AND lower(user_id) = ?)`,
 		spaceID, email, role, spaceID, email).Error; err != nil {
 		return err
@@ -111,9 +112,10 @@ func setMembership(tx *gorm.DB, spaceID, email string, role Role) error {
 		Update("role", role).Error
 }
 
-// resolve returns the local address a Registre member is held under, creating
-// the user and the porte identity it needs. "" means the member has neither a
-// known subject nor an address and is skipped.
+// resolve returns the local address a Registre member is held under, giving an
+// existing user with that address the member's porte identity. It creates no
+// user. "" means the member has neither a known subject nor an address and is
+// skipped.
 func (s *Service) resolve(tx *gorm.DB, member directory.Member) (string, error) {
 	if member.Subject != "" {
 		var email string
@@ -132,14 +134,10 @@ func (s *Service) resolve(tx *gorm.DB, member directory.Member) (string, error) 
 		return "", nil
 	}
 	var userID int64
-	if err := tx.Raw(`
-		INSERT INTO users (email, name, picture_url) VALUES (?, ?, ?)
-		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
-		RETURNING id`,
-		email, member.Name, kit.PictureURL(member.Picture)).Scan(&userID).Error; err != nil {
+	if err := tx.Raw(`SELECT id FROM users WHERE lower(email) = ?`, email).Scan(&userID).Error; err != nil {
 		return "", err
 	}
-	if member.Subject == "" {
+	if userID == 0 || member.Subject == "" {
 		return email, nil
 	}
 	return email, tx.Exec(`
