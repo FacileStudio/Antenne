@@ -4,6 +4,7 @@
 package env
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"strings"
 	"time"
@@ -72,6 +73,18 @@ type Config struct {
 	// cannot be a default.
 	HeartbeatURL      string
 	HeartbeatInterval time.Duration
+
+	// MCPResource is the canonical URI of the remote MCP server and the RFC 8707
+	// resource Registre binds its tokens to: MCP_RESOURCE, else PUBLIC_URL + /mcp
+	// when single sign-on is on. Empty leaves /mcp unmounted.
+	MCPResource string
+}
+
+// MCPStateKey derives the key that signs MCP confirmation state from the OIDC client
+// secret, which is secret, stable across restarts and set whenever single sign-on is.
+func (c Config) MCPStateKey() []byte {
+	sum := sha256.Sum256([]byte("antenne-mcp-state:" + c.Porte.ClientSecret))
+	return sum[:]
 }
 
 // Load reads and validates the configuration. Every error it returns is a
@@ -114,6 +127,7 @@ func Load() (Config, error) {
 	if cfg.Porte, err = loadPorte(cfg); err != nil {
 		return Config{}, err
 	}
+	cfg.MCPResource = cfg.mcpResource()
 
 	return cfg, cfg.validate()
 }
@@ -202,6 +216,21 @@ func (c Config) defaultRedirectURL() string {
 		return ""
 	}
 	return c.PublicURL + AuthPrefix + porte.RouteCallback
+}
+
+// mcpResource is MCP_RESOURCE, or the endpoint under PUBLIC_URL once single sign-on
+// is on: MCP needs Registre tokens, so without an issuer there is no server to mount.
+func (c Config) mcpResource() string {
+	if !c.Porte.Enabled() || c.Porte.ClientSecret == "" {
+		return ""
+	}
+	if resource := troncenv.String("MCP_RESOURCE", ""); resource != "" {
+		return resource
+	}
+	if c.PublicURL == "" {
+		return ""
+	}
+	return c.PublicURL + "/mcp"
 }
 
 // corsOrigins drops schemeless entries. troncenv.CORSOrigins also reads DOMAIN,

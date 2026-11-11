@@ -5,3 +5,4 @@ export * from './event';
 export * from './space';
 export * from './session';
 export * from './settings';
+export * from './pending';

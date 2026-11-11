@@ -33,6 +33,7 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/modules/bus"
 	"github.com/FacileStudio/Antenne/apps/api/modules/delivery"
 	"github.com/FacileStudio/Antenne/apps/api/modules/events"
+	"github.com/FacileStudio/Antenne/apps/api/modules/mcp"
 	// Aliased because tronc/health above answers "is this process alive", and this
 	// one answers "can our delivery targets still be reached" — different
 	// questions, and the import list is where that gets confused.
@@ -116,7 +117,7 @@ func run() int {
 	}
 	resealInBackground(ctx, identityStore, appLogger)
 	userStore := auth.NewStore(db)
-	accounts := auth.Accounts(sqlDB, spaces.EraseMemberships)
+	accounts := auth.Accounts(sqlDB, eraseAccountData)
 
 	sessions, err := session.New(cfg.Porte, session.Deps{
 		Sessions: identityStore.Sessions(),
@@ -243,13 +244,21 @@ func run() int {
 		busServer.SetSecret(busSecret(cfg, next))
 	})
 
-	router, err := server.BuildRouter(cfg, appLogger, sqlDB, application, authService, sessions, oidcKit, passwords, spaceService, busServer, identityStore.Identities())
+	api := server.NewAPI(application)
+	mcpServer, err := newMCP(ctx, cfg, sqlDB, oidcKit, identityStore.Identities(), appLogger, mcp.Deps{
+		Pipeline: application, Events: eventLog, Health: api, Pool: busServer, Accounts: authService,
+	})
+	if err != nil {
+		appLogger.Error("mcp", slog.Any("error", err))
+		return 1
+	}
+
+	router, err := server.BuildRouter(cfg, appLogger, sqlDB, application, api, authService, sessions, oidcKit, passwords, spaceService, busServer, identityStore.Identities(), mcpServer)
 	if err != nil {
 		appLogger.Error("router", slog.Any("error", err))
 		return 1
 	}
-	// /dashboard is a legacy redirect, not API surface.
-	if missing := apiref.Undocumented(router, server.RefConfig(), "/dashboard", "/version"); len(missing) > 0 {
+	if missing := apiref.Undocumented(router, server.RefConfig(mcp.Documentation()), undocumented...); len(missing) > 0 {
 		appLogger.Warn("routes are missing from the API reference", slog.Any("routes", missing))
 	}
 

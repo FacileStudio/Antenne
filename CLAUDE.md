@@ -67,6 +67,7 @@ apps/
       webhooks/             The intake registry and one file per provider
       bus/                  The Antenne Pool: router.go, the WebSocket server and its queue
       spaces/               Teams and members, mirrored from Registre through porte/directory
+      mcp/                  The remote MCP server's tools and its confirm page API, on tronc/mcp
   client/                   SvelteKit dashboard, built to apps/client/build
 ```
 
@@ -79,6 +80,7 @@ The URL layout is not uniform, and that is deliberate — see the conventions be
 - `/api/*` — the dashboard API, session-authenticated
 - `/webhook/<provider>` — **at the root**, third-party receivers
 - `/antenne/register`, `/antenne/ws` — **at the root** and mirrored under `/api`
+- `POST /mcp`, `/.well-known/oauth-protected-resource/mcp` — the MCP server (`modules/mcp`, tronc/mcp), at the root; its confirm page is `/pending` over `/api/mcp/pending`
 - `/dashboard`, `/dashboard/*` — 301 to the equivalent root path
 - everything else — the SPA
 

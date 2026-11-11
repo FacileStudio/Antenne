@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- feat(mcp): a remote MCP server at `/mcp` on tronc/mcp v0.22.1 and porte/mcpauth v0.2.1, for any MCP client holding a Registre token bound to the resource, with scopes `antenne.read` and `antenne.write`. Ten tools: `antenne_list_events`, `antenne_get_event`, `antenne_list_providers`, `antenne_list_targets`, `antenne_pool_status`, `antenne_test_provider`, `antenne_check_target`, `antenne_test_target`, `antenne_set_enabled` and `antenne_replay_event`. No result carries the pool secret, a pool token or a provider or target credential. A replay always needs the person: an MRTR question when the client can elicit, otherwise a link to the new `/pending` confirm page (muse, fr/en/es/de), which only the person's own session can confirm. A first MCP call creates the account, as a first web sign-in would. `MCP_RESOURCE` defaults to `PUBLIC_URL` + `/mcp` once single sign-on is on.
+- feat(mcp): migration 00009 adds `mcp_actions` (tronc/mcp's `PendingSchema`). An erased person's pending actions are deleted with their account.
+
+### Security
+
+- fix(delivery): a failed delivery's error is stored and logged through `SafeErrorText`, so a Discord webhook URL, whose path is its credential, no longer lands in the event log or in Journal.
+
+### Changed
+
+- build(deps): tronc v0.21.0 to v0.22.1, tronc/migrate v0.1.0 to v0.1.1, and `modelcontextprotocol/go-sdk` v1.8.0 joins.
+- refactor(server): the delivery health snapshot and the check-now probe are `API.HealthPage` and `API.CheckTarget`, shared by the dashboard and the MCP server. Routes, status codes and `Retry-After` are unchanged.
+
+### Rollback
+
+- Reverting to v1.5.1 is safe: it ignores `mcp_actions`, and its migrator accepts the newer version.
+
 ## [1.5.1] - 2026-11-11
 
 ### Security
