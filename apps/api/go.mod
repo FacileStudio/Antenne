@@ -11,7 +11,7 @@ require (
 	github.com/FacileStudio/tronc v0.22.1
 	github.com/FacileStudio/tronc/migrate v0.1.1
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	gorm.io/driver/postgres v1.6.0

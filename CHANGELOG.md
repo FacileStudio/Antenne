@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+
+- build(client): vite ^7.3.8 (7.3.6 to 7.3.8), with `overrides` for devalue ^5.9.3 (5.9.0 to 5.9.4), nanoid ^3.3.18 (3.3.17 to 3.3.20) and source-map-js ^1.2.2 (1.2.1 to 1.2.2).
+- build(api): github.com/go-chi/chi/v5 v5.3.1 to v5.4.0 (CVE-2026-114437; Antenne does not call `ClientIPFromXFF`).
+
 ## [1.6.1] - 2026-11-11
 
 ### Security
