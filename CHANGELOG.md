@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.3] - 2026-11-11
+
+### Fixed
+
+- fix(brand): favicons, touch and manifest icons, the link preview image and `site.webmanifest` come from muse v0.19.0's brand generator, and `app.html` carries its head block: the catalog title "Antenne · Alerts and the suite event bus", its description, theme colours and Open Graph and Twitter tags. The sidebar and login mark now uses the catalog's exact `solar:translation-2-bold-duotone` paths and opacity.
+
 ## [1.6.2] - 2026-11-11
 
 ### Security
