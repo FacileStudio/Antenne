@@ -2,6 +2,8 @@ package spaces
 
 import (
 	"context"
+	"database/sql"
+	"strings"
 	"testing"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/pgtest"
@@ -99,5 +101,56 @@ func TestDeletionStateRoundTrips(t *testing.T) {
 	}
 	if got, _ := state.Load(ctx); string(got) != "two" {
 		t.Fatalf("load = %q, want two", got)
+	}
+}
+
+// TestErasureDeletesTheBusEventsNamingThePerson erases one person with an account
+// and one Registre subject Antenne never saw sign in, and proves that every bus event
+// naming either is gone, matched case-blind at any depth, while an event naming an
+// address that merely contains the erased one stays.
+func TestErasureDeletesTheBusEventsNamingThePerson(t *testing.T) {
+	db := pgtest.New(t)
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	eraseData := func(ctx context.Context, tx *sql.Tx, userID int64) error {
+		if err := EraseMemberships(ctx, tx, userID); err != nil {
+			return err
+		}
+		return ErasePoolEvents(ctx, tx, userID)
+	}
+	accounts := &kit.Store{DB: sqlDB, Columns: kit.Columns{Picture: "picture_url"}, EraseData: eraseData}
+	d := NewDeletions(db, directory.Client{}, accounts.EraseAccount, func(context.Context, string, string) error { return nil }, nil)
+	seedPerson(t, db, 1, "gone@example.com")
+	seedPerson(t, db, 2, "kept@example.com")
+	payloads := map[string]string{
+		"by-email":     `{"data":{"owner_email":"GONE@example.com","name":"p"}}`,
+		"by-subject":   `{"actor":{"sub":"sub-gone@example.com"}}`,
+		"by-ghost":     `{"items":[{"owner":"ghost-subject"}]}`,
+		"kept":         `{"owner_email":"kept@example.com"}`,
+		"lookalike":    `{"owner_email":"jimgone@example.com"}`,
+		"in-free-text": `{"note":"see gone@example.com later"}`,
+	}
+	offset := 0
+	for id, payload := range payloads {
+		offset++
+		if err := db.Exec(`INSERT INTO pool_events (id, channel, offset_num, payload, sender) VALUES (?, 'project.created', ?, ?::jsonb, 'Opus')`, id, offset, payload).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, subject := range []string{"sub-gone@example.com", "ghost-subject"} {
+		if err := d.receiver.OnPersonDeleted(context.Background(), "iss", subject); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var left []string
+	if err := db.Raw(`SELECT id FROM pool_events ORDER BY id`).Scan(&left).Error; err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(left, ","); got != "in-free-text,kept,lookalike" {
+		t.Fatalf("pool_events left = %s, want in-free-text,kept,lookalike", got)
 	}
 }

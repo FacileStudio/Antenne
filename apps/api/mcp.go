@@ -58,10 +58,14 @@ func newMCP(ctx context.Context, cfg env.Config, sqlDB *sql.DB, kit *oidc.Kit, i
 }
 
 // eraseAccountData deletes what an erased person owns, in the transaction that deletes
-// their account: their space memberships and their MCP actions. The event log, the
-// providers and the delivery targets belong to the instance and stay.
+// their account: their space memberships, the bus events naming them and their MCP
+// actions. The event log, the providers and the delivery targets belong to the
+// instance and stay.
 func eraseAccountData(ctx context.Context, tx *sql.Tx, userID int64) error {
 	if err := spaces.EraseMemberships(ctx, tx, userID); err != nil {
+		return err
+	}
+	if err := spaces.ErasePoolEvents(ctx, tx, userID); err != nil {
 		return err
 	}
 	return mcp.EraseAccount(ctx, tx, userID)
