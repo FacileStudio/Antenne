@@ -209,11 +209,11 @@ func (s *Sender) Send(ctx context.Context, config settings.DeliveryConfig, messa
 			}
 			if err != nil {
 				attempt.Status = StatusError
-				attempt.Error = err.Error()
+				attempt.Error = SafeErrorText(err)
 				s.log.Error("delivery failed",
 					slog.String("target", target.Name),
 					slog.String("target_type", string(target.Type)),
-					slog.Any("error", err))
+					slog.String("error", attempt.Error))
 			}
 			attempts[index] = attempt
 		}(index, target)
