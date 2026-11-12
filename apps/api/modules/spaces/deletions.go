@@ -21,26 +21,45 @@ type Deletions struct {
 	receiver *directory.Deletions
 }
 
-// NewDeletions builds the receiver over Antenne's tables. eraseAccount deletes
-// the account behind a Registre identity, porte/kit's Store.EraseAccount with
-// EraseMemberships and ErasePoolEvents in its EraseData. The bus events naming
-// the subject go next, for a person who never had an Antenne account. erase
-// then removes porte's own rows for the identity, pg.Store.EraseIdentity.
-func NewDeletions(orm *gorm.DB, client directory.Client, eraseAccount, erase Eraser, logger *slog.Logger) *Deletions {
+// Erasers are what the receiver erases through. Account deletes the account
+// behind a Registre identity, porte/kit's Store.EraseAccount with
+// EraseMemberships and ErasePoolEvents in its EraseData. Identity removes
+// porte's own rows for the identity, pg.Store.EraseIdentity. Holds reports
+// whether a handled subject owns an identity again, pg.Store.HoldsIdentity, so
+// a re-created account is erased again without a restart.
+type Erasers struct {
+	Account  Eraser
+	Identity Eraser
+	Holds    func(ctx context.Context, provider, subject string) (bool, error)
+}
+
+// NewDeletions builds the receiver over Antenne's tables. After the account,
+// the bus events naming the subject go, for a person who never had an Antenne
+// account.
+func NewDeletions(orm *gorm.DB, client directory.Client, erasers Erasers, logger *slog.Logger) *Deletions {
 	d := &Deletions{orm: orm}
 	d.receiver = &directory.Deletions{
 		Client: client,
 		OnPersonDeleted: func(ctx context.Context, provider, subject string) error {
-			if err := eraseAccount(ctx, provider, subject); err != nil {
+			if err := erasers.Account(ctx, provider, subject); err != nil {
 				return err
 			}
 			return orm.WithContext(ctx).Exec(poolEventsNaming+`(SELECT lower(?::text)))`, subject).Error
 		},
-		Erase:  erase,
+		Erase:  erasers.Identity,
+		Holds:  erasers.Holds,
 		State:  deletionState{orm: orm},
 		Logger: logger,
 	}
 	return d
+}
+
+// Erased reports whether Antenne already erased the person behind (provider,
+// subject). porte/oidc asks it before a sign-in, a first MCP call or a profile
+// sync gives that identity an account again, and the directory import asks it
+// before linking a member's subject: porte.ErasedSubjects.
+func (d *Deletions) Erased(ctx context.Context, provider, subject string) (bool, error) {
+	return d.receiver.Erased(ctx, provider, subject)
 }
 
 // Run polls until ctx ends. Start it in exactly one replica.

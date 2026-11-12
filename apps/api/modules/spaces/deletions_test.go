@@ -3,12 +3,17 @@ package spaces
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/pgtest"
 	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/kit"
+	portepg "github.com/FacileStudio/porte/pg"
 	"gorm.io/gorm"
 )
 
@@ -63,7 +68,7 @@ func TestErasureLeavesNoRowNamingThePerson(t *testing.T) {
 		t.Fatal(err)
 	}
 	accounts := &kit.Store{DB: sqlDB, Columns: kit.Columns{Picture: "picture_url"}, EraseData: EraseMemberships}
-	d := NewDeletions(db, directory.Client{}, accounts.EraseAccount, func(context.Context, string, string) error { return nil }, nil)
+	d := NewDeletions(db, directory.Client{}, Erasers{Account: accounts.EraseAccount, Identity: func(context.Context, string, string) error { return nil }}, nil)
 	seedPerson(t, db, 1, "gone@example.com")
 	seedPerson(t, db, 2, "kept@example.com")
 	db.Exec(`INSERT INTO events (id, source) VALUES ('e1', 'test')`)
@@ -121,7 +126,7 @@ func TestErasureDeletesTheBusEventsNamingThePerson(t *testing.T) {
 		return ErasePoolEvents(ctx, tx, userID)
 	}
 	accounts := &kit.Store{DB: sqlDB, Columns: kit.Columns{Picture: "picture_url"}, EraseData: eraseData}
-	d := NewDeletions(db, directory.Client{}, accounts.EraseAccount, func(context.Context, string, string) error { return nil }, nil)
+	d := NewDeletions(db, directory.Client{}, Erasers{Account: accounts.EraseAccount, Identity: func(context.Context, string, string) error { return nil }}, nil)
 	seedPerson(t, db, 1, "gone@example.com")
 	seedPerson(t, db, 2, "kept@example.com")
 	payloads := map[string]string{
@@ -152,5 +157,75 @@ func TestErasureDeletesTheBusEventsNamingThePerson(t *testing.T) {
 	}
 	if got := strings.Join(left, ","); got != "in-free-text,kept,lookalike" {
 		t.Fatalf("pool_events left = %s, want in-free-text,kept,lookalike", got)
+	}
+}
+
+// TestARecreatedAccountForAnErasedSubjectIsErasedAgain erases a person through
+// Poll, re-creates their account as a sign-in racing the erasure would, and
+// proves the next poll of the same receiver erases it again, that the guard
+// porte/oidc consults answers true for that subject only, and that a stale
+// directory snapshot cannot link the erased subject to an account again.
+func TestARecreatedAccountForAnErasedSubjectIsErasedAgain(t *testing.T) {
+	db := pgtest.New(t)
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	registre := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"deleted": []directory.Deleted{{Subject: "sub-gone", DeletedAt: time.Now().Add(-time.Minute)}}})
+	}))
+	t.Cleanup(registre.Close)
+	client := directory.Client{Issuer: registre.URL, ClientID: "antenne", ClientSecret: "s"}
+	accounts := &kit.Store{DB: sqlDB, Columns: kit.Columns{Picture: "picture_url"}, EraseData: EraseMemberships}
+	identities := portepg.New(sqlDB)
+	d := NewDeletions(db, client, Erasers{Account: accounts.EraseAccount, Identity: identities.EraseIdentity, Holds: identities.HoldsIdentity}, nil)
+	seed := func(id int64, email, subject string) {
+		t.Helper()
+		if err := db.Exec(`INSERT INTO users (id, email) VALUES (?, ?)`, id, email).Error; err != nil {
+			t.Fatal(err)
+		}
+		if subject != "" {
+			if err := db.Exec(`INSERT INTO porte_identities (user_id, provider, subject) VALUES (?, ?, ?)`, id, registre.URL, subject).Error; err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	seed(1, "gone@example.com", "sub-gone")
+	seed(2, "kept@example.com", "sub-kept")
+	ctx := context.Background()
+
+	if err := d.receiver.Poll(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if erased, err := d.Erased(ctx, registre.URL, "sub-gone"); err != nil || !erased {
+		t.Fatalf("Erased(sub-gone) = %v, %v; want true: sign-in and provisioning would not be refused", erased, err)
+	}
+	if erased, err := d.Erased(ctx, registre.URL, "sub-kept"); err != nil || erased {
+		t.Fatalf("Erased(sub-kept) = %v, %v; want false", erased, err)
+	}
+
+	seed(3, "gone@example.com", "sub-gone")
+	if err := d.receiver.Poll(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, db, `SELECT count(*) FROM users WHERE email = 'gone@example.com'`); n != 0 {
+		t.Fatalf("the re-created account survived the next poll: %d rows", n)
+	}
+	if n := count(t, db, `SELECT count(*) FROM users WHERE email = 'kept@example.com'`); n != 1 {
+		t.Fatalf("another person's account was touched: %d rows", n)
+	}
+
+	seed(4, "gone@example.com", "")
+	service := NewService(db, client, nil)
+	service.AttachDeletions(d)
+	snapshot := directory.Snapshot{Version: 1, Spaces: []directory.Space{{ID: "r-1", Name: "Team", Members: []directory.Member{{Subject: "sub-gone", Email: "gone@example.com", Role: "member"}}}}}
+	if err := service.Apply(ctx, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, db, `SELECT count(*) FROM porte_identities WHERE subject = 'sub-gone'`); n != 0 {
+		t.Fatalf("the import linked an erased subject again: %d identities", n)
+	}
+	if n := count(t, db, `SELECT count(*) FROM space_members WHERE lower(user_id) = 'gone@example.com'`); n != 0 {
+		t.Fatalf("the import kept an erased person as a member: %d rows", n)
 	}
 }

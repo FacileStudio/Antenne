@@ -114,9 +114,12 @@ func setMembership(tx *gorm.DB, spaceID, email string, role Role) error {
 
 // resolve returns the local address a Registre member is held under, giving an
 // existing user with that address the member's porte identity. It creates no
-// user. "" means the member has neither a known subject nor an address and is
-// skipped.
+// user. "" means the member has neither a known subject nor an address, or is a
+// person Antenne already erased, and is skipped.
 func (s *Service) resolve(tx *gorm.DB, member directory.Member) (string, error) {
+	if erased, err := s.erased(tx.Statement.Context, member.Subject); err != nil || erased {
+		return "", err
+	}
 	if member.Subject != "" {
 		var email string
 		err := tx.Raw(`
@@ -144,6 +147,15 @@ func (s *Service) resolve(tx *gorm.DB, member directory.Member) (string, error) 
 		INSERT INTO porte_identities (user_id, provider, subject) VALUES (?, ?, ?)
 		ON CONFLICT (provider, subject) DO NOTHING`,
 		userID, s.issuer, member.Subject).Error
+}
+
+// erased reports whether the deletion receiver already handled subject, so a
+// snapshot taken before Registre's erasure cannot link that identity again.
+func (s *Service) erased(ctx context.Context, subject string) (bool, error) {
+	if subject == "" || s.deletions == nil {
+		return false, nil
+	}
+	return s.deletions.Erased(ctx, s.issuer, subject)
 }
 
 // logOrphans reports linked spaces the snapshot no longer carries. They are

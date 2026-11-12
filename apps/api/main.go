@@ -136,6 +136,17 @@ func run() int {
 		JournalBrowserKey: cfg.JournalBrowserKey,
 	}, userStore, identityStore.Identities(), sessions)
 
+	directoryClient := directory.Client{
+		Issuer:       cfg.Porte.Issuer,
+		ClientID:     cfg.Porte.ClientID,
+		ClientSecret: cfg.Porte.ClientSecret,
+	}
+	deletions := spaces.NewDeletions(db, directoryClient, spaces.Erasers{
+		Account:  accounts.EraseAccount,
+		Identity: identityStore.EraseIdentity,
+		Holds:    identityStore.HoldsIdentity,
+	}, appLogger)
+
 	// oidc.New is the boot path: it performs discovery, so an unreachable or
 	// half-configured issuer fails here rather than on somebody's first login
 	// attempt. A kit with no OIDC_ISSUER is not an error — it still serves
@@ -145,6 +156,7 @@ func run() int {
 		Identities:  identityStore.Identities(),
 		Sessions:    sessions,
 		Codes:       identityStore.LoginCodes(),
+		Erased:      deletions,
 		Logger:      appLogger,
 		ConfigExtra: authService.ConfigExtra(),
 	})
@@ -185,14 +197,8 @@ func run() int {
 	}
 
 	eventLog := events.NewService(db, appLogger)
-	directoryClient := directory.Client{
-		Issuer:       cfg.Porte.Issuer,
-		ClientID:     cfg.Porte.ClientID,
-		ClientSecret: cfg.Porte.ClientSecret,
-	}
 	sender := delivery.NewSender(appLogger)
 	spaceService := spaces.NewService(db, directoryClient, appLogger)
-	deletions := spaces.NewDeletions(db, directoryClient, accounts.EraseAccount, identityStore.EraseIdentity, appLogger)
 	spaceService.AttachDeletions(deletions)
 
 	current := store.Get()
