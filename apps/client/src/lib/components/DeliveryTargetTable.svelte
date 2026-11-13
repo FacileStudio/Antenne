@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Badge, Button, Switch, Table, cn, icons } from '@facile/muse';
+	import { Badge, Button, Switch, Table, cn, Tooltip, icons } from '@facile/muse';
 	import TargetHealthRow from './TargetHealthRow.svelte';
 	import { t } from '$lib/i18n/index.svelte';
 	import { deliveryIcon } from '$lib/icons';
@@ -83,22 +83,24 @@
 						<Button variant="ghost" size="sm" icon={icons.edit} onclick={() => onOpen(index)}>
 							{t('common.edit')}
 						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							icon={icons.dashboard}
-							href={`/targets/${target.id}`}
-							title={t('delivery.activity')}
-							aria-label={t('common.activityFor', { name: target.name })}
-						/>
-						<Button
-							variant="ghost-danger"
-							size="sm"
-							icon={icons.remove}
-							onclick={() => onRemove(target)}
-							title={t('common.delete')}
-							aria-label={t('common.deleteName', { name: target.name })}
-						/>
+						<Tooltip text={t('delivery.activity')} describe={false} class="contents">
+							<Button
+								variant="ghost"
+								size="sm"
+								icon={icons.dashboard}
+								href={`/targets/${target.id}`}
+								aria-label={t('common.activityFor', { name: target.name })}
+							/>
+						</Tooltip>
+						<Tooltip text={t('common.delete')} describe={false} class="contents">
+							<Button
+								variant="ghost-danger"
+								size="sm"
+								icon={icons.remove}
+								onclick={() => onRemove(target)}
+								aria-label={t('common.deleteName', { name: target.name })}
+							/>
+						</Tooltip>
 					</div>
 				</td>
 			</tr>

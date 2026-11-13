@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Input, icons } from '@facile/muse';
+	import { Input, Tooltip, icons } from '@facile/muse';
 	import TagPill from './TagPill.svelte';
 	import { t } from '$lib/i18n/index.svelte';
 
@@ -57,14 +57,16 @@
 			{#each val as tag (tag)}
 				<TagPill {tag} {tones} class="h-8 gap-1 pr-1.5">
 					{tag}
-					<button
-						type="button"
-						class="rounded-fc-pill p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
-						onclick={() => remove(tag)}
-						aria-label={t('tags.remove', { tag })}
-					>
-						<iconify-icon icon={icons.close} width="12" height="12" class="block"></iconify-icon>
-					</button>
+					<Tooltip text={t('tags.remove', { tag })} describe={false} class="contents">
+						<button
+							type="button"
+							class="rounded-fc-pill p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
+							onclick={() => remove(tag)}
+							aria-label={t('tags.remove', { tag })}
+						>
+							<iconify-icon icon={icons.close} width="12" height="12" class="block"></iconify-icon>
+						</button>
+					</Tooltip>
 				</TagPill>
 			{/each}
 		</div>

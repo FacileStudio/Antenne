@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Avatar, Badge, Button, Card, EmptyState, icons } from '@facile/muse';
+	import { Avatar, Badge, Button, Card, EmptyState, Tooltip, icons } from '@facile/muse';
 	import { t } from '$lib/i18n/index.svelte';
 	import { sourceIcon } from '$lib/icons';
 	import type { EventEntry } from '$lib/types';
@@ -105,35 +105,35 @@
 						{#if entry.deliveries.length > 0}
 							<div class="flex flex-wrap items-center gap-2">
 								{#each entry.deliveries as attempt (attempt.targetId)}
-									<Badge
-										tone={attempt.status === 'success' ? 'success' : 'danger'}
-										title={attempt.error ?? `${attempt.durationMs}ms`}
-									>
-										<iconify-icon
-											icon={attempt.status === 'success'
-												? 'solar:check-circle-linear'
-												: 'solar:close-circle-linear'}
-											width="12"
-											height="12"
-											class="block"
-										></iconify-icon>
-										{attempt.targetName}
-									</Badge>
+									<Tooltip text={attempt.error ?? `${attempt.durationMs}ms`} class="contents">
+										<Badge tone={attempt.status === 'success' ? 'success' : 'danger'}>
+											<iconify-icon
+												icon={attempt.status === 'success'
+													? 'solar:check-circle-linear'
+													: 'solar:close-circle-linear'}
+												width="12"
+												height="12"
+												class="block"
+											></iconify-icon>
+											{attempt.targetName}
+										</Badge>
+									</Tooltip>
 								{/each}
 							</div>
 						{/if}
 
 						{#if entry.envelope && onreplay}
-							<Button
-								variant="ghost"
-								size="sm"
-								icon={icons.refresh}
-								class="-ml-3.5 w-fit"
-								title={t('events.replayHelp')}
-								onclick={() => onreplay?.(entry.id)}
-							>
-								{t('events.replay')}
-							</Button>
+							<Tooltip text={t('events.replayHelp')} class="contents">
+								<Button
+									variant="ghost"
+									size="sm"
+									icon={icons.refresh}
+									class="-ml-3.5 w-fit"
+									onclick={() => onreplay?.(entry.id)}
+								>
+									{t('events.replay')}
+								</Button>
+							</Tooltip>
 						{/if}
 					</div>
 				</article>

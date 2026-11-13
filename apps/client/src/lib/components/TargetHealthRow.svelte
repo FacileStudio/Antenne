@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Badge, Button, StatusDot, icons } from '@facile/muse';
+	import { Badge, Button, StatusDot, Tooltip, icons } from '@facile/muse';
 	import { formatUnit } from '$lib/i18n/format';
 	import { t } from '$lib/i18n/index.svelte';
 	import { formatDateTime, formatRelative } from '$lib/utils';
@@ -105,28 +105,29 @@
 		/>
 
 		{#if source}
-			<Badge title={source.title}>{source.label}</Badge>
+			<Tooltip text={source.title} class="contents">
+				<Badge>{source.label}</Badge>
+			</Tooltip>
 		{/if}
 
-		<Button
-			variant="secondary"
-			size="sm"
-			icon={icons.refresh}
-			onclick={onCheck}
-			disabled={checking || cooldown > 0}
-			title={cooldown > 0
-				? t('health.cooldownHelp')
-				: t('health.checkHelp')}
-			class="ml-auto"
-		>
-			{#if checking}
-				{t('health.checking')}
-			{:else if cooldown > 0}
-				{t('health.retryIn', { seconds: cooldown })}
-			{:else}
-				{t('health.checkNow')}
-			{/if}
-		</Button>
+		<Tooltip text={cooldown > 0 ? t('health.cooldownHelp') : t('health.checkHelp')} class="contents">
+			<Button
+				variant="secondary"
+				size="sm"
+				icon={icons.refresh}
+				onclick={onCheck}
+				disabled={checking || cooldown > 0}
+				class="ml-auto"
+			>
+				{#if checking}
+					{t('health.checking')}
+				{:else if cooldown > 0}
+					{t('health.retryIn', { seconds: cooldown })}
+				{:else}
+					{t('health.checkNow')}
+				{/if}
+			</Button>
+		</Tooltip>
 	</div>
 
 	{#if health?.detail}

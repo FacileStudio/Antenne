@@ -9,6 +9,7 @@
 		SettingsSection,
 		StatusDot,
 		Switch,
+		Tooltip,
 		icons
 	} from '@facile/muse';
 	import { api } from '$lib/backend';
@@ -123,9 +124,11 @@
 		</SettingsRow>
 
 		<SettingsRow label={t('bus.epoch')} description={t('bus.epochText')}>
-			<span class="truncate font-fc-mono text-fc-sm text-fc-fg" title={stats?.epoch}>
-				{stats ? stats.epoch : '—'}
-			</span>
+			<Tooltip text={stats?.epoch ?? ''} disabled={!stats} class="contents">
+				<span class="truncate font-fc-mono text-fc-sm text-fc-fg">
+					{stats ? stats.epoch : '—'}
+				</span>
+			</Tooltip>
 		</SettingsRow>
 
 		<SettingsRow label={t('bus.liveConnections')}>
