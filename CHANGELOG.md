@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.9] - 2026-11-13
+
+### Changed
+
+- build(client): muse v0.21.0.
+
+### Fixed
+
+- Icon-only controls show a muse tooltip; native `title` tooltips moved to muse `Tooltip`.
+
 ## [1.6.8] - 2026-11-13
 
 ### Changed
