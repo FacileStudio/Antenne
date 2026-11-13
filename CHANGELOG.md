@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.6] - 2026-11-13
+
+### Fixed
+
+- fix(api): `POST /api/auth/oidc/device/exchange` is in the API reference, so the boot no longer warns that it is missing. porte mounts it only when `OIDC_ISSUER` and `OIDC_CLI_AUDIENCE` are set, which the route test never did. `TestEveryRouteIsDocumented` now also builds the router against a stub issuer with a CLI audience, and fails on any single sign-on route left out of the registry.
+
 ## [1.6.5] - 2026-11-13
 
 ### Fixed
