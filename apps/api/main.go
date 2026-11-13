@@ -117,7 +117,11 @@ func run() int {
 	}
 	resealInBackground(ctx, identityStore, appLogger)
 	userStore := auth.NewStore(db)
-	accounts := auth.Accounts(sqlDB, eraseAccountData)
+	accounts, err := auth.Accounts(ctx, sqlDB, eraseAccountData)
+	if err != nil {
+		appLogger.Error("accounts", slog.Any("error", err))
+		return 1
+	}
 
 	sessions, err := session.New(cfg.Porte, session.Deps{
 		Sessions: identityStore.Sessions(),

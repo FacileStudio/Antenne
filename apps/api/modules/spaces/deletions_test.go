@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/pgtest"
+	"github.com/FacileStudio/Antenne/apps/api/modules/auth"
 	"github.com/FacileStudio/porte/directory"
 	"github.com/FacileStudio/porte/kit"
 	portepg "github.com/FacileStudio/porte/pg"
@@ -35,6 +36,17 @@ var userTables = map[string]string{
 	"porte_login_codes": `SELECT count(*) FROM porte_login_codes WHERE code_hash = 'c-' || @email`,
 	"sessions":          `SELECT count(*) FROM sessions WHERE token_hash = 'l-' || @email`,
 	"space_members":     `SELECT count(*) FROM space_members WHERE lower(user_id) = @email`,
+}
+
+// accountStore is Antenne's account store over the test schema, built as the
+// app builds it, with eraseData for the rows the erased person owns.
+func accountStore(t *testing.T, sqlDB *sql.DB, eraseData func(context.Context, *sql.Tx, int64) error) *kit.Store {
+	t.Helper()
+	store, err := auth.Accounts(context.Background(), sqlDB, eraseData)
+	if err != nil {
+		t.Fatalf("accounts: %v", err)
+	}
+	return store
 }
 
 // seedPerson gives one person a row in every table of userTables.
@@ -67,7 +79,7 @@ func TestErasureLeavesNoRowNamingThePerson(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accounts := &kit.Store{DB: sqlDB, Columns: kit.Columns{Picture: "picture_url"}, EraseData: EraseMemberships}
+	accounts := accountStore(t, sqlDB, EraseMemberships)
 	d := NewDeletions(db, directory.Client{}, Erasers{Account: accounts.EraseAccount, Identity: func(context.Context, string, string) error { return nil }}, nil)
 	seedPerson(t, db, 1, "gone@example.com")
 	seedPerson(t, db, 2, "kept@example.com")
@@ -125,7 +137,7 @@ func TestErasureDeletesTheBusEventsNamingThePerson(t *testing.T) {
 		}
 		return ErasePoolEvents(ctx, tx, userID)
 	}
-	accounts := &kit.Store{DB: sqlDB, Columns: kit.Columns{Picture: "picture_url"}, EraseData: eraseData}
+	accounts := accountStore(t, sqlDB, eraseData)
 	d := NewDeletions(db, directory.Client{}, Erasers{Account: accounts.EraseAccount, Identity: func(context.Context, string, string) error { return nil }}, nil)
 	seedPerson(t, db, 1, "gone@example.com")
 	seedPerson(t, db, 2, "kept@example.com")
@@ -176,7 +188,7 @@ func TestARecreatedAccountForAnErasedSubjectIsErasedAgain(t *testing.T) {
 	}))
 	t.Cleanup(registre.Close)
 	client := directory.Client{Issuer: registre.URL, ClientID: "antenne", ClientSecret: "s"}
-	accounts := &kit.Store{DB: sqlDB, Columns: kit.Columns{Picture: "picture_url"}, EraseData: EraseMemberships}
+	accounts := accountStore(t, sqlDB, EraseMemberships)
 	identities := portepg.New(sqlDB)
 	d := NewDeletions(db, client, Erasers{Account: accounts.EraseAccount, Identity: identities.EraseIdentity, Holds: identities.HoldsIdentity}, nil)
 	seed := func(id int64, email, subject string) {

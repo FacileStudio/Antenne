@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"gorm.io/gorm"
@@ -33,7 +34,37 @@ func accounts(t *testing.T) (*gorm.DB, *kit.Store) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return db, Accounts(sqlDB, nil)
+	store, err := Accounts(context.Background(), sqlDB, nil)
+	if err != nil {
+		t.Fatalf("accounts: %v", err)
+	}
+	return db, store
+}
+
+// Every users column has a default or is one the kit writes, so an account the
+// kit creates holds no NULL and NewStore reports no column as unwritten.
+func TestAccountsLeaveNoColumnUnwritten(t *testing.T) {
+	_, store := accounts(t)
+	if got := store.Unwritten(); len(got) != 0 {
+		t.Fatalf("Unwritten() = %v, want none", got)
+	}
+}
+
+// Accounts reads the users table when it is built, through kit.NewStore. A
+// store built as a literal checks nothing, so it would come up over a table
+// without the picture column and fail on the first sign-in instead of at boot.
+func TestAccountsReadTheUsersTableWhenBuilt(t *testing.T) {
+	db := pgtest.New(t)
+	if err := db.Exec(`ALTER TABLE users DROP COLUMN picture_url`).Error; err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Accounts(context.Background(), sqlDB, nil); err == nil || !strings.Contains(err.Error(), "picture_url") {
+		t.Fatalf("Accounts over a users table without picture_url: err = %v, want one naming the column", err)
+	}
 }
 
 // TestLinkingFollowsPorteRules covers the three branches the email fallback

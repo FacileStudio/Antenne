@@ -14,13 +14,15 @@ import (
 // a person Registre erased, running eraseData for the rows the person owns in
 // the transaction that deletes the account. The kit has no admin flag for this
 // table, because Antenne's is a role, so OnCreate writes the one role Antenne has.
-func Accounts(db *sql.DB, eraseData func(ctx context.Context, tx *sql.Tx, userID int64) error) *kit.Store {
-	return &kit.Store{
+// kit.NewStore builds it, reading the table's columns once, so it fails when
+// the migrations have not run or a column it names is missing.
+func Accounts(ctx context.Context, db *sql.DB, eraseData func(ctx context.Context, tx *sql.Tx, userID int64) error) (*kit.Store, error) {
+	return kit.NewStore(ctx, kit.Store{
 		DB:        db,
 		Columns:   kit.Columns{Picture: "picture_url"},
 		OnCreate:  grantAdmin,
 		EraseData: eraseData,
-	}
+	})
 }
 
 // grantAdmin makes a new account an administrator. Antenne has one tier: the
