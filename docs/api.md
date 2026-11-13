@@ -39,6 +39,7 @@ except `GET /api/session`.
 | `GET /api/auth/oidc` | — | starts the Authentik flow. Only when `OIDC_ISSUER` is set |
 | `GET /api/auth/oidc/callback` | — | a browser navigation: both outcomes are a 302, read `Location` |
 | `POST /api/auth/oidc/exchange` | `{"code":"…"}` | a CLI trading its one-time login code for a bearer token |
+| `POST /api/auth/oidc/device/exchange` | `{"access_token":"…"}` | the suite CLI trading its device-grant token for a session. Only when `OIDC_ISSUER` and `OIDC_CLI_AUDIENCE` are set; never creates an account |
 | `GET /api/session` | — | authenticated: the current caller |
 | `GET /api/me/invitations` | — | authenticated: `{"count","href"}`, the caller's pending Registre space invitations for the user menu. Never fails: `{"count":0}` when Registre cannot answer. Mounted only when `OIDC_ISSUER` and `OIDC_CLIENT_SECRET` are set |
 

@@ -91,6 +91,19 @@ func oidcRoutes() []apiref.Route {
 		},
 		{
 			Method:       "POST",
+			Path:         "/api/auth/oidc/device/exchange",
+			Summary:      "Trade a CLI device token for a session",
+			Description:  "Verifies an access token the provider's device grant issued to the suite CLI and issues an Antenne session for the matching identity, so one `facile login` serves every tool. Registered only when OIDC_ISSUER and OIDC_CLI_AUDIENCE are set; its absence is a 404, which the CLI reads as a cue to fall back to the loopback flow. No account is ever created here, and no CSRF header is needed because the credential travels in the body.",
+			Auth:         "none",
+			RequestBody:  porte.DeviceExchangeRequest{},
+			ResponseBody: porte.ExchangeResponse{},
+			Errors: []apiref.Error{
+				{Status: 400, Code: "invalid_argument", Description: "the body is not JSON, or access_token is missing"},
+				{Status: 401, Code: "unauthenticated", Description: "the token failed verification, or its subject holds no account here; every refusal answers the same"},
+			},
+		},
+		{
+			Method:       "POST",
 			Path:         "/api/auth/sync-profile",
 			Summary:      "Refresh the profile from the identity provider",
 			Description:  "Pulls the name and address Authentik holds. Rate-limited to one refresh per account per five minutes; a call inside that window answers synced false rather than failing.",
