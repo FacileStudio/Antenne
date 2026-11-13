@@ -183,23 +183,26 @@ func mountInvitations(router chi.Router, cfg env.Config, identities kit.Identity
 	})
 }
 
+const analyticsOrigin = "https://vision.facile.studio"
+
 // securityConfig extends tronc's default headers with what the dashboard loads.
 // The built client carries two inline scripts, allowed by hash. iconify-icon
 // fetches any glyph muse does not bundle from the Iconify API, and the Journal
-// browser SDK reports to its own origin. The policy is still report-only in
-// tronc v0.17, so a miss shows in the console and breaks nothing.
+// browser SDK reports to its own origin. app.html loads the Vision analytics
+// script from its origin. The policy is still report-only in tronc v0.17, so a
+// miss shows in the console and breaks nothing.
 func securityConfig(cfg env.Config, log *slog.Logger) middleware.SecurityConfig {
 	connect := []string{"https://api.iconify.design", "https://api.simplesvg.com", "https://api.unisvg.com"}
 	if journal := origin(cfg.JournalBrowserURL); journal != "" {
 		connect = append(connect, journal)
 	}
-	sources := map[string][]string{"connect-src": connect}
+	sources := map[string][]string{"connect-src": connect, "script-src": {analyticsOrigin}}
 	if spa.Available(cfg.ClientDir) {
 		hashes, err := spa.InlineScriptHashes(cfg.ClientDir)
 		if err != nil {
 			log.Warn("inline script hashes unavailable, the CSP will report the dashboard's scripts", slog.Any("error", err))
 		}
-		sources["script-src"] = hashes
+		sources["script-src"] = append(sources["script-src"], hashes...)
 	}
 	return middleware.SecurityConfig{CSPSources: sources}
 }
