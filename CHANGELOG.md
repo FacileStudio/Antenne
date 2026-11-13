@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.5] - 2026-11-13
+
+### Fixed
+
+- fix(auth): the account store is built by `kit.NewStore` instead of a `kit.Store` literal, so porte no longer logs "this Store was built as a literal" at every boot when the picture backfill runs. `NewStore` reads the `users` table once and refuses to boot when a column the store names is missing. Every `users` column is NOT NULL with a default or written by the kit, so a test pins `Unwritten()` to none, and another proves the store reads the table when it is built.
+
 ## [1.6.4] - 2026-11-12
 
 ### Fixed
