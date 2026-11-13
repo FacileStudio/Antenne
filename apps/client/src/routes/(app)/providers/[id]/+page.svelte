@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Badge, Button, ConfirmModal, Drawer, EmptyState, Spinner, StatCard, Switch, icons, toast } from '@facile/muse';
+	import { Badge, Button, ConfirmModal, Drawer, EmptyState, Spinner, StatCard, Switch, Tooltip, icons, toast } from '@facile/muse';
 	import EventTimeline from '$lib/components/EventTimeline.svelte';
 	import ProviderEditorFields from '$lib/components/ProviderEditorFields.svelte';
 	import TagPill from '$lib/components/TagPill.svelte';
@@ -152,13 +152,15 @@
 					<h2 class="text-fc-lg font-semibold text-fc-fg">{t('providers.eventLog')}</h2>
 					<p class="text-fc-sm text-fc-fg-muted">{t('providers.eventLogText')}</p>
 				</div>
-				<Button
-					variant="ghost"
-					icon={icons.refresh}
-					onclick={refresh}
-					disabled={loading}
-					aria-label={t('providers.refresh')}
-				/>
+				<Tooltip text={t('providers.refresh')} describe={false} class="contents">
+					<Button
+						variant="ghost"
+						icon={icons.refresh}
+						onclick={refresh}
+						disabled={loading}
+						aria-label={t('providers.refresh')}
+					/>
+				</Tooltip>
 			</div>
 
 			{#if loading && events.length === 0}

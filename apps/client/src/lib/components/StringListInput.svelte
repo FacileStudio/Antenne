@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button, Input, icons } from '@facile/muse';
+	import { Button, Input, Tooltip, icons } from '@facile/muse';
 	import { t } from '$lib/i18n/index.svelte';
 
 	/** An ordered list of free-text values: Matrix room ids, SMTP recipients. */
@@ -39,12 +39,14 @@
 			/>
 			<!-- No confirmation here: this is one row of an unsaved draft field, not a stored
 			     entity, and the shell's Save is still the only thing that persists it. -->
-			<Button
-				variant="ghost-danger"
-				icon={icons.remove}
-				onclick={() => remove(index)}
-				aria-label={t('list.remove')}
-			/>
+			<Tooltip text={t('list.remove')} describe={false} class="contents">
+				<Button
+					variant="ghost-danger"
+					icon={icons.remove}
+					onclick={() => remove(index)}
+					aria-label={t('list.remove')}
+				/>
+			</Tooltip>
 		</div>
 	{/each}
 
