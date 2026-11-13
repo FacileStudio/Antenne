@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.8] - 2026-11-13
+
+### Changed
+
+- chore(deploy): healthchecks run every 30 s with a 1 s start interval.
+
 ## [1.6.6] - 2026-11-13
 
 ### Fixed
