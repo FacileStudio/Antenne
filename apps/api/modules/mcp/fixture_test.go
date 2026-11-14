@@ -194,7 +194,7 @@ func newFixture(t *testing.T) *fixture {
 	f := &fixture{
 		issuer: mcptest.NewIssuer(t), events: &eventLog{},
 		pipeline: &pipeline{current: seedSettings(t), replays: map[string]int{}},
-		session:  porte.Identity{UserID: ownerID, SessionID: 7},
+		session:  porte.Identity{UserID: ownerID, SessionID: 7, BrowserSession: true},
 	}
 	var handler http.Handler
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handler.ServeHTTP(w, r) }))

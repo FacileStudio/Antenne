@@ -8,6 +8,7 @@
 	import TailTile from '$lib/components/landing/TailTile.svelte';
 	import { CLI_COMMANDS, CLI_RELEASES } from '$lib/downloads';
 	import { setSessionLocale, t } from '$lib/i18n/index.svelte';
+	import { takeReturn } from '$lib/return-path';
 
 	const SIGN_IN = '/api/auth/oidc';
 
@@ -25,7 +26,7 @@
 			const session = await api.session();
 			if (session.authenticated) {
 				setSessionLocale(session.locale ?? null);
-				await goto('/providers', { replaceState: true });
+				await goto(takeReturn() ?? '/providers', { replaceState: true });
 				return;
 			}
 		} catch {}

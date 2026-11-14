@@ -13,6 +13,7 @@ import (
 	"github.com/FacileStudio/porte/mcpauth"
 	"github.com/FacileStudio/porte/oidc"
 	mcpkit "github.com/FacileStudio/tronc/mcp"
+	"github.com/modelcontextprotocol/go-sdk/auth"
 )
 
 // undocumented are the routes the API reference leaves out: the legacy /dashboard
@@ -24,11 +25,38 @@ var undocumented = []string{"/dashboard", "/version", "/mcp", "/.well-known"}
 // nothing otherwise. The verifier runs Registre discovery here, so a wrong issuer fails
 // at boot like the OIDC kit does. A person's first MCP call creates their account through
 // the OIDC kit, as a first web login would, so it is an administrator like every account.
+// Resolved and expired actions are pruned hourly until ctx ends.
 func newMCP(ctx context.Context, cfg env.Config, sqlDB *sql.DB, kit *oidc.Kit, identities porte.IdentityStore, logger *slog.Logger, deps mcp.Deps) (server.MCP, error) {
 	if cfg.MCPResource == "" || !kit.Enabled() {
 		return nil, nil
 	}
-	verifier, err := mcpauth.Verifier(ctx, mcpauth.Config{
+	verifier, err := newVerifier(ctx, cfg, kit, identities, logger)
+	if err != nil {
+		return nil, err
+	}
+	pending := mcpkit.PostgresPending{DB: sqlDB}
+	service, err := mcp.NewService(deps, mcp.Config{
+		Resource: cfg.MCPResource,
+		Issuer:   cfg.Porte.Issuer,
+		Version:  cfg.Version,
+		Origins:  cfg.CORSAllowedOrigins,
+		StateKey: mcpkit.StateKey("antenne", cfg.Porte.ClientSecret),
+		Verifier: verifier,
+		Pending:  pending,
+		Logger:   logger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	go mcpkit.KeepPruned(ctx, pending, 0, 0, logger)
+	logger.Info("mcp server on", slog.String("resource", cfg.MCPResource))
+	return service, nil
+}
+
+// newVerifier checks MCP bearer tokens against Registre for the antenne scopes and
+// provisions a caller's account through the OIDC kit on their first call.
+func newVerifier(ctx context.Context, cfg env.Config, kit *oidc.Kit, identities porte.IdentityStore, logger *slog.Logger) (auth.TokenVerifier, error) {
+	return mcpauth.Verifier(ctx, mcpauth.Config{
 		Issuer:      cfg.Porte.Issuer,
 		Resource:    cfg.MCPResource,
 		ScopePrefix: "antenne",
@@ -37,24 +65,6 @@ func newMCP(ctx context.Context, cfg env.Config, sqlDB *sql.DB, kit *oidc.Kit, i
 		Accounts:    kit,
 		Logger:      logger,
 	})
-	if err != nil {
-		return nil, err
-	}
-	service, err := mcp.NewService(deps, mcp.Config{
-		Resource: cfg.MCPResource,
-		Issuer:   cfg.Porte.Issuer,
-		Version:  cfg.Version,
-		Origins:  cfg.CORSAllowedOrigins,
-		StateKey: cfg.MCPStateKey(),
-		Verifier: verifier,
-		Pending:  mcpkit.PostgresPending{DB: sqlDB},
-		Logger:   logger,
-	})
-	if err != nil {
-		return nil, err
-	}
-	logger.Info("mcp server on", slog.String("resource", cfg.MCPResource))
-	return service, nil
 }
 
 // eraseAccountData deletes what an erased person owns, in the transaction that deletes

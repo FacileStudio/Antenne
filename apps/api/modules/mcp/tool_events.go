@@ -28,8 +28,8 @@ func (t *toolset) listEvents(ctx context.Context, req *sdk.CallToolRequest, in e
 	if err != nil {
 		return nil, eventsOutput{}, err
 	}
-	offset := 0
-	if err := mcpkit.DecodeCursor(in.Cursor, &offset); err != nil {
+	offset, err := mcpkit.Offset(in.Cursor)
+	if err != nil {
 		return nil, eventsOutput{}, err
 	}
 	limit := in.Limit
@@ -68,9 +68,7 @@ func page(entries []events.Entry, total int64, stats events.Stats, offset int, d
 		return mcpkit.EncodedSize(out)
 	})
 	out.Events = all[:fit]
-	if next := offset + fit; int64(next) < total {
-		out.NextCursor = mcpkit.EncodeCursor(next)
-	}
+	out.NextCursor = mcpkit.Cursor(offset+fit, int(total))
 	return out
 }
 

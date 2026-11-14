@@ -53,6 +53,19 @@ export const pending = {
 		'No se pudieron cargar las acciones pendientes.',
 		'Die ausstehenden Aktionen konnten nicht geladen werden.'
 	] as Row,
+	'pending.signInAgain.title': [
+		'Sign in again to confirm',
+		'Reconnectez-vous pour confirmer',
+		'Vuelve a iniciar sesión para confirmar',
+		'Melden Sie sich erneut an, um zu bestätigen'
+	] as Row,
+	'pending.signInAgain.body': [
+		'Only a fresh sign-in in your browser can confirm what an AI client asked. Sign in again here, then come back to this page. The mobile and desktop apps cannot confirm.',
+		'Seule une connexion récente dans votre navigateur peut confirmer ce qu’un client IA a demandé. Reconnectez-vous ici, puis revenez sur cette page. Les applications mobile et de bureau ne peuvent pas confirmer.',
+		'Solo un inicio de sesión reciente en tu navegador puede confirmar lo que pidió un cliente de IA. Vuelve a iniciar sesión aquí y regresa a esta página. Las aplicaciones móvil y de escritorio no pueden confirmar.',
+		'Nur eine frische Anmeldung in Ihrem Browser kann bestätigen, worum ein KI-Client gebeten hat. Melden Sie sich hier erneut an und kehren Sie dann zu dieser Seite zurück. Die Mobil- und Desktop-Apps können nicht bestätigen.'
+	] as Row,
+	'pending.signInAgain.action': ['Sign in again', 'Se reconnecter', 'Iniciar sesión de nuevo', 'Erneut anmelden'] as Row,
 	'pending.failed': [
 		'That did not work. Try again.',
 		'Cela n’a pas fonctionné. Réessayez.',

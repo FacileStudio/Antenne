@@ -7,7 +7,7 @@ import (
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/authcontext"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
-	"github.com/FacileStudio/porte"
+	"github.com/FacileStudio/porte/mcpauth"
 	"github.com/FacileStudio/tronc/errors"
 	mcpkit "github.com/FacileStudio/tronc/mcp"
 )
@@ -15,15 +15,15 @@ import (
 const webActor = "antenne-web"
 
 // pendingUser is the signed-in person of a confirm page request. Only the person's own
-// session passes: a delegated token must never confirm what an agent asked for.
+// browser session passes: a bearer, CLI or delegated token must never confirm what an
+// agent asked for.
 func pendingUser(r *http.Request) (string, error) {
-	authenticated, ok := porte.From(r.Context())
-	identity := authcontext.From(r)
-	if !ok || !identity.IsAuthenticated() {
-		return "", errors.Unauthorized("missing auth")
+	if _, err := mcpauth.RequireOwnSession(r); err != nil {
+		return "", err
 	}
-	if authenticated.SessionID == 0 || authenticated.Actor != "" {
-		return "", mcpkit.ErrDelegated
+	identity := authcontext.From(r)
+	if !identity.IsAuthenticated() {
+		return "", errors.Unauthorized("missing auth")
 	}
 	return strconv.FormatInt(identity.UserID, 10), nil
 }
