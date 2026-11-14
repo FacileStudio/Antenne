@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.0] - 2026-11-14
+
+### Added
+
+- feat(client): a signed-out landing at `/` with a mise-en-scene demo of alerts arriving and a replayed delivery, plus an `antenne tail` terminal tile. A signed-in visitor still goes straight to `/providers`.
+- feat(client): a public `/downloads` page listing every way to install the CLI (install script, `facile install antenne`, Homebrew).
+
+### Changed
+
+- build(client): muse v0.23.0 (Magnetik font, device-only `DownloadSection` on the landing) and mise-en-scene v0.2.1.
+
 ## [1.6.9] - 2026-11-13
 
 ### Changed
