@@ -6,11 +6,13 @@
 	import { api } from '$lib/backend';
 	import AntenneLogo from '$lib/components/AntenneLogo.svelte';
 	import { rememberLocale, setSessionLocale, t } from '$lib/i18n/index.svelte';
+	import { rememberReturn } from '$lib/return-path';
 
 	let failed = $state(false);
 
 	onMount(async () => {
 		failed = page.url.searchParams.has('error');
+		rememberReturn(page.url.searchParams.get('next'));
 		try {
 			const session = await api.session();
 			if (session.authenticated) {
