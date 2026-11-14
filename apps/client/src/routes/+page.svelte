@@ -72,7 +72,7 @@
 			<h2 id="cli-title" class="font-fc-title text-fc-2xl font-bold">{t('landing.cli.title')}</h2>
 			<div class="grid items-start gap-4 lg:grid-cols-2">
 				<TailTile />
-				<DownloadSection commands={CLI_COMMANDS} releasesHref={CLI_RELEASES} headingLevel={3} />
+				<DownloadSection mode="device" allHref="/downloads" commands={CLI_COMMANDS} releasesHref={CLI_RELEASES} headingLevel={3} />
 			</div>
 		</section>
 
