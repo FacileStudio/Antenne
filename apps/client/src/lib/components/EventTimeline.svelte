@@ -113,7 +113,7 @@
 													: 'solar:close-circle-linear'}
 												width="12"
 												height="12"
-												class="block"
+												class="mr-1 inline-block align-[-2px]"
 											></iconify-icon>
 											{attempt.targetName}
 										</Badge>

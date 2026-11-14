@@ -151,7 +151,7 @@
 
 		<div class="flex flex-wrap items-center gap-2">
 			<Badge>
-				<iconify-icon icon={icons.clock} width="13" height="13" class="block"></iconify-icon>
+				<iconify-icon icon={icons.clock} width="13" height="13" class="mr-1 inline-block align-[-2px]"></iconify-icon>
 				{stats?.lastEventAt ? formatDateTime(stats.lastEventAt) : t('activity.noEventsYet')}
 			</Badge>
 			<Button
