@@ -21,10 +21,25 @@
 
 	onMount(load);
 
-	/** Reports whether the API refused this session for confirming, and shows the sign-in prompt if so. */
+	const OWN_SESSION_REFUSAL = "only the person's own session can confirm actions";
+
+	/**
+	 * Reports whether err is porte's refusal of a session that is not the person's own
+	 * browser session, and shows the sign-in prompt if so. Signing in again fixes only
+	 * this one; any other 403 is the confirmed action's own refusal.
+	 */
 	function refusedSession(err: unknown): boolean {
-		signInAgain = err instanceof ApiError && err.status === 403;
+		signInAgain =
+			err instanceof ApiError &&
+			err.status === 403 &&
+			err.code === 'permission_denied' &&
+			err.message === OWN_SESSION_REFUSAL;
 		return signInAgain;
+	}
+
+	/** The server's own words for any other refusal, else the fallback text. */
+	function reason(err: unknown, fallback: string): string {
+		return err instanceof ApiError && err.status === 403 ? err.message : fallback;
 	}
 
 	/** Comes back to this page once the fresh browser sign-in returns. */
@@ -38,7 +53,7 @@
 		try {
 			actions = (await api.pending()).actions;
 		} catch (err) {
-			if (!refusedSession(err)) toast.danger(t('pending.loadFailed'));
+			if (!refusedSession(err)) toast.danger(reason(err, t('pending.loadFailed')));
 		}
 		loading = false;
 	}
