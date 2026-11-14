@@ -56,7 +56,7 @@ apps/
       avatar/               The picture claim filter and the one SQL expression every person surface reads
       ratelimit/            Fixed-window counter for login attempts
       envelope/             The Antenne event envelope, its HMAC signing and its text rendering
-      app/                  The alert pipeline: dedup, envelope, log, route, deliver, retry
+      app/                  The alert pipeline: dedup, envelope, log, route, deliver, retry; the pollers run on the replica holding the `antenne-pollers` advisory lock
       server/               Dashboard API, webhook intake
     modules/
       auth/                 Users, sessions, RequireAuth

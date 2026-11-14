@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/FacileStudio/Antenne/apps/api/modules/events"
 	"github.com/FacileStudio/Antenne/apps/api/modules/providers"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
+	"github.com/FacileStudio/tronc/joblock"
 )
 
 // dedupWindow is how long an identical message from the same provider is
@@ -59,12 +61,14 @@ type App struct {
 	status   settings.RuntimeStatus
 	statusMu sync.RWMutex
 
-	// runtimeCtx is the process lifetime, captured in Start. The pollers are
-	// bound to it and never to a request context: a save that re-applied the
-	// runtime under r.Context() would start every watcher and have it cancelled
-	// the moment the HTTP response was written, leaving monitoring silently off
-	// until the next restart.
-	runtimeCtx context.Context
+	// pollCtx is the lifetime of this replica's hold on the pollers lock, set
+	// while it holds it and nil otherwise. The pollers are bound to it and never
+	// to a request context: a save that re-applied the runtime under
+	// r.Context() would start every watcher and have it cancelled the moment the
+	// HTTP response was written, leaving monitoring silently off until the next
+	// restart.
+	pollMu  sync.Mutex
+	pollCtx context.Context
 
 	dedupMu sync.Mutex
 	dedup   map[string]time.Time
@@ -119,20 +123,48 @@ func (a *App) RuntimeStatus() settings.RuntimeStatus {
 	return status
 }
 
-// Start brings the pollers up and starts the retry queue. The context it takes
-// is the process lifetime; everything long-running hangs off it.
-func (a *App) Start(ctx context.Context) {
-	a.runtimeCtx = ctx
+// pollersLockKey names the Postgres advisory lock that elects the replica
+// running the website, IMAP, RSS and health pollers. The retry queue is not
+// behind it: it is in memory, so each replica retries what it enqueued.
+const pollersLockKey = "antenne-pollers"
+
+// Start starts the retry queue and the heartbeat, and runs the pollers on the
+// replica that holds the pollers lock in db. The context it takes is the
+// process lifetime; everything long-running hangs off it.
+func (a *App) Start(ctx context.Context, db *sql.DB) {
 	a.retries.Start(ctx)
 	a.health.Start(ctx)
+	go func() {
+		_ = joblock.Hold(ctx, db, pollersLockKey, a.runPollers, joblock.WithOnError(func(err error) {
+			a.log.Warn("pollers lock", slog.Any("error", err))
+		}))
+	}()
+}
+
+func (a *App) runPollers(held context.Context) {
+	a.pollMu.Lock()
+	a.pollCtx = held
+	a.pollMu.Unlock()
+	a.log.Info("this replica now runs the pollers")
 	a.applyRuntime(a.store.Get())
+	<-held.Done()
+	a.pollMu.Lock()
+	a.pollCtx = nil
+	a.pollMu.Unlock()
+	a.stopPollers()
+	a.log.Info("this replica stopped the pollers")
+}
+
+func (a *App) stopPollers() {
+	a.monitor.Stop()
+	a.imap.Stop()
+	a.rss.Stop()
+	a.health.StopMonitor()
 }
 
 // Stop halts the pollers.
 func (a *App) Stop() {
-	a.monitor.Stop()
-	a.imap.Stop()
-	a.rss.Stop()
+	a.stopPollers()
 	a.health.Stop()
 }
 
@@ -143,15 +175,15 @@ func (a *App) OnSettingsApplied(callback func(settings.AppSettings)) {
 }
 
 func (a *App) applyRuntime(current settings.AppSettings) {
-	ctx := a.runtimeCtx
-	if ctx == nil {
-		ctx = context.Background()
+	a.pollMu.Lock()
+	ctx := a.pollCtx
+	a.pollMu.Unlock()
+	if ctx != nil {
+		a.monitor.Apply(ctx, current)
+		a.imap.Apply(ctx, current)
+		a.rss.Apply(ctx, current)
+		a.health.Apply(ctx, current)
 	}
-
-	a.monitor.Apply(ctx, current)
-	a.imap.Apply(ctx, current)
-	a.rss.Apply(ctx, current)
-	a.health.Apply(ctx, current)
 
 	if a.onSettingsApplied != nil {
 		a.onSettingsApplied(current)

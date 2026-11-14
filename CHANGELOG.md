@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.8.2] - 2026-11-14
+
+### Fixed
+
+- fix(api): the website, IMAP, RSS and health pollers run on one replica only. Each instance takes a Postgres advisory lock (tronc `joblock`, key `antenne-pollers`), so a rolling deploy with two copies up no longer polls and alerts twice. The retry queue stays on every replica because it is in memory: each one retries what it enqueued. tronc v0.24.0.
+
 ## [1.8.1] - 2026-11-14
 
 ### Fixed
