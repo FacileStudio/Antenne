@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.8.1] - 2026-11-14
+
+### Fixed
+
+- fix(client): the MCP confirm page asks you to sign in again only for porte's own-session refusal. Any other 403, such as losing access to the target after the agent asked, now shows the server's message.
+
 ## [1.8.0] - 2026-11-14
 
 ### Security
