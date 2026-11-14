@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.2] - 2026-11-14
+
+### Changed
+
+- build(client): mise-en-scene v0.2.2.
+
+### Fixed
+
+- fix(client): on the Activity page, the delivery status icon and the last-event clock icon sit beside their label inside the badge instead of above it.
+
 ## [1.7.1] - 2026-11-14
 
 ### Added
