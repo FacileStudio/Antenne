@@ -8,7 +8,7 @@ require (
 	github.com/FacileStudio/porte v0.20.1
 	github.com/FacileStudio/porte/directory v0.5.0
 	github.com/FacileStudio/porte/mcpauth v0.3.1
-	github.com/FacileStudio/tronc v0.23.1
+	github.com/FacileStudio/tronc v0.24.0
 	github.com/FacileStudio/tronc/migrate v0.1.1
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
 	github.com/go-chi/chi/v5 v5.5.0

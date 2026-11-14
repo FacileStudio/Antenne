@@ -216,6 +216,13 @@ func (r *healthRuntime) Start(ctx context.Context) {
 	r.heartbeat.Start(ctx)
 }
 
+func (r *healthRuntime) StopMonitor() {
+	if r == nil {
+		return
+	}
+	r.monitor.Stop()
+}
+
 func (r *healthRuntime) Stop() {
 	if r == nil {
 		return

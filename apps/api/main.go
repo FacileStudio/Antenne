@@ -274,7 +274,7 @@ func run() int {
 
 	logStartup(appLogger, cfg, current, store)
 
-	application.Start(ctx)
+	application.Start(ctx, sqlDB)
 	defer application.Stop()
 
 	go maintenance(ctx, time.Hour,
