@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+
+- fix(api): the MCP confirm page accepts only the person's own browser session (porte `mcpauth.RequireOwnSession`). A bearer token, a CLI session, an API key or a delegated token gets 403, and so does a cookie minted before porte v0.20.0: sign in again in the browser once before confirming.
+- build(api): tronc v0.23.1, so a second OAuth client of the same person no longer reuses the first client's open replay request.
+
+### Changed
+
+- build(api): tronc v0.23.1, porte v0.20.0, porte/mcpauth v0.3.0, porte/forfait v0.1.3.
+- refactor(api): the MCP state key, the confirm page mount, the account check, the events pager and the waiting and declined texts come from tronc and porte instead of local copies.
+- feat(api): resolved and expired MCP actions older than 30 days are pruned hourly.
+- feat(client): the confirm page asks the person to sign in again in the browser when the API refuses their session, in every locale.
+- docs: `docs/mcp.md` holds the MCP reference and says why creating and deleting providers and targets stays off MCP.
+
 ## [1.7.2] - 2026-11-14
 
 ### Changed

@@ -128,32 +128,9 @@ matches a stored address. chi routes on the raw path and would otherwise never m
 
 ## MCP
 
-`POST /mcp` is a remote [MCP](https://modelcontextprotocol.io) server (spec 2026-07-28,
-stateless) for any MCP client holding a Registre access token bound to
-`https://antenne.facile.studio/mcp`, with scope `antenne.read` and, for the write tools,
-`antenne.write`. `/.well-known/oauth-protected-resource/mcp` is its RFC 9728 metadata. A
-person's first call creates their account, as a first web sign-in would, and every account
-is an administrator.
-
-| Tool | Does | Confirmation |
-|---|---|---|
-| `antenne_list_events` | the activity log, newest first, filtered and paged | none, read-only |
-| `antenne_get_event` | one event with its payload | none, read-only |
-| `antenne_list_providers` | the providers, without credentials | none, read-only |
-| `antenne_list_targets` | the delivery targets with routing and health, without addresses or credentials | none, read-only |
-| `antenne_pool_status` | the apps connected to the bus, without tokens | none, read-only |
-| `antenne_test_provider` | an IMAP provider's login, tried once | none, read-only |
-| `antenne_check_target` | the check-now probe, under the dashboard's allowance per person | none |
-| `antenne_test_target` | the fixed test message to one target | none |
-| `antenne_set_enabled` | a provider or target on or off | none |
-| `antenne_replay_event` | a logged event sent again to a target | always |
-
-No tool returns the pool secret, a pool token or a provider or target credential. A replay asks
-the person through MRTR when the client can elicit; otherwise it returns `confirm_url`, a link
-to `/pending`, and nothing is sent until the person confirms there. The confirm page reads
-`GET /api/mcp/pending` and posts `/api/mcp/pending/{id}/confirm` or `/dismiss`, from the
-person's own session only. A target edited after the question closes the action. Erasing a
-person erases their pending actions.
+`POST /mcp` is a remote MCP server for Registre access tokens bound to
+`https://antenne.facile.studio/mcp`. Its tools, the confirm page and the tools left out on
+purpose are in [MCP](mcp.md).
 
 ## Webhooks
 

@@ -7,5 +7,6 @@
 | [Development](development.md) | Local setup, the quality gate, tests, the icon generator |
 | [Deployment](deployment.md) | Docker, Postgres, the pinned port, volumes, Traefik routing |
 | [API](api.md) | HTTP endpoints, webhook receivers, the pool WebSocket protocol |
+| [MCP](mcp.md) | The remote MCP server's tools, the confirm page, the tools left out on purpose |
 
 Back to the [README](../README.md).
