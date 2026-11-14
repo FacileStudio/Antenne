@@ -9,7 +9,14 @@ export const landing = {
 		'Antenne · Jede Warnung am richtigen Ort'
 	] as Row,
 	'landing.nav.features': ['Features', 'Fonctionnalités', 'Funciones', 'Funktionen'] as Row,
-	'landing.nav.cli': ['CLI', 'CLI', 'CLI', 'CLI'] as Row,
+	'landing.nav.downloads': ['Downloads', 'Téléchargements', 'Descargas', 'Downloads'] as Row,
+	'downloads.title': ['Download Antenne', 'Télécharger Antenne', 'Descargar Antenne', 'Antenne herunterladen'] as Row,
+	'downloads.line': [
+		'The CLI follows the log, tests targets and manages API keys from your terminal.',
+		'Le CLI suit le journal, teste les cibles et gère les clés d\'API depuis votre terminal.',
+		'La CLI sigue el registro, prueba destinos y gestiona claves de API desde tu terminal.',
+		'Die CLI liest das Protokoll mit, testet Ziele und verwaltet API-Schlüssel im Terminal.'
+	] as Row,
 	'landing.hero.title': [
 		'Every alert in the right place',
 		'Chaque alerte au bon endroit',
