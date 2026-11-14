@@ -80,20 +80,11 @@ func TestSwitchKeepsEveryCredential(t *testing.T) {
 }
 
 // TestTheConfirmPageSendsOnceForTheSessionOnly asks for a replay from a client that
-// cannot elicit, refuses a delegated token and a CLI session on the confirm page, then
-// confirms it from the browser session.
+// cannot elicit, lists it on the confirm page, refuses a delegated token, then confirms it
+// from the browser session.
 func TestTheConfirmPageSendsOnceForTheSessionOnly(t *testing.T) {
 	f := newFixture(t)
-	id := f.events.add("page")
-	session := mcptest.Connect(t, f.resource, f.token(t), mcptest.ClientOptions{})
-	var asked struct {
-		Status     string `json:"status"`
-		ConfirmURL string `json:"confirm_url"`
-	}
-	mcptest.Decode(t, mcptest.Call(t, session, "antenne_replay_event", map[string]any{"event_id": id, "target_id": "matrix"}), &asked)
-	action := asked.ConfirmURL[strings.LastIndex(asked.ConfirmURL, "=")+1:]
-	base := strings.TrimSuffix(f.resource, "/mcp") + "/api/mcp/pending"
-
+	id, confirmURL := askReplay(t, f, "page")
 	var list struct {
 		Actions []struct {
 			ID     string                  `json:"id"`
@@ -102,28 +93,53 @@ func TestTheConfirmPageSendsOnceForTheSessionOnly(t *testing.T) {
 			Target *struct{ Name string }  `json:"target"`
 		} `json:"actions"`
 	}
-	getJSON(t, base, &list)
-	if len(list.Actions) != 1 || list.Actions[0].ID != action || list.Actions[0].State != "ready" ||
+	getJSON(t, pendingBase(f), &list)
+	if len(list.Actions) != 1 || confirmURL != pendingBase(f)+"/"+list.Actions[0].ID+"/confirm" || list.Actions[0].State != "ready" ||
 		list.Actions[0].Event == nil || list.Actions[0].Event.Title != "page" || list.Actions[0].Target == nil || list.Actions[0].Target.Name != "Matrix" {
 		t.Fatalf("want the replay with its event and target, got %+v", list)
 	}
 
 	f.session.Actor = "bulle"
-	if status := post(t, base+"/"+action+"/confirm"); status != http.StatusForbidden || f.pipeline.runs(id, "matrix") != 0 {
+	if status := post(t, confirmURL); status != http.StatusForbidden || f.pipeline.runs(id, "matrix") != 0 {
 		t.Errorf("a delegated token must not confirm, got %d and %d runs", status, f.pipeline.runs(id, "matrix"))
 	}
 	f.session.Actor = ""
-	f.session.BrowserSession = false
-	if status := post(t, base+"/"+action+"/confirm"); status != http.StatusForbidden || f.pipeline.runs(id, "matrix") != 0 {
-		t.Errorf("a CLI session must not confirm, got %d and %d runs", status, f.pipeline.runs(id, "matrix"))
-	}
-	f.session.BrowserSession = true
-	if status := post(t, base+"/"+action+"/confirm"); status != http.StatusOK || f.pipeline.runs(id, "matrix") != 1 {
+	if status := post(t, confirmURL); status != http.StatusOK || f.pipeline.runs(id, "matrix") != 1 {
 		t.Errorf("the session must confirm once, got %d and %d runs", status, f.pipeline.runs(id, "matrix"))
 	}
-	if status := post(t, base+"/"+action+"/confirm"); status == http.StatusOK || f.pipeline.runs(id, "matrix") != 1 {
+	if status := post(t, confirmURL); status == http.StatusOK || f.pipeline.runs(id, "matrix") != 1 {
 		t.Errorf("a second confirm must fail, got %d and %d runs", status, f.pipeline.runs(id, "matrix"))
 	}
+}
+
+// TestACLISessionCannotConfirm refuses a replay confirmed from a session no browser
+// sign-in opened, and leaves the event unsent.
+func TestACLISessionCannotConfirm(t *testing.T) {
+	f := newFixture(t)
+	id, confirmURL := askReplay(t, f, "cli")
+	f.session.BrowserSession = false
+	if status := post(t, confirmURL); status != http.StatusForbidden || f.pipeline.runs(id, "matrix") != 0 {
+		t.Errorf("a CLI session must not confirm, got %d and %d runs", status, f.pipeline.runs(id, "matrix"))
+	}
+}
+
+// askReplay asks for a replay of a new event titled title from a client that cannot
+// elicit, and returns the event and the confirm endpoint of the pending action.
+func askReplay(t *testing.T, f *fixture, title string) (string, string) {
+	t.Helper()
+	id := f.events.add(title)
+	session := mcptest.Connect(t, f.resource, f.token(t), mcptest.ClientOptions{})
+	var asked struct {
+		ConfirmURL string `json:"confirm_url"`
+	}
+	mcptest.Decode(t, mcptest.Call(t, session, "antenne_replay_event", map[string]any{"event_id": id, "target_id": "matrix"}), &asked)
+	action := asked.ConfirmURL[strings.LastIndex(asked.ConfirmURL, "=")+1:]
+	return id, pendingBase(f) + "/" + action + "/confirm"
+}
+
+// pendingBase is the confirm page API of the fixture.
+func pendingBase(f *fixture) string {
+	return strings.TrimSuffix(f.resource, "/mcp") + "/api/mcp/pending"
 }
 
 // TestAFailedTestSendIsAResultWithoutTheURL checks a refused send reads as failed, with

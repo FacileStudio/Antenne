@@ -13,6 +13,7 @@ import (
 	"github.com/FacileStudio/porte/mcpauth"
 	"github.com/FacileStudio/porte/oidc"
 	mcpkit "github.com/FacileStudio/tronc/mcp"
+	"github.com/modelcontextprotocol/go-sdk/auth"
 )
 
 // undocumented are the routes the API reference leaves out: the legacy /dashboard
@@ -29,15 +30,7 @@ func newMCP(ctx context.Context, cfg env.Config, sqlDB *sql.DB, kit *oidc.Kit, i
 	if cfg.MCPResource == "" || !kit.Enabled() {
 		return nil, nil
 	}
-	verifier, err := mcpauth.Verifier(ctx, mcpauth.Config{
-		Issuer:      cfg.Porte.Issuer,
-		Resource:    cfg.MCPResource,
-		ScopePrefix: "antenne",
-		Identities:  identities,
-		Provision:   true,
-		Accounts:    kit,
-		Logger:      logger,
-	})
+	verifier, err := newVerifier(ctx, cfg, kit, identities, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +51,20 @@ func newMCP(ctx context.Context, cfg env.Config, sqlDB *sql.DB, kit *oidc.Kit, i
 	go mcpkit.KeepPruned(ctx, pending, 0, 0, logger)
 	logger.Info("mcp server on", slog.String("resource", cfg.MCPResource))
 	return service, nil
+}
+
+// newVerifier checks MCP bearer tokens against Registre for the antenne scopes and
+// provisions a caller's account through the OIDC kit on their first call.
+func newVerifier(ctx context.Context, cfg env.Config, kit *oidc.Kit, identities porte.IdentityStore, logger *slog.Logger) (auth.TokenVerifier, error) {
+	return mcpauth.Verifier(ctx, mcpauth.Config{
+		Issuer:      cfg.Porte.Issuer,
+		Resource:    cfg.MCPResource,
+		ScopePrefix: "antenne",
+		Identities:  identities,
+		Provision:   true,
+		Accounts:    kit,
+		Logger:      logger,
+	})
 }
 
 // eraseAccountData deletes what an erased person owns, in the transaction that deletes
