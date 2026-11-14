@@ -17,7 +17,7 @@ func (s *Service) RegisterRoutes(router chi.Router) {
 // /api group behind RequireAuth. A nil service, as in the docs test, still mounts the
 // routes.
 func (s *Service) RegisterPendingRoutes(router chi.Router) {
-	router.Route("/mcp/pending", s.pending().Routes)
+	s.pending().Mount(router)
 }
 
 // pending is the confirm page, nil on a nil service.

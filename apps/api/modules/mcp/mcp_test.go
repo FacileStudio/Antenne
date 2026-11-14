@@ -80,7 +80,8 @@ func TestSwitchKeepsEveryCredential(t *testing.T) {
 }
 
 // TestTheConfirmPageSendsOnceForTheSessionOnly asks for a replay from a client that
-// cannot elicit, refuses a delegated token on the confirm page, then confirms it there.
+// cannot elicit, refuses a delegated token and a CLI session on the confirm page, then
+// confirms it from the browser session.
 func TestTheConfirmPageSendsOnceForTheSessionOnly(t *testing.T) {
 	f := newFixture(t)
 	id := f.events.add("page")
@@ -112,6 +113,11 @@ func TestTheConfirmPageSendsOnceForTheSessionOnly(t *testing.T) {
 		t.Errorf("a delegated token must not confirm, got %d and %d runs", status, f.pipeline.runs(id, "matrix"))
 	}
 	f.session.Actor = ""
+	f.session.BrowserSession = false
+	if status := post(t, base+"/"+action+"/confirm"); status != http.StatusForbidden || f.pipeline.runs(id, "matrix") != 0 {
+		t.Errorf("a CLI session must not confirm, got %d and %d runs", status, f.pipeline.runs(id, "matrix"))
+	}
+	f.session.BrowserSession = true
 	if status := post(t, base+"/"+action+"/confirm"); status != http.StatusOK || f.pipeline.runs(id, "matrix") != 1 {
 		t.Errorf("the session must confirm once, got %d and %d runs", status, f.pipeline.runs(id, "matrix"))
 	}

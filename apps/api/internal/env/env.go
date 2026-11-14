@@ -4,7 +4,6 @@
 package env
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"strings"
 	"time"
@@ -78,13 +77,6 @@ type Config struct {
 	// resource Registre binds its tokens to: MCP_RESOURCE, else PUBLIC_URL + /mcp
 	// when single sign-on is on. Empty leaves /mcp unmounted.
 	MCPResource string
-}
-
-// MCPStateKey derives the key that signs MCP confirmation state from the OIDC client
-// secret, which is secret, stable across restarts and set whenever single sign-on is.
-func (c Config) MCPStateKey() []byte {
-	sum := sha256.Sum256([]byte("antenne-mcp-state:" + c.Porte.ClientSecret))
-	return sum[:]
 }
 
 // Load reads and validates the configuration. Every error it returns is a

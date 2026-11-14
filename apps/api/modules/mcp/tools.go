@@ -49,11 +49,8 @@ type toolset struct {
 // callerOf checks the verified token names an Antenne account that still exists, the
 // way RequireAuth checks a session, and returns its user id.
 func (t *toolset) callerOf(ctx context.Context, req *sdk.CallToolRequest) (int64, error) {
-	identity, ok := mcpauth.Identity(req.Extra.TokenInfo)
-	if !ok {
-		return 0, errNoCaller
-	}
-	if _, err := t.Accounts.IdentityForUser(ctx, identity.UserID); err != nil {
+	identity, err := mcpauth.AccountExists(ctx, req.Extra.TokenInfo, t.Accounts.IdentityForUser)
+	if err != nil {
 		return 0, errNoCaller
 	}
 	return identity.UserID, nil

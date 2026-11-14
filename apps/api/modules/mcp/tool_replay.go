@@ -12,8 +12,6 @@ import (
 
 const (
 	statusSent = "sent"
-	waiting    = "Nothing was sent yet: your client cannot ask the user to confirm. Give the user confirm_url and " +
-		"ask them to confirm there. Do not call this tool again for the same replay; the request stays open for 7 days."
 	hintReplay = "Call antenne_list_events and antenne_list_targets for valid ids."
 )
 
@@ -39,7 +37,7 @@ func (t *toolset) replayEvent(ctx context.Context, req *sdk.CallToolRequest, in 
 		return result, replayOutput{}, nil
 	}
 	return nil, replayOutput{
-		Status: outcome.Status, EventID: in.EventID, TargetID: in.TargetID, ConfirmURL: outcome.ConfirmURL, Message: waiting,
+		Status: outcome.Status, EventID: in.EventID, TargetID: in.TargetID, ConfirmURL: outcome.ConfirmURL, Message: outcome.Message,
 	}, nil
 }
 
@@ -53,7 +51,7 @@ func (t *toolset) resumeReplay(ctx context.Context, req *sdk.CallToolRequest) (*
 		return nil, replayOutput{}, mcpkit.Failure(err, "Call antenne_replay_event again to ask the user afresh.")
 	}
 	if outcome.Status == mcpkit.StatusDeclined {
-		return nil, replayOutput{Status: mcpkit.StatusDeclined, Message: "The user declined. Nothing was sent."}, nil
+		return nil, replayOutput{Status: mcpkit.StatusDeclined, Message: outcome.Message}, nil
 	}
 	ref, _ := refOf(outcome.Action)
 	return nil, replayOutput{

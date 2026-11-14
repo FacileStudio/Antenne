@@ -24,6 +24,7 @@ var undocumented = []string{"/dashboard", "/version", "/mcp", "/.well-known"}
 // nothing otherwise. The verifier runs Registre discovery here, so a wrong issuer fails
 // at boot like the OIDC kit does. A person's first MCP call creates their account through
 // the OIDC kit, as a first web login would, so it is an administrator like every account.
+// Resolved and expired actions are pruned hourly until ctx ends.
 func newMCP(ctx context.Context, cfg env.Config, sqlDB *sql.DB, kit *oidc.Kit, identities porte.IdentityStore, logger *slog.Logger, deps mcp.Deps) (server.MCP, error) {
 	if cfg.MCPResource == "" || !kit.Enabled() {
 		return nil, nil
@@ -40,19 +41,21 @@ func newMCP(ctx context.Context, cfg env.Config, sqlDB *sql.DB, kit *oidc.Kit, i
 	if err != nil {
 		return nil, err
 	}
+	pending := mcpkit.PostgresPending{DB: sqlDB}
 	service, err := mcp.NewService(deps, mcp.Config{
 		Resource: cfg.MCPResource,
 		Issuer:   cfg.Porte.Issuer,
 		Version:  cfg.Version,
 		Origins:  cfg.CORSAllowedOrigins,
-		StateKey: cfg.MCPStateKey(),
+		StateKey: mcpkit.StateKey("antenne", cfg.Porte.ClientSecret),
 		Verifier: verifier,
-		Pending:  mcpkit.PostgresPending{DB: sqlDB},
+		Pending:  pending,
 		Logger:   logger,
 	})
 	if err != nil {
 		return nil, err
 	}
+	go mcpkit.KeepPruned(ctx, pending, 0, 0, logger)
 	logger.Info("mcp server on", slog.String("resource", cfg.MCPResource))
 	return service, nil
 }
