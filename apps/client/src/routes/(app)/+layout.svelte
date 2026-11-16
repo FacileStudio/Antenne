@@ -9,15 +9,12 @@
 		SpaceSwitcher,
 		Spinner,
 		Topbar,
-		icons,
-		type Locale,
-		type Theme
+		icons
 	} from '@facile/muse';
 	import { api } from '$lib/backend';
 	import { dashboard } from '$lib/dashboard.svelte';
-	import { locale, rememberLocale, t } from '$lib/i18n/index.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import { spaces } from '$lib/spaces.svelte';
-	import { theme } from '$lib/theme.svelte';
 	import { ANTENNE_ICON, ANTENNE_MARK } from '$lib/components/AntenneLogo.svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -74,13 +71,8 @@
 	});
 	let invitations = $state<{ count: number; href: string } | null>(null);
 	const userMenu = $derived({
-		subscription: { plan: 'Gratuit', href: 'https://sso.facile.studio/spaces' },
 		helpHref: 'https://github.com/FacileStudio/Antenne/tree/main/docs',
 		onSignOut: () => dashboard.logout(),
-		locale: locale(),
-		onLocaleChange: (next: Locale) => rememberLocale(next),
-		theme: theme.mode,
-		onThemeChange: (next: Theme) => theme.set(next),
 		invitations
 	});
 	const switcherSpaces = $derived(spaces.spaces.map((space) => ({ id: space.id, name: space.name })));

@@ -8,6 +8,7 @@
 
 ### Changed
 
+- build(client): muse v0.32.0. Tabs and the view toggle match the Button height (36px, 44px on touch). The plan row moves from the avatar menu to Settings, Preferences.
 - build(api): porte v0.21.0 (a role the provider no longer confirms is dropped within five minutes; Antenne reads no OIDC role, so nobody loses access), porte/mcpauth v0.3.2, tronc v0.27.0, tronc/testdb v0.2.0, antenne-client v1.2.0.
 - refactor(api): `httpx.Serve` replaces the hand-written server. The server now has read (30s), write (60s) and idle (120s) timeouts; the live event stream lifts its write deadline with `httpx.WriteBudget`, and pool sockets set their own deadlines.
 - refactor(api): `porte/pg` NewFromEnv and ResealInBackground, `porte.ConfigFromEnv`, `kit.NewDeletions`, `health.Version` replace local copies; the pool test harness runs on `tronc/testdb`.
