@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"embed"
-	"errors"
 	"io/fs"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -16,11 +14,14 @@ import (
 
 	"github.com/FacileStudio/Journal/sdk/journal"
 	"github.com/FacileStudio/porte/directory"
+	"github.com/FacileStudio/porte/kit"
 	"github.com/FacileStudio/porte/local"
 	"github.com/FacileStudio/porte/oidc"
+	portepg "github.com/FacileStudio/porte/pg"
 	"github.com/FacileStudio/porte/session"
 	"github.com/FacileStudio/tronc/apiref"
 	"github.com/FacileStudio/tronc/healthcheck"
+	"github.com/FacileStudio/tronc/httpx"
 	"github.com/FacileStudio/tronc/logger"
 	"github.com/FacileStudio/tronc/migrate"
 	"github.com/FacileStudio/tronc/spa"
@@ -44,6 +45,9 @@ import (
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
+
+// version is set at build time with -ldflags "-X main.version=<tag>".
+var version = "dev"
 
 func main() {
 	// healthcheck runs before anything reads config, so a missing DATABASE_URL
@@ -110,12 +114,12 @@ func run() int {
 	// One manager over one session table. Both kits issue through it, so a
 	// password login and a federated one are the same row, the same cookie and
 	// the same logout.
-	identityStore, err := newPorteStore(sqlDB)
+	identityStore, err := portepg.NewFromEnv(sqlDB)
 	if err != nil {
 		appLogger.Error("porte token key", slog.Any("error", err))
 		return 1
 	}
-	resealInBackground(ctx, identityStore, appLogger)
+	portepg.ResealInBackground(ctx, identityStore, appLogger)
 	userStore := auth.NewStore(db)
 	accounts, err := auth.Accounts(ctx, sqlDB, eraseAccountData)
 	if err != nil {
@@ -145,11 +149,17 @@ func run() int {
 		ClientID:     cfg.Porte.ClientID,
 		ClientSecret: cfg.Porte.ClientSecret,
 	}
-	deletions := spaces.NewDeletions(db, directoryClient, spaces.Erasers{
-		Account:  accounts.EraseAccount,
-		Identity: identityStore.EraseIdentity,
-		Holds:    identityStore.HoldsIdentity,
-	}, appLogger)
+	deletions, err := kit.NewDeletions(kit.DeletionsConfig{
+		OIDC:            cfg.Porte,
+		Store:           identityStore,
+		OnPersonDeleted: spaces.ErasePerson(db, accounts.EraseAccount),
+		State:           spaces.DeletionState(db),
+		Logger:          appLogger,
+	})
+	if err != nil {
+		appLogger.Error("deletions", slog.Any("error", err))
+		return 1
+	}
 
 	// oidc.New is the boot path: it performs discovery, so an unreachable or
 	// half-configured issuer fails here rather than on somebody's first login
@@ -160,7 +170,7 @@ func run() int {
 		Identities:  identityStore.Identities(),
 		Sessions:    sessions,
 		Codes:       identityStore.LoginCodes(),
-		Erased:      deletions,
+		Erased:      kit.ErasedGuard(deletions),
 		Logger:      appLogger,
 		ConfigExtra: authService.ConfigExtra(),
 	})
@@ -289,32 +299,8 @@ func run() int {
 
 	application.AnnounceStartup(ctx)
 
-	httpServer := &http.Server{
-		Addr:              ":" + strconv.Itoa(cfg.Port),
-		Handler:           router,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	serverErrors := make(chan error, 1)
-	go func() {
-		appLogger.Info("listening", slog.Int("port", cfg.Port))
-		serverErrors <- httpServer.ListenAndServe()
-	}()
-
-	select {
-	case err := <-serverErrors:
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			appLogger.Error("server", slog.Any("error", err))
-			return 1
-		}
-	case <-ctx.Done():
-		appLogger.Info("shutting down")
-	}
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		appLogger.Error("shutdown", slog.Any("error", err))
+	if err := httpx.Serve(ctx, router, httpx.ServeConfig{Addr: ":" + strconv.Itoa(cfg.Port), Logger: appLogger}); err != nil {
+		appLogger.Error("server", slog.Any("error", err))
 		return 1
 	}
 

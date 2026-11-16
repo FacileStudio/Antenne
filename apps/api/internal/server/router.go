@@ -79,9 +79,7 @@ func BuildRouter(
 	// Mounted at both the root and /api: an external monitor that only reaches
 	// one of the two must not read the SPA shell as a green check.
 	health.Mount(router, health.DB(sqlDB))
-	router.Get("/version", func(w http.ResponseWriter, _ *http.Request) {
-		httpjson.WriteJSON(w, http.StatusOK, map[string]string{"version": cfg.Version})
-	})
+	router.Get("/version", health.Version(cfg.Version))
 
 	// The reference stays at the root, unauthenticated, next to the routes it
 	// documents. It describes the public contract — the webhook intake and the

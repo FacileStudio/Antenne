@@ -13,6 +13,7 @@ import (
 
 	apierrors "github.com/FacileStudio/tronc/errors"
 	"github.com/FacileStudio/tronc/httpjson"
+	"github.com/FacileStudio/tronc/httpx"
 	troncmiddleware "github.com/FacileStudio/tronc/middleware"
 	"github.com/go-chi/chi/v5"
 
@@ -91,7 +92,7 @@ func (a *API) RegisterRoutes(router chi.Router) {
 	// one that normal use also draws on.
 	router.Post("/delivery-health/{targetId}/check", a.handleCheckTargetHealth)
 	router.Get("/events", a.handleEvents)
-	router.Get("/events/stream", a.handleEventStream)
+	router.With(httpx.WriteBudget(0)).Get("/events/stream", a.handleEventStream)
 	router.Get("/events/provider/{providerId}", a.handleProviderEvents)
 	router.Get("/events/target/{targetId}", a.handleTargetEvents)
 	router.Post("/events/{eventId}/replay", a.handleReplay)

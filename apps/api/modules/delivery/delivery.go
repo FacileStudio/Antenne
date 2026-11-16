@@ -12,6 +12,7 @@ import (
 
 	"github.com/FacileStudio/Antenne/apps/api/internal/envelope"
 	"github.com/FacileStudio/Antenne/apps/api/modules/settings"
+	"github.com/FacileStudio/tronc/netguard"
 )
 
 // Message is one alert, in both the rendered and the structured form. HTML goes
@@ -66,11 +67,13 @@ func (e *FailureError) Error() string { return ErrAllFailed.Error() }
 // Unwrap lets errors.Is(err, ErrAllFailed) match.
 func (e *FailureError) Unwrap() error { return ErrAllFailed }
 
-// Sender performs the deliveries. It holds the shared HTTP client and the
+// Sender performs the deliveries. It holds the shared HTTP client, the
+// public-only client for targets that are public by nature (Discord), and the
 // Matrix session cache.
 type Sender struct {
 	log      *slog.Logger
 	client   *http.Client
+	public   *http.Client
 	matrixMu sync.Mutex
 	matrix   map[string]*matrixSession
 }
@@ -80,6 +83,7 @@ func NewSender(log *slog.Logger) *Sender {
 	return &Sender{
 		log:    log,
 		client: &http.Client{Timeout: 30 * time.Second},
+		public: (&netguard.Guard{}).Client(30 * time.Second),
 		matrix: map[string]*matrixSession{},
 	}
 }

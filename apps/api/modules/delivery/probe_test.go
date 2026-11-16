@@ -44,7 +44,9 @@ func TestDiscordUnknownWebhookIsTerminallyDead(t *testing.T) {
 		DiscordSettings: settings.DiscordSettings{WebhookURL: server.URL + "/api/webhooks/123/abc?wait=true"},
 	}
 
-	observation := probeSender().Probe(context.Background(), target)
+	sender := probeSender()
+	sender.public = sender.client
+	observation := sender.Probe(context.Background(), target)
 	if observation.Kind != health.KindDead {
 		t.Errorf("Discord 10015 classified as %q, want %q", observation.Kind, health.KindDead)
 	}
@@ -66,7 +68,9 @@ func TestDiscordRateLimitCarriesRetryAfter(t *testing.T) {
 		DiscordSettings: settings.DiscordSettings{WebhookURL: server.URL + "/api/webhooks/123/abc"},
 	}
 
-	observation := probeSender().Probe(context.Background(), target)
+	sender := probeSender()
+	sender.public = sender.client
+	observation := sender.Probe(context.Background(), target)
 	if observation.Kind != health.KindRateLimited {
 		t.Errorf("429 classified as %q, want %q", observation.Kind, health.KindRateLimited)
 	}
@@ -235,5 +239,26 @@ func TestRetryAfterAcceptsBothForms(t *testing.T) {
 	}
 	if got := retryAfterFrom(http.Header{}); got != 0 {
 		t.Errorf("a missing header gave %v, want 0", got)
+	}
+}
+
+func TestDiscordTargetsNeverReachAnInternalAddress(t *testing.T) {
+	hit := false
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { hit = true }))
+	defer server.Close()
+	target := settings.DeliveryTarget{
+		ID: "d", Type: settings.TargetDiscord, Name: "discord", Enabled: true,
+		DiscordSettings: settings.DiscordSettings{WebhookURL: server.URL + "/api/webhooks/123/abc"},
+	}
+
+	sender := probeSender()
+	if observation := sender.Probe(context.Background(), target); observation.OK {
+		t.Error("the probe reached a loopback address")
+	}
+	if err := sender.sendDiscord(context.Background(), target, "<b>x</b>"); err == nil {
+		t.Error("the send reached a loopback address")
+	}
+	if hit {
+		t.Error("the loopback server received a request")
 	}
 }

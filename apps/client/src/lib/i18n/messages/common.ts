@@ -1,4 +1,4 @@
-import type { Row } from '../row';
+import type { Row } from '@facile/muse';
 
 /** Strings shared by several screens. */
 export const common = {
