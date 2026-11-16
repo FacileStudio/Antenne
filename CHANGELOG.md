@@ -13,6 +13,12 @@
 - refactor(api): `porte/pg` NewFromEnv and ResealInBackground, `porte.ConfigFromEnv`, `kit.NewDeletions`, `health.Version` replace local copies; the pool test harness runs on `tronc/testdb`.
 - refactor(client): `createApi` from `@facile/client` v0.3.0 replaces the local fetch kernel; muse v0.28.0.
 
+## [1.8.3] - 2026-11-16
+
+### Security
+
+- fix: the dashboard serves the Vision tracker from its own origin (`/vision-tracker.js`) instead of loading `https://vision.facile.studio/s.js`. A script from another origin ran inside the signed-in dashboard, so the CSP `script-src` no longer names Vision.
+
 ## [1.8.2] - 2026-11-14
 
 ### Fixed
