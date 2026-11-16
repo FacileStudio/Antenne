@@ -7,7 +7,7 @@ import { pending } from './pending';
 import { providers } from './providers';
 import { settings } from './settings';
 import { shell } from './shell';
-import type { Row } from '../row';
+import type { Row } from '@facile/muse';
 
 const rows = {
 	...common,

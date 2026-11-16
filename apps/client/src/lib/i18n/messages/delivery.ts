@@ -1,4 +1,4 @@
-import type { Row } from '../row';
+import type { Row } from '@facile/muse';
 
 /** Delivery screens: targets, health and the editor. */
 export const delivery = {

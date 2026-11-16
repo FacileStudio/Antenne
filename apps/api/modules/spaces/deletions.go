@@ -3,8 +3,6 @@ package spaces
 import (
 	"context"
 	"database/sql"
-	"log/slog"
-	"net/http"
 
 	"github.com/FacileStudio/porte/directory"
 	"gorm.io/gorm"
@@ -13,63 +11,22 @@ import (
 // deletionStateName is the one row the receiver's state lives in.
 const deletionStateName = "registre"
 
-// Deletions erases the people Registre erased. It polls Registre's deletion
-// list with the same client credentials as the snapshot sync and accepts
-// Registre's signed push on directory.DeletionsPath.
-type Deletions struct {
-	orm      *gorm.DB
-	receiver *directory.Deletions
-}
-
-// Erasers are what the receiver erases through. Account deletes the account
-// behind a Registre identity, porte/kit's Store.EraseAccount with
-// EraseMemberships and ErasePoolEvents in its EraseData. Identity removes
-// porte's own rows for the identity, pg.Store.EraseIdentity. Holds reports
-// whether a handled subject owns an identity again, pg.Store.HoldsIdentity, so
-// a re-created account is erased again without a restart.
-type Erasers struct {
-	Account  Eraser
-	Identity Eraser
-	Holds    func(ctx context.Context, provider, subject string) (bool, error)
-}
-
-// NewDeletions builds the receiver over Antenne's tables. After the account,
-// the bus events naming the subject go, for a person who never had an Antenne
-// account.
-func NewDeletions(orm *gorm.DB, client directory.Client, erasers Erasers, logger *slog.Logger) *Deletions {
-	d := &Deletions{orm: orm}
-	d.receiver = &directory.Deletions{
-		Client: client,
-		OnPersonDeleted: func(ctx context.Context, provider, subject string) error {
-			if err := erasers.Account(ctx, provider, subject); err != nil {
-				return err
-			}
-			return orm.WithContext(ctx).Exec(poolEventsNaming+`(SELECT lower(?::text)))`, subject).Error
-		},
-		Erase:  erasers.Identity,
-		Holds:  erasers.Holds,
-		State:  deletionState{orm: orm},
-		Logger: logger,
+// ErasePerson is the callback of the Registre deletion receiver: it deletes the
+// account behind the identity through account, porte/kit's Store.EraseAccount
+// with EraseMemberships and ErasePoolEvents in its EraseData, then the bus
+// events naming the subject, for a person who never had an Antenne account.
+func ErasePerson(orm *gorm.DB, account Eraser) Eraser {
+	return func(ctx context.Context, provider, subject string) error {
+		if err := account(ctx, provider, subject); err != nil {
+			return err
+		}
+		return orm.WithContext(ctx).Exec(poolEventsNaming+`(SELECT lower(?::text)))`, subject).Error
 	}
-	return d
 }
 
-// Erased reports whether Antenne already erased the person behind (provider,
-// subject). porte/oidc asks it before a sign-in, a first MCP call or a profile
-// sync gives that identity an account again, and the directory import asks it
-// before linking a member's subject: porte.ErasedSubjects.
-func (d *Deletions) Erased(ctx context.Context, provider, subject string) (bool, error) {
-	return d.receiver.Erased(ctx, provider, subject)
-}
-
-// Run polls until ctx ends. Start it in exactly one replica.
-func (d *Deletions) Run(ctx context.Context) {
-	d.receiver.Run(ctx)
-}
-
-// Handler verifies and applies Registre's signed user.deleted push.
-func (d *Deletions) Handler() http.Handler {
-	return d.receiver.Handler()
+// DeletionState is the receiver's StateStore over the deletion_state row.
+func DeletionState(orm *gorm.DB) directory.StateStore {
+	return deletionState{orm: orm}
 }
 
 // Eraser removes what one (provider, subject) identity owns.

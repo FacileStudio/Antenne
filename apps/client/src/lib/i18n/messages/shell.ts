@@ -1,4 +1,4 @@
-import type { Row } from '../row';
+import type { Row } from '@facile/muse';
 
 /** Navigation and the login screen. */
 export const shell = {

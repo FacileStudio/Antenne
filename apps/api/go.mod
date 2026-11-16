@@ -4,12 +4,13 @@ go 1.26.11
 
 require (
 	github.com/FacileStudio/Journal/sdk/journal v0.0.0-20260708221941-db985ad2b1ba
-	github.com/FacileStudio/antenne-client/go v1.0.0
-	github.com/FacileStudio/porte v0.20.1
+	github.com/FacileStudio/antenne-client/go v1.2.0
+	github.com/FacileStudio/porte v0.21.0
 	github.com/FacileStudio/porte/directory v0.5.0
-	github.com/FacileStudio/porte/mcpauth v0.3.1
-	github.com/FacileStudio/tronc v0.24.0
+	github.com/FacileStudio/porte/mcpauth v0.3.2
+	github.com/FacileStudio/tronc v0.27.0
 	github.com/FacileStudio/tronc/migrate v0.1.1
+	github.com/FacileStudio/tronc/testdb v0.2.0
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/gorilla/websocket v1.5.3
@@ -19,7 +20,7 @@ require (
 )
 
 require (
-	github.com/FacileStudio/porte/forfait v0.1.3 // indirect
+	github.com/FacileStudio/porte/forfait v0.1.4 // indirect
 	github.com/coreos/go-oidc/v3 v3.20.0 // indirect
 	github.com/emersion/go-message v0.18.2 // indirect
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect

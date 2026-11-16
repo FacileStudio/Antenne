@@ -1,4 +1,4 @@
-import type { Row } from '../row';
+import type { Row } from '@facile/muse';
 
 /** The signed-out landing page and its demos. */
 export const landing = {

@@ -1,4 +1,4 @@
-import type { Row } from '../row';
+import type { Row } from '@facile/muse';
 
 /** Provider screens: list, editor and detail. */
 export const providers = {

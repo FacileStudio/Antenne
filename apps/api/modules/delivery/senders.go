@@ -38,7 +38,7 @@ func (s *Sender) sendDiscord(ctx context.Context, target settings.DeliveryTarget
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("User-Agent", "Antenne/1.0 uptime-bot")
 
-	return s.expectOK(request, "Discord webhook")
+	return s.expectOK(s.public, request, "Discord webhook")
 }
 
 func (s *Sender) sendNtfy(ctx context.Context, target settings.DeliveryTarget, message string) error {
@@ -73,7 +73,7 @@ func (s *Sender) sendNtfy(ctx context.Context, target settings.DeliveryTarget, m
 		request.Header.Set("Click", *target.ClickURL)
 	}
 
-	return s.expectOK(request, "ntfy")
+	return s.expectOK(s.client, request, "ntfy")
 }
 
 func (s *Sender) sendHTTP(ctx context.Context, target settings.DeliveryTarget, message Message) error {
@@ -88,7 +88,7 @@ func (s *Sender) sendHTTP(ctx context.Context, target settings.DeliveryTarget, m
 	}
 	request.Header = envelope.SignedHeaders(deref(target.SecretValue), message.Envelope.ID, body)
 
-	return s.expectOK(request, "HTTP delivery webhook")
+	return s.expectOK(s.client, request, "HTTP delivery webhook")
 }
 
 func (s *Sender) sendPerception(ctx context.Context, target settings.DeliveryTarget, message Message) error {
@@ -104,7 +104,7 @@ func (s *Sender) sendPerception(ctx context.Context, target settings.DeliveryTar
 	request.Header = envelope.SignedHeaders(deref(target.SecretValue), message.Envelope.ID, body)
 	request.Header.Set("x-perception-workspace", target.Workspace)
 
-	return s.expectOK(request, "Perception")
+	return s.expectOK(s.client, request, "Perception")
 }
 
 // sendSMTP speaks SMTP directly rather than through a mailer dependency: Antenne
@@ -232,8 +232,8 @@ func encodeEnvelope(message Message, includeRaw bool) ([]byte, error) {
 // expectOK sends the request and turns a non-2xx answer into an error carrying
 // the response body, which is the only thing that makes a misconfigured webhook
 // debuggable from the activity log.
-func (s *Sender) expectOK(request *http.Request, label string) error {
-	response, err := s.client.Do(request)
+func (s *Sender) expectOK(client *http.Client, request *http.Request, label string) error {
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}

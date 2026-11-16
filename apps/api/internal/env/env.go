@@ -5,6 +5,7 @@ package env
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -182,20 +183,10 @@ func loadHeartbeatInterval() (time.Duration, error) {
 // belongs to because two of porte's URLs default off PublicURL, so this can only
 // run once the rest of the configuration exists.
 func loadPorte(c Config) (porte.Config, error) {
-	cfg := porte.Config{
-		Issuer:       troncenv.String("OIDC_ISSUER", ""),
-		ClientID:     troncenv.String("OIDC_CLIENT_ID", ""),
-		ClientSecret: troncenv.String("OIDC_CLIENT_SECRET", ""),
-		RedirectURL:  troncenv.String("OIDC_REDIRECT_URL", c.defaultRedirectURL()),
-		SuccessURL:   troncenv.String("OIDC_SUCCESS_URL", c.PublicURL+"/"),
-		FailureURL:   troncenv.String("OIDC_FAILURE_URL", ""),
-		ClaimsScope:  troncenv.String("OIDC_CLAIMS_SCOPE", ""),
-		CLIAudience:  troncenv.String("OIDC_CLI_AUDIENCE", ""),
-	}
-	if err := cfg.Validate(); err != nil {
-		return porte.Config{}, err
-	}
-	return cfg, nil
+	return porte.ConfigFromEnv(os.Getenv, porte.Config{
+		RedirectURL: c.defaultRedirectURL(),
+		SuccessURL:  c.PublicURL + "/",
+	})
 }
 
 // defaultRedirectURL is the callback Authentik is configured with. Deriving it

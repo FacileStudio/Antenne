@@ -1,5 +1,5 @@
-import { browser } from '$app/environment';
-import { createTranslator, LOCALE_COOKIE, resolveLocale, type Locale } from '@facile/muse';
+import { rememberLocale, resolveClientLocale } from '@facile/client/locale';
+import { createTranslator, LOCALES, resolveLocale, type Locale } from '@facile/muse';
 import { catalogs } from './messages';
 
 const session = $state<{ locale: string | null }>({ locale: null });
@@ -10,22 +10,12 @@ export function setSessionLocale(locale: string | null) {
 	session.locale = locale;
 }
 
-function cookieLocale(): string | null {
-	if (!browser) return null;
-	const prefix = `${LOCALE_COOKIE}=`;
-	const found = document.cookie.split('; ').find((part) => part.startsWith(prefix));
-	return found ? decodeURIComponent(found.slice(prefix.length)) : null;
-}
-
-/** The locale source for `provideLocale`: the picked cookie, then the session, then the browser. */
+/** The locale source for `provideLocale`: the URL, the session, the picked cookie, then the browser. Null when nothing matched. */
 export function localeSource(): string | null {
-	return cookieLocale() ?? session.locale ?? (browser ? navigator.language : null);
+	return resolveClientLocale({ supported: LOCALES, profile: session.locale }).hint;
 }
 
-/** Persists the locale picked on a session-less page for the next visit. */
-export function rememberLocale(locale: Locale) {
-	document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
-}
+export { rememberLocale };
 
 /** Points the translator and the Intl helpers at the locale `provideLocale` resolved. */
 export function bindLocale(source: () => Locale) {

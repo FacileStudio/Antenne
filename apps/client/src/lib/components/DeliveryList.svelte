@@ -111,7 +111,7 @@
 		} catch (error) {
 			if (isRateLimited(error)) {
 				const wait =
-					error instanceof ApiError && error.retryAfterSeconds > 0 ? error.retryAfterSeconds : 60;
+					error instanceof ApiError && error.retryAfterSeconds ? error.retryAfterSeconds : 60;
 				cooldownUntil = Date.now() + wait * 1000;
 				clock = Date.now();
 				toast.warning(

@@ -27,7 +27,7 @@ func (s *Sender) probeDiscord(ctx context.Context, target settings.DeliveryTarge
 	endpoint.RawQuery = ""
 	endpoint.Fragment = ""
 
-	response, err := s.probeGET(ctx, endpoint.String(), nil)
+	response, err := s.probeGET(ctx, s.public, endpoint.String(), nil)
 	if err != nil {
 		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
@@ -98,7 +98,7 @@ func (s *Sender) probeNtfy(ctx context.Context, target settings.DeliveryTarget) 
 // to report when it did not. The observation is only meaningful when the second
 // result is false.
 func (s *Sender) probeNtfyServer(ctx context.Context, server *url.URL) (health.Observation, bool) {
-	response, err := s.probeGET(ctx, server.JoinPath("v1", "health").String(), nil)
+	response, err := s.probeGET(ctx, s.client, server.JoinPath("v1", "health").String(), nil)
 	if err != nil {
 		return probeFail(health.KindUnreachable, SafeErrorText(err)), false
 	}
@@ -120,7 +120,7 @@ func (s *Sender) probeNtfyServer(ctx context.Context, server *url.URL) (health.O
 }
 
 func (s *Sender) probeNtfyToken(ctx context.Context, server *url.URL, token string) health.Observation {
-	response, err := s.probeGET(ctx, server.JoinPath("v1", "account").String(),
+	response, err := s.probeGET(ctx, s.client, server.JoinPath("v1", "account").String(),
 		http.Header{"Authorization": []string{"Bearer " + token}})
 	if err != nil {
 		return probeFail(health.KindUnreachable, SafeErrorText(err))
@@ -162,7 +162,7 @@ func (s *Sender) probePerception(ctx context.Context, target settings.DeliveryTa
 		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}
 
-	response, err := s.probeGET(ctx, endpoint, nil)
+	response, err := s.probeGET(ctx, s.client, endpoint, nil)
 	if err != nil {
 		return probeFail(health.KindUnreachable, SafeErrorText(err))
 	}

@@ -82,7 +82,7 @@ type probeResponse struct {
 // been read, and it is the status — not the prose after it — that decides the
 // Kind. Whatever arrived is returned, and a classifier that finds nothing
 // useful in it falls back on the status alone.
-func (s *Sender) probeGET(ctx context.Context, endpoint string, header http.Header) (probeResponse, error) {
+func (s *Sender) probeGET(ctx context.Context, client *http.Client, endpoint string, header http.Header) (probeResponse, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return probeResponse{}, err
@@ -94,7 +94,7 @@ func (s *Sender) probeGET(ctx context.Context, endpoint string, header http.Head
 	}
 	request.Header.Set("User-Agent", "Antenne/1.0 uptime-bot")
 
-	response, err := s.client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return probeResponse{}, err
 	}
