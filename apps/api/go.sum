@@ -10,8 +10,8 @@ github.com/FacileStudio/porte/forfait v0.1.4 h1:KT/NOoWDXdfY18/bskfnK2DVqhrQrPXU
 github.com/FacileStudio/porte/forfait v0.1.4/go.mod h1:IMPhm3+VvohGZQDh5Fyzz38hFi/zDoCnCalr3nTmMZ0=
 github.com/FacileStudio/porte/mcpauth v0.3.2 h1:SRK79L/30SsfdbDXEcx2idRW/+qMTOzY6GQA9VKoX18=
 github.com/FacileStudio/porte/mcpauth v0.3.2/go.mod h1:vE5LCnscs6tirUPrnF3jTByt5FberzEM7L1CsWlSB88=
-github.com/FacileStudio/tronc v0.26.0 h1:lWLweFxJaRlLt8/Lt+eAQzpuCLE+haBto7ilcp9ttPs=
-github.com/FacileStudio/tronc v0.26.0/go.mod h1:QK95x1/GhEQmTuJTS3zX2Ah6J9brEC9NCBQmXf0e8iw=
+github.com/FacileStudio/tronc v0.27.0 h1:KqNaopR3Uil9nzyRex5o9VfoChi/VhLDCLLEi/wEfAo=
+github.com/FacileStudio/tronc v0.27.0/go.mod h1:QK95x1/GhEQmTuJTS3zX2Ah6J9brEC9NCBQmXf0e8iw=
 github.com/FacileStudio/tronc/migrate v0.1.1 h1:igN2WKLkJoMRNlIKM4WmC6+f56PerigQFMgjVCPWxw4=
 github.com/FacileStudio/tronc/migrate v0.1.1/go.mod h1:NxBfBpCpM2x6t/d8uqNKEiKWo1zgPRZ1JAK3Qxfl35c=
 github.com/FacileStudio/tronc/testdb v0.2.0 h1:MYT0RDHAg1kv0u/zaFtQ731EJ0jo8zvDPrKaAGnsr6w=
