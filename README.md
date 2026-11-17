@@ -59,12 +59,12 @@ cached values. See [docs/development.md](docs/development.md).
 ## Command line
 
 [`antenne`](https://github.com/FacileStudio/antenne-cli) drives Antenne from a terminal. It
-installs through [facile](https://github.com/FacileStudio/facile), the suite installer,
+installs through [kit](https://github.com/FacileStudio/kit), the Facile package manager,
 which fetches a prebuilt binary and puts `~/.local/bin` on your PATH:
 
 ```sh
 curl -fsSL https://get.facile.studio | bash
-facile install antenne
+kit add antenne
 ```
 
 People sign in with Facile (Registre). `facile login antenne` uses the same account
